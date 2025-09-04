@@ -1,0 +1,594 @@
+{% extends "base.html" %}
+
+{% block title %}Label Designer - Inventory Management{% endblock %}
+
+{% block extra_css %}
+<style>
+    .designer-hero {
+        background: linear-gradient(135deg, var(--warning-color) 0%, var(--primary-color) 100%);
+        color: white;
+        padding: 3rem 0;
+        margin: -2rem -1rem 3rem -1rem;
+        text-align: center;
+    }
+
+    .designer-hero h1 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+    }
+
+    .designer-hero p {
+        font-size: 1.25rem;
+        opacity: 0.9;
+    }
+
+    .designer-section {
+        background: white;
+        border-radius: var(--border-radius-lg);
+        box-shadow: var(--shadow);
+        margin-bottom: 2rem;
+        overflow: hidden;
+    }
+
+    .section-header {
+        background: linear-gradient(135deg, var(--gray-50) 0%, var(--gray-100) 100%);
+        padding: 1.5rem 2rem;
+        border-bottom: 1px solid var(--gray-200);
+    }
+
+    .section-header h3 {
+        margin: 0;
+        color: var(--gray-800);
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .section-body {
+        padding: 2rem;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .form-group {
+        margin-bottom: 1rem;
+    }
+
+    .form-label {
+        font-weight: 500;
+        color: var(--gray-700);
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 2px solid var(--gray-200);
+        border-radius: var(--border-radius);
+        font-size: 1rem;
+        transition: all 0.2s ease;
+    }
+
+    .form-control:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        outline: none;
+    }
+
+    .zpl-preview {
+        background: var(--gray-900);
+        color: var(--gray-100);
+        padding: 1.5rem;
+        border-radius: var(--border-radius);
+        font-family: 'Courier New', monospace;
+        font-size: 0.875rem;
+        line-height: 1.4;
+        overflow-x: auto;
+        white-space: pre-wrap;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .label-preview {
+        background: white;
+        border: 2px solid var(--gray-200);
+        border-radius: var(--border-radius);
+        padding: 2rem;
+        text-align: center;
+        min-height: 200px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+    }
+
+    .label-preview-content {
+        border: 1px solid var(--gray-300);
+        padding: 1rem;
+        border-radius: var(--border-radius);
+        background: #fafafa;
+        max-width: 100%;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+        flex-wrap: wrap;
+    }
+
+    .printer-info {
+        background: var(--gray-50);
+        padding: 1rem;
+        border-radius: var(--border-radius);
+        margin-bottom: 1rem;
+    }
+
+    .printer-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 50px;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    .status-online {
+        background: var(--success-color);
+        color: white;
+    }
+
+    .status-offline {
+        background: var(--danger-color);
+        color: white;
+    }
+
+    .test-section {
+        background: var(--gray-50);
+        padding: 1.5rem;
+        border-radius: var(--border-radius);
+        margin-top: 2rem;
+    }
+
+    .test-buttons {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1rem;
+        flex-wrap: wrap;
+    }
+
+    @media (max-width: 768px) {
+        .form-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .action-buttons {
+            flex-direction: column;
+        }
+
+        .test-buttons {
+            flex-direction: column;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="designer-hero">
+    <div class="designer-hero-content">
+        <h1><i class="fas fa-tags"></i> Label Designer</h1>
+        <p>Design and test ZPL labels for direct printer communication</p>
+    </div>
+</div>
+
+<!-- ZPL Designer Section -->
+<div class="designer-section">
+    <div class="section-header">
+        <h3><i class="fas fa-code"></i> ZPL Label Designer</h3>
+    </div>
+    <div class="section-body">
+        <form id="zplForm">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Label Template</label>
+                    <select id="labelTemplate" class="form-control" onchange="loadTemplate()">
+                        <option value="palumbo">Palumbo Style</option>
+                        <option value="pti">PTI FSMA</option>
+                        <option value="pti-voice-pick">PTI Voice Pick</option>
+                        <option value="pj-foodservice">PJ Foodservice Custom</option>
+                        <option value="custom">Custom ZPL</option>
+                    </select>
+                </div>
+                <div class="form-group" id="lotCodeGroup">
+                    <label class="form-label">LOT Code</label>
+                    <input type="text" id="lotCode" class="form-control" placeholder="Enter LOT code for preview">
+                </div>
+            </div>
+            
+            <!-- Custom Label Fields (hidden by default) -->
+            <div id="customLabelFields" style="display: none;">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">Pack Date</label>
+                        <input type="date" id="packDate" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">LOT Code</label>
+                        <input type="text" id="itemCode" class="form-control" placeholder="e.g., 22650">
+                    </div>
+                </div>
+                <div class="alert alert-info">
+                    <strong>Note:</strong> Item code is fixed at "1051". Only pack date and LOT code are customizable.
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">ZPL Code</label>
+                <textarea id="zplCode" class="form-control" rows="15" placeholder="Enter your ZPL code here..."></textarea>
+            </div>
+            
+            <div class="action-buttons">
+                <button type="button" class="btn btn-primary" onclick="generateZPL()">
+                    <i class="fas fa-magic"></i> Generate ZPL
+                </button>
+                <button type="button" class="btn btn-info" onclick="previewLabel()">
+                    <i class="fas fa-eye"></i> Preview Label
+                </button>
+                <button type="button" class="btn btn-success" onclick="testPrint()">
+                    <i class="fas fa-print"></i> Test Print
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="clearForm()">
+                    <i class="fas fa-trash"></i> Clear
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Preview Section -->
+<div class="designer-section">
+    <div class="section-header">
+        <h3><i class="fas fa-eye"></i> Label Preview</h3>
+    </div>
+    <div class="section-body">
+        <div class="label-preview" id="labelPreview">
+            <div class="label-preview-content">
+                <i class="fas fa-image" style="font-size: 3rem; color: var(--gray-400); margin-bottom: 1rem;"></i>
+                <p style="color: var(--gray-500);">Label preview will appear here</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ZPL Code Section -->
+<div class="designer-section">
+    <div class="section-header">
+        <h3><i class="fas fa-code"></i> Generated ZPL Code</h3>
+    </div>
+    <div class="section-body">
+        <div class="zpl-preview" id="zplPreview">
+            ^XA
+            ^FO50,50^A0N,50,50^FDLabel Designer^FS
+            ^FO50,120^A0N,30,30^FDEnter LOT code and generate ZPL^FS
+            ^XZ
+        </div>
+    </div>
+</div>
+
+<!-- Printer Management Section -->
+<div class="designer-section">
+    <div class="section-header">
+        <h3><i class="fas fa-print"></i> Printer Management</h3>
+    </div>
+    <div class="section-body">
+        <div class="printer-info">
+            <h4>Available Printers</h4>
+            <p>Printer management has been moved to the Admin Panel for better organization and security.</p>
+            <a href="/admin" class="btn btn-primary">
+                <i class="fas fa-cog"></i> Go to Admin Panel
+            </a>
+        </div>
+        
+        <div class="test-section">
+            <h4>Test Printing</h4>
+            <p>Test your ZPL code with available printers</p>
+            
+            <div class="form-group">
+                <label class="form-label">Select Printer</label>
+                <select id="testPrinter" class="form-control">
+                    <option value="">Select Printer...</option>
+                </select>
+            </div>
+            
+            <div class="test-buttons">
+                <button type="button" class="btn btn-warning" onclick="testPrinterConnection()">
+                    <i class="fas fa-wifi"></i> Test Connection
+                </button>
+                <button type="button" class="btn btn-info" onclick="printTestLabel()">
+                    <i class="fas fa-print"></i> Print Test Label
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let printers = [];
+
+    // Initialize page
+    document.addEventListener('DOMContentLoaded', function() {
+        loadPrinters();
+        loadTemplate();
+        
+        // Add event listener for pack date changes
+        document.getElementById('packDate').addEventListener('change', function() {
+            const packDate = new Date(this.value);
+            const useByDate = new Date(packDate);
+            useByDate.setDate(useByDate.getDate() + 10);
+            document.getElementById('useByDate').value = useByDate.toISOString().split('T')[0];
+        });
+    });
+
+    // Load printers
+    async function loadPrinters() {
+        try {
+            const response = await fetch('/api/printers');
+            printers = await response.json();
+            
+            const select = document.getElementById('testPrinter');
+            select.innerHTML = '<option value="">Select Printer...</option>' +
+                printers.map(printer => `<option value="${printer.id}">${printer.name} (${printer.ip_address})</option>`).join('');
+        } catch (error) {
+            console.error('Error loading printers:', error);
+        }
+    }
+
+    // Load template
+    function loadTemplate() {
+        const template = document.getElementById('labelTemplate').value;
+        const lotCode = document.getElementById('lotCode').value;
+        const customFields = document.getElementById('customLabelFields');
+        const lotCodeGroup = document.getElementById('lotCodeGroup');
+        
+        // Show/hide custom fields based on template
+        if (template === 'pj-foodservice') {
+            customFields.style.display = 'block';
+            lotCodeGroup.style.display = 'none';
+            
+                            // Set default values
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('packDate').value = today;
+                document.getElementById('itemCode').value = '22650';
+        } else if (template === 'custom') {
+            customFields.style.display = 'none';
+            lotCodeGroup.style.display = 'block';
+            document.getElementById('zplCode').value = '';
+            return;
+        } else {
+            customFields.style.display = 'none';
+            lotCodeGroup.style.display = 'block';
+        }
+        
+        // Generate ZPL based on template
+        generateZPL();
+    }
+
+    // Generate ZPL code
+    async function generateZPL() {
+        const template = document.getElementById('labelTemplate').value;
+        const lotCode = document.getElementById('lotCode').value;
+        
+        if (!lotCode && template !== 'custom' && template !== 'pj-foodservice') {
+            showAlert('zplForm', 'Please enter a LOT code to generate ZPL', 'warning');
+            return;
+        }
+        
+        try {
+            let zplCode = '';
+            
+            if (template === 'custom') {
+                zplCode = document.getElementById('zplCode').value;
+                            } else if (template === 'pj-foodservice') {
+                    // Generate custom label
+                    const customData = {
+                        product_name: 'Fresh White Sliced Mushrooms',
+                        item_code: document.getElementById('itemCode').value,
+                        pack_date: document.getElementById('packDate').value,
+                        use_by_date: null, // Will be auto-calculated as 10 days after pack date
+                        net_weight: '10lbs / 4.5kg',
+                        gross_weight: '12lbs / 5.4kgs',
+                        ingredients: 'Mushrooms',
+                        manufacturer: 'PJ Foodservice, Inc',
+                        manufacturer_address: 'Louisville, KY 40299, USA'
+                    };
+                
+                const response = await fetch('/api/custom-label/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(customData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    zplCode = result.zpl_code;
+                } else {
+                    showAlert('zplForm', 'Error generating custom label: ' + result.error, 'danger');
+                    return;
+                }
+            } else {
+                // Fetch ZPL from server based on template and LOT code
+                const response = await fetch(`/api/lots/${lotCode}/label/${template}/preview`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    zplCode = result.zpl_code;
+                } else {
+                    showAlert('zplForm', 'Error generating ZPL: ' + result.error, 'danger');
+                    return;
+                }
+            }
+            
+            document.getElementById('zplCode').value = zplCode;
+            document.getElementById('zplPreview').textContent = zplCode;
+            
+            showAlert('zplForm', 'ZPL code generated successfully', 'success');
+        } catch (error) {
+            showAlert('zplForm', 'Error generating ZPL: ' + error.message, 'danger');
+        }
+    }
+
+    // Preview label
+    function previewLabel() {
+        const zplCode = document.getElementById('zplCode').value;
+        
+        if (!zplCode.trim()) {
+            showAlert('labelPreview', 'Please generate or enter ZPL code first', 'warning');
+            return;
+        }
+        
+        // Update preview
+        const preview = document.getElementById('labelPreview');
+        preview.innerHTML = `
+            <div class="label-preview-content">
+                <h4>Label Preview</h4>
+                <p>ZPL Code Length: ${zplCode.length} characters</p>
+                <p>Commands: ${(zplCode.match(/\^/g) || []).length}</p>
+                <div style="margin-top: 1rem; padding: 1rem; background: white; border: 1px solid var(--gray-300); border-radius: var(--border-radius);">
+                    <small style="color: var(--gray-600);">Preview representation of your label</small>
+                </div>
+            </div>
+        `;
+        
+        showAlert('labelPreview', 'Label preview updated', 'info');
+    }
+
+    // Test print
+    async function testPrint() {
+        const printerId = document.getElementById('testPrinter').value;
+        const zplCode = document.getElementById('zplCode').value;
+        
+        if (!printerId) {
+            showAlert('zplForm', 'Please select a printer', 'warning');
+            return;
+        }
+        
+        if (!zplCode.trim()) {
+            showAlert('zplForm', 'Please generate or enter ZPL code first', 'warning');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/test-print', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    printer_id: parseInt(printerId),
+                    zpl_code: zplCode
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                showAlert('zplForm', 'Test print sent successfully', 'success');
+            } else {
+                showAlert('zplForm', 'Error sending test print: ' + result.error, 'danger');
+            }
+        } catch (error) {
+            showAlert('zplForm', 'Error sending test print: ' + error.message, 'danger');
+        }
+    }
+
+    // Test printer connection
+    async function testPrinterConnection() {
+        const printerId = document.getElementById('testPrinter').value;
+        
+        if (!printerId) {
+            showAlert('zplForm', 'Please select a printer', 'warning');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/printers/${printerId}/test`);
+            const result = await response.json();
+            
+            if (result.success) {
+                showAlert('zplForm', 'Printer connection test successful', 'success');
+            } else {
+                showAlert('zplForm', 'Printer connection test failed: ' + result.error, 'danger');
+            }
+        } catch (error) {
+            showAlert('zplForm', 'Error testing printer connection: ' + error.message, 'danger');
+        }
+    }
+
+    // Print test label
+    async function printTestLabel() {
+        const printerId = document.getElementById('testPrinter').value;
+        
+        if (!printerId) {
+            showAlert('zplForm', 'Please select a printer', 'warning');
+            return;
+        }
+        
+        const testZPL = `^XA
+^FO50,50^A0N,50,50^FDTest Label^FS
+^FO50,120^A0N,30,30^FDLabel Designer Test^FS
+^FO50,180^A0N,20,20^FD${new Date().toLocaleString()}^FS
+^XZ`;
+        
+        try {
+            const response = await fetch('/api/test-print', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    printer_id: parseInt(printerId),
+                    zpl_code: testZPL
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                showAlert('zplForm', 'Test label printed successfully', 'success');
+            } else {
+                showAlert('zplForm', 'Error printing test label: ' + result.error, 'danger');
+            }
+        } catch (error) {
+            showAlert('zplForm', 'Error printing test label: ' + error.message, 'danger');
+        }
+    }
+
+    // Clear form
+    function clearForm() {
+        document.getElementById('zplForm').reset();
+        document.getElementById('zplCode').value = '';
+        document.getElementById('zplPreview').textContent = '^XA\n^FO50,50^A0N,50,50^FDLabel Designer^FS\n^FO50,120^A0N,30,30^FDEnter LOT code and generate ZPL^FS\n^XZ';
+        document.getElementById('labelPreview').innerHTML = `
+            <div class="label-preview-content">
+                <i class="fas fa-image" style="font-size: 3rem; color: var(--gray-400); margin-bottom: 1rem;"></i>
+                <p style="color: var(--gray-500);">Label preview will appear here</p>
+            </div>
+        `;
+    }
+</script>
+{% endblock %}

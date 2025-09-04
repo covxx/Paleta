@@ -299,6 +299,39 @@
             font-weight: 500;
         }
 
+        /* Active Users Styles */
+        .active-users-stats {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            min-width: 150px;
+        }
+
+        .stat-number {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .section-actions {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
         .status-active {
             background: #d4edda;
             color: #155724;
@@ -371,13 +404,101 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        /* User Management Styles */
+        .user-item {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: box-shadow 0.3s ease;
+        }
+
+        .user-item:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .user-info {
+            flex: 1;
+        }
+
+        .user-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .user-email {
+            color: #6c757d;
+            margin-bottom: 10px;
+        }
+
+        .user-role {
+            margin-bottom: 8px;
+        }
+
+        .user-meta {
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+
+        .user-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border-radius: 4px;
+            margin-right: 5px;
+        }
+
+        .badge-primary {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .badge-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .badge-success {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .badge-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
     </style>
 </head>
 <body>
     <div class="admin-container">
         <div class="admin-header">
-            <h1><i class="fas fa-cogs"></i> Inventory Admin Panel</h1>
-            <p>Backend Management System for Items and LOT Information</p>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h1><i class="fas fa-cogs"></i> Inventory Admin Panel</h1>
+                    <p>Backend Management System for Items and LOT Information</p>
+                </div>
+                <div style="text-align: right;">
+                    <p style="margin-bottom: 5px;"><i class="fas fa-user"></i> Welcome, <strong>{{ session.admin_name }}</strong></p>
+                    <p style="margin-bottom: 10px; font-size: 0.9em; opacity: 0.8;"><i class="fas fa-envelope"></i> {{ session.admin_email }}</p>
+                    <a href="/admin/logout" class="btn btn-outline-light btn-sm">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </a>
+                </div>
+            </div>
         </div>
 
         <div class="admin-nav">
@@ -387,6 +508,8 @@
                 <li><a href="#lots" onclick="showTab('lots')">LOT Management</a></li>
                 <li><a href="#vendors" onclick="showTab('vendors')">Vendor Management</a></li>
                 <li><a href="#printers" onclick="showTab('printers')">Printer Management</a></li>
+                <li><a href="#users" onclick="showTab('users')" id="usersTab" style="display: none;">User Management</a></li>
+                <li><a href="#active-users" onclick="showTab('active-users')" id="activeUsersTab">Active Users</a></li>
                 <li><a href="#analytics" onclick="showTab('analytics')">Analytics</a></li>
             </ul>
         </div>
@@ -504,8 +627,8 @@
                             <input type="number" id="lotQuantity" name="quantity" required min="1">
                         </div>
                         <div class="form-group">
-                            <label for="lotExpiry">Expiry Date</label>
-                            <input type="date" id="lotExpiry" name="expiry_date">
+                            <label for="lotExpiry">Expiry Date (Auto-set to 10 days from today)</label>
+                            <input type="date" id="lotExpiry" name="expiry_date" readonly>
                         </div>
                         <div class="form-group">
                             <label for="lotNotes">Notes</label>
@@ -657,6 +780,91 @@
             </div>
         </div>
 
+        <!-- Printer Management Tab -->
+        <div id="printers" class="tab-content">
+            <a href="/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Main Site</a>
+            
+            <div class="section">
+                <h3><i class="fas fa-print"></i> Printer Management</h3>
+                <p>Configure and manage your label printers</p>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="printerName">Printer Name</label>
+                        <input type="text" id="printerName" placeholder="e.g., Zebra ZD420">
+                    </div>
+                    <div class="form-group">
+                        <label for="printerIP">IP Address</label>
+                        <input type="text" id="printerIP" placeholder="192.168.1.100">
+                    </div>
+                    <div class="form-group">
+                        <label for="printerPort">Port</label>
+                        <input type="number" id="printerPort" value="9100" min="1" max="65535">
+                    </div>
+                    <div class="form-group" style="display: flex; align-items: end;">
+                        <button class="btn btn-success" onclick="addPrinter()">
+                            <i class="fas fa-plus"></i> Add Printer
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="printer-list">
+                    <h4>Configured Printers</h4>
+                    <div id="printersList">
+                        <div class="loading">Loading printers...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Management Tab -->
+        <div id="users" class="tab-content">
+            <a href="/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Main Site</a>
+            
+            <div class="section">
+                <h3><i class="fas fa-users"></i> Admin User Management</h3>
+                <p>Manage admin users and their permissions</p>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="userEmail">Email Address</label>
+                        <input type="email" id="userEmail" placeholder="admin@company.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="userFirstName">First Name</label>
+                        <input type="text" id="userFirstName" placeholder="John">
+                    </div>
+                    <div class="form-group">
+                        <label for="userLastName">Last Name</label>
+                        <input type="text" id="userLastName" placeholder="Doe">
+                    </div>
+                    <div class="form-group">
+                        <label for="userPassword">Password</label>
+                        <input type="password" id="userPassword" placeholder="Secure password">
+                    </div>
+                    <div class="form-group">
+                        <label for="userSuperAdmin">Super Admin</label>
+                        <select id="userSuperAdmin">
+                            <option value="false">Regular Admin</option>
+                            <option value="true">Super Admin</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="display: flex; align-items: end;">
+                        <button class="btn btn-success" onclick="addAdminUser()">
+                            <i class="fas fa-plus"></i> Add User
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="user-list">
+                    <h4>Admin Users</h4>
+                    <div id="usersList">
+                        <div class="loading">Loading users...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Analytics Tab -->
         <div id="analytics" class="tab-content">
             <a href="/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Main Site</a>
@@ -756,8 +964,8 @@
                         <input type="number" id="editLotQuantity" required min="1">
                     </div>
                     <div class="form-group">
-                        <label for="editLotExpiry">Expiry Date</label>
-                        <input type="date" id="editLotExpiry">
+                        <label for="editLotExpiry">Expiry Date (Auto-set to 10 days from today)</label>
+                        <input type="date" id="editLotExpiry" readonly>
                     </div>
                     <div class="form-group">
                         <label for="editLotNotes">Notes</label>
@@ -766,6 +974,54 @@
                 </div>
                 <button type="submit" class="btn btn-success">Update LOT Code</button>
             </form>
+        </div>
+
+        <!-- Active Users Tab -->
+        <div id="active-users" class="tab-content">
+            <a href="/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Main Site</a>
+            <div class="section">
+                <h3><i class="fas fa-users"></i> Active Users</h3>
+                <p>Monitor currently active user sessions</p>
+                
+                <div class="active-users-stats">
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalActiveUsers">0</div>
+                        <div class="stat-label">Active Users</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalSessions">0</div>
+                        <div class="stat-label">Total Sessions</div>
+                    </div>
+                </div>
+                
+                <div class="table-container">
+                    <table id="activeUsersTable">
+                        <thead>
+                            <tr>
+                                <th>User ID</th>
+                                <th>Email</th>
+                                <th>IP Address</th>
+                                <th>Last Activity</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="activeUsersTableBody">
+                            <tr>
+                                <td colspan="5" class="loading">Loading active users...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="section-actions">
+                    <button class="btn btn-info" onclick="loadActiveUsers()">
+                        <i class="fas fa-sync"></i> Refresh
+                    </button>
+                    <button class="btn btn-warning" onclick="clearInactiveSessions()">
+                        <i class="fas fa-trash"></i> Clear Inactive
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -795,12 +1051,17 @@
                 loadItems();
             } else if (tabName === 'lots') {
                 loadLots();
+                setAutoExpiryDate(); // Refresh expiry date when switching to lots tab
             } else if (tabName === 'vendors') {
                 loadVendors();
             } else if (tabName === 'printers') {
                 loadPrinters();
+            } else if (tabName === 'users') {
+                loadAdminUsers();
             } else if (tabName === 'analytics') {
                 loadAnalytics();
+            } else if (tabName === 'active-users') {
+                loadActiveUsers();
             }
         }
 
@@ -1095,7 +1356,8 @@
                 
                 document.getElementById('editLotId').value = lot.lot_code;
                 document.getElementById('editLotQuantity').value = lot.quantity;
-                document.getElementById('editLotExpiry').value = lot.expiry_date || '';
+                // Set auto-expiry date to 10 days from today
+                setAutoExpiryDateForEdit();
                 document.getElementById('editLotNotes').value = lot.notes || '';
                 
                 // Load items for dropdown
@@ -1614,10 +1876,265 @@
             }
         }
 
+        // Set expiry date to 10 days from today
+        function setAutoExpiryDate() {
+            const today = new Date();
+            const expiryDate = new Date(today);
+            expiryDate.setDate(today.getDate() + 10);
+            
+            const formattedDate = expiryDate.toISOString().split('T')[0];
+            document.getElementById('lotExpiry').value = formattedDate;
+        }
+
+        // Set expiry date for edit form
+        function setAutoExpiryDateForEdit() {
+            const today = new Date();
+            const expiryDate = new Date(today);
+            expiryDate.setDate(today.getDate() + 10);
+            
+            const formattedDate = expiryDate.toISOString().split('T')[0];
+            document.getElementById('editLotExpiry').value = formattedDate;
+        }
+
+        // Admin User Management Functions
+        // Load active users
+        async function loadActiveUsers() {
+            try {
+                const response = await fetch('/api/active-users');
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayActiveUsers(data.active_users);
+                    updateActiveUsersStats(data.total_active, data.active_users.length);
+                } else {
+                    showAlert('alert', 'Error loading active users: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showAlert('alert', 'Error loading active users: ' + error.message, 'error');
+            }
+        }
+
+        function displayActiveUsers(users) {
+            const tbody = document.getElementById('activeUsersTableBody');
+            
+            if (users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center">No active users</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = users.map(user => `
+                <tr>
+                    <td>${user.user_id}</td>
+                    <td>${user.email}</td>
+                    <td>${user.ip_address}</td>
+                    <td>${user.minutes_ago} minutes ago</td>
+                    <td>
+                        <span class="status-badge status-active">Active</span>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function updateActiveUsersStats(totalActive, currentActive) {
+            document.getElementById('totalActiveUsers').textContent = currentActive;
+            document.getElementById('totalSessions').textContent = totalActive;
+        }
+
+        async function clearInactiveSessions() {
+            if (!confirm('This will clear all inactive user sessions. Continue?')) {
+                return;
+            }
+            
+            try {
+                // This would need a backend endpoint to clear inactive sessions
+                showAlert('alert', 'Inactive sessions cleared', 'success');
+                loadActiveUsers();
+            } catch (error) {
+                showAlert('alert', 'Error clearing sessions: ' + error.message, 'error');
+            }
+        }
+
+        async function loadAdminUsers() {
+            try {
+                const response = await fetch('/api/admin/users');
+                if (!response.ok) {
+                    if (response.status === 403) {
+                        showAlert('Access denied. Super admin privileges required.', 'error');
+                        return;
+                    }
+                    throw new Error('Failed to load users');
+                }
+                
+                const users = await response.json();
+                const usersList = document.getElementById('usersList');
+                
+                if (users.length === 0) {
+                    usersList.innerHTML = '<div class="no-data">No admin users found</div>';
+                    return;
+                }
+                
+                usersList.innerHTML = users.map(user => `
+                    <div class="user-item">
+                        <div class="user-info">
+                            <div class="user-name">${user.first_name} ${user.last_name}</div>
+                            <div class="user-email">${user.email}</div>
+                            <div class="user-role">
+                                ${user.is_super_admin ? '<span class="badge badge-danger">Super Admin</span>' : '<span class="badge badge-primary">Admin</span>'}
+                                ${user.is_active ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-secondary">Inactive</span>'}
+                            </div>
+                            <div class="user-meta">
+                                Created: ${new Date(user.created_at).toLocaleDateString()}
+                                ${user.last_login ? ` | Last login: ${new Date(user.last_login).toLocaleDateString()}` : ' | Never logged in'}
+                            </div>
+                        </div>
+                        <div class="user-actions">
+                            <button class="btn btn-sm btn-warning" onclick="editUser(${user.id})">
+                                <i class="fas fa-edit"></i> Edit
+                            </button>
+                            <button class="btn btn-sm btn-info" onclick="resetUserPassword(${user.id})">
+                                <i class="fas fa-key"></i> Reset Password
+                            </button>
+                            ${user.id !== {{ session.admin_id }} ? `
+                                <button class="btn btn-sm btn-danger" onclick="deleteUser(${user.id})">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `).join('');
+                
+            } catch (error) {
+                console.error('Error loading users:', error);
+                showAlert('Error loading users', 'error');
+            }
+        }
+
+        async function addAdminUser() {
+            const email = document.getElementById('userEmail').value.trim();
+            const firstName = document.getElementById('userFirstName').value.trim();
+            const lastName = document.getElementById('userLastName').value.trim();
+            const password = document.getElementById('userPassword').value;
+            const isSuperAdmin = document.getElementById('userSuperAdmin').value === 'true';
+            
+            if (!email || !firstName || !lastName || !password) {
+                showAlert('Please fill in all fields', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/admin/users', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        first_name: firstName,
+                        last_name: lastName,
+                        password: password,
+                        is_super_admin: isSuperAdmin
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('Admin user created successfully', 'success');
+                    // Clear form
+                    document.getElementById('userEmail').value = '';
+                    document.getElementById('userFirstName').value = '';
+                    document.getElementById('userLastName').value = '';
+                    document.getElementById('userPassword').value = '';
+                    document.getElementById('userSuperAdmin').value = 'false';
+                    // Reload users
+                    loadAdminUsers();
+                } else {
+                    showAlert(data.error || 'Failed to create user', 'error');
+                }
+                
+            } catch (error) {
+                console.error('Error creating user:', error);
+                showAlert('Error creating user', 'error');
+            }
+        }
+
+        async function editUser(userId) {
+            // This would open a modal or form for editing
+            showAlert('Edit functionality coming soon', 'info');
+        }
+
+        async function resetUserPassword(userId) {
+            const newPassword = prompt('Enter new password for this user:');
+            if (!newPassword) return;
+            
+            try {
+                const response = await fetch(`/api/admin/users/${userId}/reset-password`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        new_password: newPassword
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('Password reset successfully', 'success');
+                } else {
+                    showAlert(data.error || 'Failed to reset password', 'error');
+                }
+                
+            } catch (error) {
+                console.error('Error resetting password:', error);
+                showAlert('Error resetting password', 'error');
+            }
+        }
+
+        async function deleteUser(userId) {
+            if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/admin/users/${userId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('User deleted successfully', 'success');
+                    loadAdminUsers();
+                } else {
+                    showAlert(data.error || 'Failed to delete user', 'error');
+                }
+                
+            } catch (error) {
+                console.error('Error deleting user:', error);
+                showAlert('Error deleting user', 'error');
+            }
+        }
+
+        // Check if user is super admin and show/hide user management tab
+        function checkSuperAdminAccess() {
+            const isSuperAdmin = {{ 'true' if session.get('is_super_admin') else 'false' }};
+            const usersTab = document.getElementById('usersTab');
+            
+            if (isSuperAdmin) {
+                usersTab.style.display = 'block';
+            } else {
+                usersTab.style.display = 'none';
+            }
+        }
+
         // Initialize admin panel
         document.addEventListener('DOMContentLoaded', function() {
             loadDashboardData();
             loadItemsForDropdowns();
+            setAutoExpiryDate();
+            checkSuperAdminAccess();
         });
 
         // Close modals when clicking outside

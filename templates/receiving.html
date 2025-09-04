@@ -365,13 +365,22 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <div class="mb-3">
                             <label class="form-label">Quantity *</label>
                             <input type="number" class="form-control quantity" data-row="${itemRowCounter}" min="1" placeholder="Qty">
                         </div>
                     </div>
-                    <div class="col-md-5">
+                    <div class="col-md-2">
+                        <div class="mb-3">
+                            <label class="form-label">Unit Type *</label>
+                            <select class="form-control unit-type" data-row="${itemRowCounter}">
+                                <option value="cases">Cases</option>
+                                <option value="pounds">Pounds</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
                         <div class="mb-3">
                             <label class="form-label">Notes</label>
                             <input type="text" class="form-control notes" data-row="${itemRowCounter}" placeholder="Optional notes">
@@ -584,12 +593,14 @@
             for (const row of itemRows) {
                 const itemCode = row.querySelector('.item-code').value.trim();
                 const quantity = parseInt(row.querySelector('.quantity').value);
+                const unitType = row.querySelector('.unit-type').value;
                 const notes = row.querySelector('.notes').value.trim();
                 
                 if (itemCode && quantity > 0) {
                     itemsToReceive.push({
                         item_code: itemCode,
                         quantity: quantity,
+                        unit_type: unitType,
                         notes: notes
                     });
                 }

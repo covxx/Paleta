@@ -288,26 +288,8 @@
             
             <div class="designer-section">
                 <h3><i class="fas fa-print"></i> Printer Management</h3>
-                <p>Configure and manage your label printers</p>
-                
-                <div class="printer-selection">
-                    <h4>Available Printers</h4>
-                    <div class="printer-list" id="printerList">
-                        <div class="loading">
-                            <i class="fas fa-spinner"></i>
-                            <p>Loading printers...</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="form-grid">
-                    <button type="button" class="btn btn-success" onclick="testPrinter()">
-                        <i class="fas fa-print"></i> Test Printer
-                    </button>
-                    <button type="button" class="btn btn-primary" onclick="refreshPrinters()">
-                        <i class="fas fa-sync"></i> Refresh Printers
-                    </button>
-                </div>
+                <p>Printer management has been moved to the Admin Panel for better security and organization.</p>
+                <p><a href="/admin" class="btn btn-primary"><i class="fas fa-cog"></i> Go to Admin Panel</a></p>
             </div>
 
             <!-- ZPL Printing Section -->
@@ -614,92 +596,6 @@
             }
         }
 
-        // Printer Management Functions
-        function testNewPrinter() {
-            const formData = new FormData(document.getElementById('printerForm'));
-            const printerData = Object.fromEntries(formData.entries());
-            
-            if (!printerData.name || !printerData.ip_address) {
-                showAlert('Please fill in all required fields', 'error');
-                return;
-            }
-            
-            showAlert('Testing printer connection...', 'info');
-            
-            // Here you would implement the actual connection test
-            // For now, simulate a test
-            setTimeout(() => {
-                showAlert('Printer connection test completed', 'success');
-            }, 2000);
-        }
-
-        function resetPrinterForm() {
-            document.getElementById('printerForm').reset();
-            showAlert('Printer form reset', 'info');
-        }
-
-        // Handle printer form submission
-        document.getElementById('printerForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(this);
-            const printerData = Object.fromEntries(formData.entries());
-            
-            fetch('/api/printers', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(printerData)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    showAlert('Printer added successfully', 'success');
-                    this.reset();
-                    loadPrinterData(); // Refresh the printer list
-                } else {
-                    showAlert('Failed to add printer', 'error');
-                }
-            })
-            .catch(error => {
-                console.error('Error adding printer:', error);
-                showAlert('Error adding printer', 'error');
-            });
-        });
-
-        // Test printer connection
-        function testPrinter() {
-            const selectedPrinter = document.querySelector('.printer-item.selected');
-            if (!selectedPrinter) {
-                showAlert('Please select a printer to test', 'error');
-                return;
-            }
-            
-            const printerId = selectedPrinter.dataset.printerId;
-            
-            fetch(`/api/printers/${printerId}/test`, {
-                method: 'POST'
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    showAlert('Test label sent successfully', 'success');
-                } else {
-                    showAlert('Failed to send test label', 'error');
-                }
-            })
-            .catch(error => {
-                console.error('Error testing printer:', error);
-                showAlert('Error testing printer', 'error');
-            });
-        }
-
-        // Refresh printers
-        function refreshPrinters() {
-            showAlert('Refreshing printer list...', 'info');
-            loadPrinterData();
-        }
 
         // Show alert
         function showAlert(message, type) {
