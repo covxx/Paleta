@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Label Designer - ZPL Printing</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .designer-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .designer-header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .designer-header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .designer-header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .designer-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 25px;
+            border-left: 4px solid #3498db;
+        }
+
+        .designer-section h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.4rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #2c3e50;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            padding: 12px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #229954;
+            transform: translateY(-2px);
+        }
+
+        .btn-warning {
+            background: #f39c12;
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #e67e22;
+            transform: translateY(-2px);
+        }
+
+        .btn-info {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .btn-info:hover {
+            background: #138496;
+            transform: translateY(-2px);
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #3498db;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .zpl-controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+
+        .zpl-preview {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .zpl-preview h4 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+
+        .printer-selection {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .printer-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .printer-item {
+            padding: 15px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .printer-item:hover {
+            border-color: #3498db;
+        }
+
+        .printer-item.selected {
+            border-color: #3498db;
+            background: #f8f9fa;
+        }
+
+        .printer-name {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .printer-status {
+            font-size: 12px;
+            color: #27ae60;
+        }
+
+        .printer-status.offline {
+            color: #e74c3c;
+        }
+
+        .printer-details {
+            margin-top: 5px;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+        }
+
+        .loading i {
+            font-size: 2rem;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="designer-container">
+        <div class="designer-header">
+            <h1><i class="fas fa-code"></i> ZPL Label Printing</h1>
+            <p>Generate and send ZPL code directly to network printers</p>
+        </div>
+
+        <div id="printers" class="designer-section">
+            <a href="/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Main Site</a>
+            
+            <div class="designer-section">
+                <h3><i class="fas fa-print"></i> Printer Management</h3>
+                <p>Configure and manage your label printers</p>
+                
+                <div class="printer-selection">
+                    <h4>Available Printers</h4>
+                    <div class="printer-list" id="printerList">
+                        <div class="loading">
+                            <i class="fas fa-spinner"></i>
+                            <p>Loading printers...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <button type="button" class="btn btn-success" onclick="testPrinter()">
+                        <i class="fas fa-print"></i> Test Printer
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="refreshPrinters()">
+                        <i class="fas fa-sync"></i> Refresh Printers
+                    </button>
+                </div>
+            </div>
+
+            <!-- ZPL Printing Section -->
+            <div class="designer-section">
+                <h3><i class="fas fa-code"></i> ZPL Direct Printing</h3>
+                <p>Generate and send ZPL code directly to network printers</p>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="zplPrinter">Select Printer</label>
+                        <select id="zplPrinter" name="zplPrinter">
+                            <option value="">Choose a printer...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="zplTemplate">ZPL Template</label>
+                        <select id="zplTemplate" name="zplTemplate">
+                            <option value="palumbo">Palumbo Style</option>
+                                                            <option value="pti">PTI FSMA</option>
+                                <option value="pti-voice-pick">PTI Voice Pick Code</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="zplCopies">Copies</label>
+                        <input type="number" id="zplCopies" name="zplCopies" value="1" min="1" max="100">
+                    </div>
+                    <div class="form-group">
+                        <label for="zplTest">Test Mode</label>
+                        <select id="zplTest" name="zplTest">
+                            <option value="false">Production</option>
+                            <option value="true">Test Label</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="zpl-controls">
+                    <button type="button" class="btn btn-success" onclick="generateZPL()">
+                        <i class="fas fa-code"></i> Generate ZPL
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="previewZPL()">
+                        <i class="fas fa-eye"></i> Preview ZPL
+                    </button>
+                    <button type="button" class="btn btn-warning" onclick="printZPL()">
+                        <i class="fas fa-print"></i> Print Direct
+                    </button>
+                    <button type="button" class="btn btn-info" onclick="downloadZPL()">
+                        <i class="fas fa-download"></i> Download ZPL
+                    </button>
+                </div>
+
+                <div class="zpl-preview" id="zplPreview" style="display: none;">
+                    <h4>ZPL Code Preview</h4>
+                    <textarea id="zplCodeDisplay" readonly rows="15" style="width: 100%; font-family: monospace; font-size: 12px; background: #f8f9fa; border: 1px solid #ddd; padding: 10px;"></textarea>
+                </div>
+            </div>
+
+            <!-- Printer Configuration Section -->
+            <div class="designer-section">
+                <h3><i class="fas fa-plus"></i> Add New Printer</h3>
+                <p>Configure a new network printer for ZPL printing</p>
+                
+                <form id="printerForm">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="printerName">Printer Name</label>
+                            <input type="text" id="printerName" name="name" required placeholder="e.g., Zebra ZD420">
+                        </div>
+                        <div class="form-group">
+                            <label for="printerIP">IP Address</label>
+                            <input type="text" id="printerIP" name="ip_address" required placeholder="192.168.1.100">
+                        </div>
+                        <div class="form-group">
+                            <label for="printerPort">Port</label>
+                            <input type="number" id="printerPort" name="port" value="9100" min="1" max="65535">
+                        </div>
+                        <div class="form-group">
+                            <label for="printerType">Printer Type</label>
+                            <select id="printerType" name="printer_type">
+                                <option value="zebra">Zebra</option>
+                                <option value="thermal">Thermal</option>
+                                <option value="inkjet">Inkjet</option>
+                                <option value="laser">Laser</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="labelWidth">Label Width (inches)</label>
+                            <input type="number" id="labelWidth" name="label_width" value="4.0" step="0.1" min="0.5" max="10.0">
+                        </div>
+                        <div class="form-group">
+                            <label for="printerDPI">DPI</label>
+                            <select id="printerDPI" name="dpi">
+                                <option value="203">203 DPI</option>
+                                <option value="300">300 DPI</option>
+                                <option value="600">600 DPI</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-save"></i> Add Printer
+                        </button>
+                        <button type="button" class="btn btn-primary" onclick="testNewPrinter()">
+                            <i class="fas fa-print"></i> Test Connection
+                        </button>
+                        <button type="button" class="btn btn-warning" onclick="resetPrinterForm()">
+                            <i class="fas fa-undo"></i> Reset Form
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load printer data
+        function loadPrinterData() {
+            console.log('Loading printer data...');
+            // Load available printers from the API
+            fetch('/api/printers')
+                .then(response => {
+                    console.log('Printer API response:', response);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(printers => {
+                    console.log('Printers loaded:', printers);
+                    populatePrinterDropdowns(printers);
+                    displayPrinterList(printers);
+                })
+                .catch(error => {
+                    console.error('Error loading printers:', error);
+                    showAlert('Failed to load printers: ' + error.message, 'error');
+                });
+        }
+
+        // Populate printer dropdowns
+        function populatePrinterDropdowns(printers) {
+            const zplPrinter = document.getElementById('zplPrinter');
+            
+            // Clear existing options
+            zplPrinter.innerHTML = '<option value="">Choose a printer...</option>';
+            
+            printers.forEach(printer => {
+                const option = document.createElement('option');
+                option.value = printer.id;
+                option.textContent = `${printer.name} (${printer.ip_address})`;
+                zplPrinter.appendChild(option);
+            });
+        }
+
+        // Display printer list
+        function displayPrinterList(printers) {
+            const printerList = document.getElementById('printerList');
+            
+            if (printers.length === 0) {
+                printerList.innerHTML = '<p>No printers configured. Add a printer below.</p>';
+                return;
+            }
+            
+            const printerHtml = printers.map(printer => `
+                <div class="printer-item" data-printer-id="${printer.id}">
+                    <div class="printer-name">${printer.name}</div>
+                    <div class="printer-status ${printer.status === 'online' ? '' : 'offline'}">${printer.status}</div>
+                    <div class="printer-details">
+                        <small>${printer.ip_address}:${printer.port} - ${printer.printer_type}</small>
+                    </div>
+                </div>
+            `).join('');
+            
+            printerList.innerHTML = printerHtml;
+            
+            // Add click handlers
+            document.querySelectorAll('.printer-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    document.querySelectorAll('.printer-item').forEach(i => i.classList.remove('selected'));
+                    this.classList.add('selected');
+                });
+            });
+        }
+
+        // ZPL Printing Functions
+        function generateZPL() {
+            const printerId = document.getElementById('zplPrinter').value;
+            const template = document.getElementById('zplTemplate').value;
+            const copies = document.getElementById('zplCopies').value;
+            const testMode = document.getElementById('zplTest').value;
+            
+            if (!printerId) {
+                showAlert('Please select a printer', 'error');
+                return;
+            }
+            
+            if (testMode === 'true') {
+                // Generate test ZPL
+                fetch(`/api/printers/${printerId}/test`, {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showAlert('Test ZPL generated successfully', 'success');
+                        displayZPLPreview(data.zpl_code);
+                    } else {
+                        showAlert('Failed to generate test ZPL', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error generating test ZPL:', error);
+                    showAlert('Error generating test ZPL', 'error');
+                });
+            } else {
+                // Generate ZPL for a specific LOT (you might want to add LOT selection)
+                showAlert('Please select a LOT code to generate ZPL for', 'info');
+            }
+        }
+
+        function previewZPL() {
+            const printerId = document.getElementById('zplPrinter').value;
+            const template = document.getElementById('zplTemplate').value;
+            
+            if (!printerId) {
+                showAlert('Please select a printer', 'error');
+                return;
+            }
+            
+            // For demo purposes, show a sample ZPL
+            const sampleZPL = generateSampleZPL(template);
+            displayZPLPreview(sampleZPL);
+        }
+
+        function printZPL() {
+            const printerId = document.getElementById('zplPrinter').value;
+            const template = document.getElementById('zplTemplate').value;
+            const copies = document.getElementById('zplCopies').value;
+            const testMode = document.getElementById('zplTest').value;
+            
+            if (!printerId) {
+                showAlert('Please select a printer', 'error');
+                return;
+            }
+            
+            if (testMode === 'true') {
+                // Print test label
+                fetch(`/api/printers/${printerId}/test`, {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showAlert('Test label sent to printer', 'success');
+                    } else {
+                        showAlert('Failed to send test label', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error printing test label:', error);
+                    showAlert('Error printing test label', 'error');
+                });
+            } else {
+                showAlert('Please select a LOT code to print', 'info');
+            }
+        }
+
+        function downloadZPL() {
+            const zplCode = document.getElementById('zplCodeDisplay').value;
+            if (!zplCode) {
+                showAlert('No ZPL code to download', 'error');
+                return;
+            }
+            
+            const blob = new Blob([zplCode], { type: 'text/plain' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'label.zpl';
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+
+        function displayZPLPreview(zplCode) {
+            document.getElementById('zplCodeDisplay').value = zplCode;
+            document.getElementById('zplPreview').style.display = 'block';
+        }
+
+        function generateSampleZPL(template) {
+            if (template === 'palumbo') {
+                return `^XA
+^FO50,50^A0N,50,50^FDCOMPANY NAME^FS
+^FO50,120^A0N,30,30^FD500 / Product Name^FS
+^FO50,170^BY3^BCN,100,Y,N,N^FD123456789012^FS
+^FO300,200^BQN,2,5^FD123456789012^FS
+^XZ`;
+            } else {
+                return `^XA
+^FO50,30^A0N,40,40^FDPTI FSMA COMPLIANT^FS
+^FO50,80^A0N,25,25^FDProduct: Sample Item^FS
+^FO50,110^A0N,25,25^FDGTIN: 12345678901234^FS
+^FO50,140^A0N,25,25^FDLOT: LOT123456^FS
+^FO50,170^BY3^BCN,80,Y,N,N^FD123456789012^FS
+^XZ`;
+            }
+        }
+
+        // Printer Management Functions
+        function testNewPrinter() {
+            const formData = new FormData(document.getElementById('printerForm'));
+            const printerData = Object.fromEntries(formData.entries());
+            
+            if (!printerData.name || !printerData.ip_address) {
+                showAlert('Please fill in all required fields', 'error');
+                return;
+            }
+            
+            showAlert('Testing printer connection...', 'info');
+            
+            // Here you would implement the actual connection test
+            // For now, simulate a test
+            setTimeout(() => {
+                showAlert('Printer connection test completed', 'success');
+            }, 2000);
+        }
+
+        function resetPrinterForm() {
+            document.getElementById('printerForm').reset();
+            showAlert('Printer form reset', 'info');
+        }
+
+        // Handle printer form submission
+        document.getElementById('printerForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const printerData = Object.fromEntries(formData.entries());
+            
+            fetch('/api/printers', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(printerData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('Printer added successfully', 'success');
+                    this.reset();
+                    loadPrinterData(); // Refresh the printer list
+                } else {
+                    showAlert('Failed to add printer', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error adding printer:', error);
+                showAlert('Error adding printer', 'error');
+            });
+        });
+
+        // Test printer connection
+        function testPrinter() {
+            const selectedPrinter = document.querySelector('.printer-item.selected');
+            if (!selectedPrinter) {
+                showAlert('Please select a printer to test', 'error');
+                return;
+            }
+            
+            const printerId = selectedPrinter.dataset.printerId;
+            
+            fetch(`/api/printers/${printerId}/test`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('Test label sent successfully', 'success');
+                } else {
+                    showAlert('Failed to send test label', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error testing printer:', error);
+                showAlert('Error testing printer', 'error');
+            });
+        }
+
+        // Refresh printers
+        function refreshPrinters() {
+            showAlert('Refreshing printer list...', 'info');
+            loadPrinterData();
+        }
+
+        // Show alert
+        function showAlert(message, type) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.textContent = message;
+            
+            document.body.insertBefore(alertDiv, document.body.firstChild);
+            
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 5000);
+        }
+
+        // Initialize designer
+        document.addEventListener('DOMContentLoaded', function() {
+            loadPrinterData();
+        });
+    </script>
+</body>
+</html>

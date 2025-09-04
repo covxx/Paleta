@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory Management System</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .admin-link {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .admin-link .btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .admin-link .btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .tabs {
+            display: flex;
+            background: white;
+            border-radius: 10px;
+            padding: 5px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px 20px;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .tab.active {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .tab:hover:not(.active) {
+            background: #f8f9fa;
+        }
+
+        .tab-content {
+            display: none;
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .btn:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-success {
+            background: #28a745;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-info {
+            background: #17a2b8;
+        }
+
+        .btn-info:hover {
+            background: #138496;
+        }
+
+        .search-box {
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid #e1e5e9;
+            border-radius: 25px;
+            font-size: 16px;
+            padding-left: 50px;
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #e1e5e9;
+        }
+
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #555;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .label-type-select, .printer-select {
+            padding: 6px 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+            background: white;
+            min-width: 120px;
+        }
+        
+        .label-type-select:focus, .printer-select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn-sm {
+            padding: 8px 12px;
+            font-size: 14px;
+        }
+
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-expired {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        /* Selectable LOT rows */
+        .lot-row {
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .lot-row:hover {
+            background-color: #f8f9fa;
+        }
+
+        .lot-row.selected {
+            background-color: #e3f2fd;
+            border-left: 4px solid #2196f3;
+        }
+
+        .lot-checkbox {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        /* LOT Details Section */
+        .lot-actions {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .label-options {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .lot-details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .lot-detail-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #007bff;
+        }
+
+        .lot-detail-label {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 5px;
+        }
+
+        .lot-detail-value {
+            color: #212529;
+            font-size: 1.1em;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+
+        .section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 25px;
+            border-left: 4px solid #667eea;
+        }
+
+        .section h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.4rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .printer-list h4 {
+            margin-bottom: 15px;
+            color: #555;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .tab-content {
+                padding: 20px;
+            }
+            
+            .tabs {
+                flex-direction: column;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-boxes"></i> Inventory Management System</h1>
+            <p>Create LOT codes and GTIN Zebra labels for your inventory</p>
+            <div class="admin-link">
+                <a href="/admin" class="btn btn-primary">
+                    <i class="fas fa-cogs"></i> Admin Panel
+                </a>
+                <a href="/receiving" class="btn btn-info">
+                    <i class="fas fa-truck"></i> Receiving
+                </a>
+                <a href="/label-designer" class="btn btn-success">
+                    <i class="fas fa-palette"></i> Label Designer
+                </a>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="showTab('items')">
+                <i class="fas fa-box"></i> Items
+            </div>
+            <div class="tab" onclick="showTab('lots')">
+                <i class="fas fa-tags"></i> LOT Codes
+            </div>
+            <div class="tab" onclick="showTab('create')">
+                <i class="fas fa-plus"></i> Create New
+            </div>
+        </div>
+
+        <!-- Items Tab -->
+        <div id="items" class="tab-content active">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="itemSearch" placeholder="Search items by name, GTIN, or description...">
+            </div>
+            
+            <div id="itemAlert" class="alert"></div>
+            
+            <div class="table-container">
+                <table id="itemsTable">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Item Code</th>
+                            <th>GTIN</th>
+                            <th>Description</th>
+                            <th>LOT Count</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemsTableBody">
+                        <tr>
+                            <td colspan="6" class="loading">Loading items...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- LOT Codes Tab -->
+        <div id="lots" class="tab-content">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="lotSearch" placeholder="Search LOT codes...">
+            </div>
+            
+            <!-- Selected LOT Details -->
+            <div id="selectedLotDetails" class="section" style="display: none;">
+                <h3><i class="fas fa-info-circle"></i> Selected LOT Details</h3>
+                <div id="lotDetailsContent"></div>
+                <div class="lot-actions">
+                    <h4>Print Labels</h4>
+                    <div class="label-options">
+                        <button class="btn btn-primary" onclick="printSelectedLabel('palumbo')">
+                            <i class="fas fa-print"></i> Palumbo Style
+                        </button>
+                        <button class="btn btn-info" onclick="printSelectedLabel('pti')">
+                            <i class="fas fa-print"></i> PTI FSMA
+                        </button>
+                        <button class="btn btn-success" onclick="printSelectedLabel('pti-voice-pick')">
+                            <i class="fas fa-print"></i> Voice Pick Code
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="lotAlert" class="alert"></div>
+            
+            <div class="table-container">
+                <table id="lotsTable">
+                    <thead>
+                        <tr>
+                            <th>Select</th>
+                            <th>LOT Code</th>
+                            <th>Item</th>
+                            <th>Item Code</th>
+                            <th>Vendor</th>
+                            <th>GTIN</th>
+                            <th>Quantity</th>
+                            <th>Receiving Date</th>
+                            <th>Expiry Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lotsTableBody">
+                        <tr>
+                            <td colspan="10" class="loading">Loading LOT codes...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Create New Tab -->
+        <div id="create" class="tab-content">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="createSearch" placeholder="Search existing items to create LOT codes...">
+            </div>
+            
+            <div id="createAlert" class="alert"></div>
+            
+            <div id="createItemForm">
+                <h3><i class="fas fa-box"></i> Create New Item</h3>
+                <form id="itemForm">
+                    <div class="form-group">
+                        <label for="itemName">Item Name *</label>
+                        <input type="text" id="itemName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="itemCode">Item Code *</label>
+                        <input type="text" id="itemCode" required placeholder="e.g., 12345">
+                    </div>
+                    <div class="form-group">
+                        <label for="itemGTIN">GTIN *</label>
+                        <input type="text" id="itemGTIN" required placeholder="14-digit GTIN">
+                    </div>
+                    <div class="form-group">
+                        <label for="itemDescription">Description</label>
+                        <textarea id="itemDescription" rows="3"></textarea>
+                    </div>
+                    <button type="submit" class="btn">
+                        <i class="fas fa-save"></i> Create Item
+                    </button>
+                </form>
+            </div>
+            
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid #e1e5e9;">
+            
+            <div id="createLotForm">
+                <h3><i class="fas fa-tags"></i> Create LOT Code</h3>
+                <form id="lotForm">
+                    <div class="form-group">
+                        <label for="lotItem">Select Item *</label>
+                        <select id="lotItem" required>
+                            <option value="">Choose an item...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="lotQuantity">Quantity</label>
+                        <input type="number" id="lotQuantity" min="0" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="lotExpiry">Expiry Date</label>
+                        <input type="date" id="lotExpiry">
+                    </div>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-tag"></i> Create LOT Code
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentTab = 'items';
+        let items = [];
+        let lots = [];
+
+        // Tab switching
+        function showTab(tabName) {
+            currentTab = tabName;
+            
+            // Update tab styles
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+            
+            // Load data for the tab
+            if (tabName === 'items') {
+                loadItems();
+            } else if (tabName === 'lots') {
+                loadLots();
+            } else if (tabName === 'create') {
+                loadItemsForSelect();
+            }
+        }
+
+        // Load items
+        async function loadItems() {
+            try {
+                const response = await fetch('/api/items');
+                items = await response.json();
+                displayItems(items);
+            } catch (error) {
+                showAlert('itemAlert', 'Error loading items: ' + error.message, 'error');
+            }
+        }
+
+        // Load lots
+        async function loadLots() {
+            try {
+                const response = await fetch('/api/lots');
+                lots = await response.json();
+                displayLots(lots);
+            } catch (error) {
+                showAlert('lotAlert', 'Error loading LOT codes: ' + error.message, 'error');
+            }
+        }
+
+        // LOT Selection Functions
+        let selectedLot = null;
+
+        function selectLot(lotCode) {
+            // Remove previous selection
+            document.querySelectorAll('.lot-row').forEach(row => {
+                row.classList.remove('selected');
+            });
+            
+            // Add selection to clicked row
+            const selectedRow = document.querySelector(`[data-lot-code="${lotCode}"]`);
+            if (selectedRow) {
+                selectedRow.classList.add('selected');
+            }
+            
+            // Update radio button
+            document.querySelectorAll('input[name="lotSelection"]').forEach(radio => {
+                radio.checked = false;
+            });
+            const radio = document.querySelector(`input[value="${lotCode}"]`);
+            if (radio) {
+                radio.checked = true;
+            }
+            
+            // Find lot data
+            selectedLot = lots.find(lot => lot.lot_code === lotCode);
+            if (selectedLot) {
+                showLotDetails(selectedLot);
+            }
+        }
+
+        function showLotDetails(lot) {
+            const detailsSection = document.getElementById('selectedLotDetails');
+            const detailsContent = document.getElementById('lotDetailsContent');
+            
+            detailsContent.innerHTML = `
+                <div class="lot-details-grid">
+                    <div class="lot-detail-item">
+                        <div class="lot-detail-label">LOT Code</div>
+                        <div class="lot-detail-value"><code>${lot.lot_code}</code></div>
+                    </div>
+                    <div class="lot-detail-item">
+                        <div class="lot-detail-label">Item Name</div>
+                        <div class="lot-detail-value">${lot.item_name}</div>
+                    </div>
+                    <div class="lot-detail-item">
+                        <div class="lot-detail-label">Item Code</div>
+                        <div class="lot-detail-value"><code>${lot.item_code}</code></div>
+                    </div>
+                    <div class="lot-detail-item">
+                        <div class="lot-detail-label">GTIN</div>
+                        <div class="lot-detail-value"><code>${lot.item_gtin}</code></div>
+                    </div>
+                    <div class="lot-detail-item">
+                        <div class="lot-detail-label">Quantity</div>
+                        <div class="lot-detail-value">${lot.quantity}</div>
+                    </div>
+                    <div class="lot-detail-item">
+                        <div class="lot-detail-label">Status</div>
+                        <div class="lot-detail-value">
+                            <span class="status-badge ${lot.status === 'active' ? 'status-active' : 'status-expired'}">
+                                ${lot.status}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="lot-detail-item">
+                        <div class="lot-detail-label">Vendor</div>
+                        <div class="lot-detail-value">${lot.vendor_name || 'Not specified'}</div>
+                    </div>
+                    <div class="lot-detail-item">
+                        <div class="lot-detail-label">Receiving Date</div>
+                        <div class="lot-detail-value">${lot.receiving_date ? new Date(lot.receiving_date).toLocaleDateString() : 'Not specified'}</div>
+                    </div>
+                    <div class="lot-detail-item">
+                        <div class="lot-detail-label">Expiry Date</div>
+                        <div class="lot-detail-value">${lot.expiry_date ? new Date(lot.expiry_date).toLocaleDateString() : 'Not specified'}</div>
+                    </div>
+                </div>
+            `;
+            
+            detailsSection.style.display = 'block';
+        }
+
+        function printSelectedLabel(labelType) {
+            if (!selectedLot) {
+                showAlert('lotAlert', 'Please select a LOT code first', 'error');
+                return;
+            }
+            
+            const url = `/api/lots/${selectedLot.lot_code}/label/${labelType}`;
+            window.open(url, '_blank');
+        }
+
+
+
+        // Load items for select dropdown
+        async function loadItemsForSelect() {
+            try {
+                const response = await fetch('/api/items');
+                const items = await response.json();
+                const select = document.getElementById('lotItem');
+                select.innerHTML = '<option value="">Choose an item...</option>';
+                
+                items.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item.id;
+                    option.textContent = `${item.name} (${item.gtin})`;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                showAlert('createAlert', 'Error loading items: ' + error.message, 'error');
+            }
+        }
+
+        // Display items in table
+        function displayItems(itemsToShow) {
+            const tbody = document.getElementById('itemsTableBody');
+            
+            if (itemsToShow.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="empty-state">
+                            <i class="fas fa-box-open"></i>
+                            <p>No items found</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = itemsToShow.map(item => `
+                <tr>
+                    <td><strong>${item.name}</strong></td>
+                    <td><code>${item.item_code}</code></td>
+                    <td><code>${item.gtin}</code></td>
+                    <td>${item.description || '-'}</td>
+                    <td><span class="status-badge status-active">${item.lot_count || 0}</span></td>
+                    <td>${new Date(item.created_at).toLocaleDateString()}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn btn-sm btn-secondary" onclick="createLotForItem(${item.id})">
+                                <i class="fas fa-tag"></i> Create LOT
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Display lots in table
+        function displayLots(lotsToShow) {
+            const tbody = document.getElementById('lotsTableBody');
+            
+            if (lotsToShow.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="10" class="empty-state">
+                            <i class="fas fa-tags"></i>
+                            <p>No LOT codes found</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = lotsToShow.map(lot => `
+                <tr class="lot-row" onclick="selectLot('${lot.lot_code}')" data-lot-code="${lot.lot_code}">
+                    <td>
+                        <input type="radio" name="lotSelection" class="lot-checkbox" value="${lot.lot_code}" 
+                               onclick="event.stopPropagation(); selectLot('${lot.lot_code}')">
+                    </td>
+                    <td><strong><code>${lot.lot_code}</code></strong></td>
+                    <td>${lot.item_name}</td>
+                    <td><code>${lot.item_code}</code></td>
+                    <td>${lot.vendor_name || '-'}</td>
+                    <td><code>${lot.item_gtin}</code></td>
+                    <td>${lot.quantity}</td>
+                    <td>${lot.receiving_date ? new Date(lot.receiving_date).toLocaleDateString() : '-'}</td>
+                    <td>${lot.expiry_date ? new Date(lot.expiry_date).toLocaleDateString() : '-'}</td>
+                    <td>
+                        <span class="status-badge ${lot.status === 'active' ? 'status-active' : 'status-expired'}">
+                            ${lot.status}
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+
+
+        // Search functionality
+        document.getElementById('itemSearch').addEventListener('input', function(e) {
+            const query = e.target.value.toLowerCase();
+            const filtered = items.filter(item => 
+                item.name.toLowerCase().includes(query) ||
+                item.item_code.includes(query) ||
+                item.gtin.includes(query) ||
+                (item.description && item.description.toLowerCase().includes(query))
+            );
+            displayItems(filtered);
+        });
+
+        document.getElementById('lotSearch').addEventListener('input', function(e) {
+            const query = e.target.value.toLowerCase();
+            const filtered = lots.filter(lot => 
+                lot.lot_code.toLowerCase().includes(query) ||
+                lot.item_name.toLowerCase().includes(query) ||
+                lot.item_code.includes(query) ||
+                lot.item_gtin.includes(query)
+            );
+            displayLots(filtered);
+        });
+
+        // Create item form
+        document.getElementById('itemForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                name: document.getElementById('itemName').value,
+                item_code: document.getElementById('itemCode').value,
+                gtin: document.getElementById('itemGTIN').value,
+                description: document.getElementById('itemDescription').value
+            };
+            
+            try {
+                const response = await fetch('/api/items', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert('createAlert', 'Item created successfully!', 'success');
+                    document.getElementById('itemForm').reset();
+                    loadItemsForSelect();
+                    loadItems();
+                } else {
+                    showAlert('createAlert', 'Error creating item: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showAlert('createAlert', 'Error creating item: ' + error.message, 'error');
+            }
+        });
+
+        // Create lot form
+        document.getElementById('lotForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                item_id: parseInt(document.getElementById('lotItem').value),
+                quantity: parseInt(document.getElementById('lotQuantity').value),
+                expiry_date: document.getElementById('lotExpiry').value || null
+            };
+            
+            try {
+                const response = await fetch('/api/lots', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert('createAlert', `LOT code created successfully: ${result.lot_code}`, 'success');
+                    document.getElementById('lotForm').reset();
+                    loadLots();
+                    loadItems();
+                } else {
+                    showAlert('createAlert', 'Error creating LOT code: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showAlert('createAlert', 'Error creating LOT code: ' + error.message, 'error');
+            }
+        });
+
+        // Download label (updated to use selected label type)
+        async function downloadLabel(lotCode) {
+            const labelType = document.getElementById(`labelType_${lotCode}`).value;
+            
+            if (!labelType) {
+                showAlert('lotAlert', 'Please select a label type first', 'error');
+                return;
+            }
+            
+            try {
+                let url;
+                if (labelType === 'pti') {
+                    url = `/api/lots/${lotCode}/label/pti`;
+                } else {
+                    url = `/api/lots/${lotCode}/label`;
+                }
+                window.open(url, '_blank');
+            } catch (error) {
+                showAlert('lotAlert', 'Error downloading label: ' + error.message, 'error');
+            }
+        }
+
+        // Create LOT for specific item
+        function createLotForItem(itemId) {
+            showTab('create');
+            document.getElementById('lotItem').value = itemId;
+            document.getElementById('lotItem').focus();
+        }
+
+        // Show alert
+        function showAlert(alertId, message, type) {
+            const alert = document.getElementById(alertId);
+            alert.textContent = message;
+            alert.className = `alert alert-${type}`;
+            alert.style.display = 'block';
+            
+            setTimeout(() => {
+                alert.style.display = 'none';
+            }, 5000);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            loadItems();
+        });
+    </script>
+</body>
+</html>

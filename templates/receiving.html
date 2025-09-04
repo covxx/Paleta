@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Receiving Workflow - Label Printer System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .receipt-preview {
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .receipt-header {
+            text-align: center;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .receipt-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 5px 0;
+            border-bottom: 1px solid #f8f9fa;
+        }
+        .receipt-item:last-child {
+            border-bottom: none;
+        }
+        .receipt-label {
+            font-weight: 600;
+            color: #495057;
+        }
+        .receipt-value {
+            color: #212529;
+        }
+        .status-badge {
+            font-size: 0.8em;
+            padding: 4px 8px;
+        }
+        .form-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .section-title {
+            color: #007bff;
+            font-weight: 600;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+        .section-title i {
+            margin-right: 8px;
+        }
+        .item-row {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            position: relative;
+        }
+        .item-row-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .item-row-number {
+            font-weight: 600;
+            color: #007bff;
+        }
+        .remove-item-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .remove-item-btn:hover {
+            background: #c82333;
+        }
+        .item-info-display {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        .autocomplete-container {
+            position: relative;
+        }
+        .autocomplete-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ced4da;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .autocomplete-suggestion {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #f8f9fa;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .autocomplete-suggestion:hover,
+        .autocomplete-suggestion.active {
+            background-color: #f8f9fa;
+        }
+        .autocomplete-suggestion:last-child {
+            border-bottom: none;
+        }
+        .suggestion-code {
+            font-weight: 600;
+            color: #007bff;
+        }
+        .suggestion-name {
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+        .suggestion-gtin {
+            color: #28a745;
+            font-size: 0.8em;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-tags me-2"></i>Label Printer System
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/"><i class="fas fa-home me-1"></i>Home</a>
+                <a class="nav-link" href="/admin"><i class="fas fa-cog me-1"></i>Admin</a>
+                <a class="nav-link active" href="/receiving"><i class="fas fa-truck me-1"></i>Receiving</a>
+                <a class="nav-link" href="/label-designer"><i class="fas fa-palette me-1"></i>Label Designer</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-8">
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-truck-loading"></i>
+                        Multi-Line Receiving
+                    </h3>
+                    
+                    <form id="receivingForm">
+                        <!-- Vendor Selection -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="vendor" class="form-label">Vendor *</label>
+                                    <select class="form-select" id="vendor" name="vendor_id" required>
+                                        <option value="">Select a vendor...</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="receivingDate" class="form-label">Receiving Date</label>
+                                    <input type="date" class="form-control" id="receivingDate" name="receiving_date">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Items List -->
+                        <div class="mb-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5><i class="fas fa-list me-2"></i>Items to Receive</h5>
+                                <button type="button" class="btn btn-success btn-sm" onclick="addItemRow()">
+                                    <i class="fas fa-plus me-1"></i>Add Item
+                                </button>
+                            </div>
+                            
+                            <div id="itemsList">
+                                <!-- Items will be added here dynamically -->
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="button" class="btn btn-outline-secondary" onclick="clearForm()">
+                                <i class="fas fa-eraser me-1"></i>Clear All
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-check me-1"></i>Receive All Items
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Item Information Display -->
+                <div id="itemInfo" class="form-section" style="display: none;">
+                    <h4 class="section-title">
+                        <i class="fas fa-info-circle"></i>
+                        Item Information
+                    </h4>
+                    <div id="itemDetails"></div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <!-- Receipt Preview -->
+                <div class="receipt-preview">
+                    <div class="receipt-header">
+                        <h4><i class="fas fa-receipt me-2"></i>Receiving Receipt</h4>
+                        <small class="text-muted">Preview</small>
+                    </div>
+                    <div id="receiptContent">
+                        <div class="text-center text-muted">
+                            <i class="fas fa-arrow-left fa-2x mb-3"></i>
+                            <p>Fill out the form to see receipt preview</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Receipts -->
+                <div class="mt-4">
+                    <h5><i class="fas fa-history me-2"></i>Recent Receipts</h5>
+                    <div id="recentReceipts" class="list-group">
+                        <!-- Recent receipts will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div class="modal fade" id="successModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-check-circle me-2"></i>Product Received Successfully
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="successDetails"></div>
+                    <div class="mt-3">
+                        <h6>Next Steps:</h6>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-outline-primary" onclick="printVendorReceipt()">
+                                <i class="fas fa-file-pdf me-1"></i>Print Vendor Receipt
+                            </button>
+                            <button class="btn btn-outline-success" onclick="printLabels()">
+                                <i class="fas fa-print me-1"></i>Print Labels
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="viewLotDetails()">
+                                <i class="fas fa-eye me-1"></i>View Lot Details
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentReceivingData = null;
+        let vendors = [];
+        let items = [];
+        let itemRowCounter = 0;
+
+        // Load vendors and items on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadVendors();
+            loadItems();
+            loadRecentReceipts();
+            setDefaultDate();
+            addItemRow(); // Add first item row
+        });
+
+        // Load vendors
+        async function loadVendors() {
+            try {
+                const response = await fetch('/api/vendors');
+                vendors = await response.json();
+                
+                const vendorSelect = document.getElementById('vendor');
+                vendorSelect.innerHTML = '<option value="">Select a vendor...</option>';
+                
+                vendors.forEach(vendor => {
+                    const option = document.createElement('option');
+                    option.value = vendor.id;
+                    option.textContent = vendor.name;
+                    vendorSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading vendors:', error);
+                showAlert('Error loading vendors', 'danger');
+            }
+        }
+
+        // Load items
+        async function loadItems() {
+            try {
+                const response = await fetch('/api/items');
+                items = await response.json();
+            } catch (error) {
+                console.error('Error loading items:', error);
+            }
+        }
+
+        // Set default date to today
+        function setDefaultDate() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('receivingDate').value = today;
+        }
+
+        // Add item row
+        function addItemRow() {
+            itemRowCounter++;
+            const itemsList = document.getElementById('itemsList');
+            
+            const itemRow = document.createElement('div');
+            itemRow.className = 'item-row';
+            itemRow.id = `item-row-${itemRowCounter}`;
+            
+            itemRow.innerHTML = `
+                <button type="button" class="remove-item-btn" onclick="removeItemRow(${itemRowCounter})" title="Remove item">
+                    <i class="fas fa-times"></i>
+                </button>
+                <div class="item-row-header">
+                    <span class="item-row-number">Item ${itemRowCounter}</span>
+                </div>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">Item Code *</label>
+                            <div class="autocomplete-container">
+                                <input type="text" class="form-control item-code" data-row="${itemRowCounter}" placeholder="Search or enter item code" autocomplete="off">
+                                <div class="autocomplete-suggestions" id="suggestions-${itemRowCounter}" style="display: none;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label class="form-label">Quantity *</label>
+                            <input type="number" class="form-control quantity" data-row="${itemRowCounter}" min="1" placeholder="Qty">
+                        </div>
+                    </div>
+                    <div class="col-md-5">
+                        <div class="mb-3">
+                            <label class="form-label">Notes</label>
+                            <input type="text" class="form-control notes" data-row="${itemRowCounter}" placeholder="Optional notes">
+                        </div>
+                    </div>
+                </div>
+                <div class="item-info-display" id="item-info-${itemRowCounter}" style="display: none;">
+                    <!-- Item information will be displayed here -->
+                </div>
+            `;
+            
+            itemsList.appendChild(itemRow);
+            
+            // Add event listeners for item code lookup and autocomplete
+            const itemCodeInput = itemRow.querySelector('.item-code');
+            const suggestionsDiv = itemRow.querySelector('.autocomplete-suggestions');
+            
+            itemCodeInput.addEventListener('input', function() {
+                const query = this.value.trim();
+                showItemInfo(query, itemRowCounter);
+                showAutocompleteSuggestions(query, itemRowCounter, suggestionsDiv);
+            });
+            
+            itemCodeInput.addEventListener('blur', function() {
+                // Hide suggestions after a short delay to allow clicking
+                setTimeout(() => {
+                    suggestionsDiv.style.display = 'none';
+                }, 200);
+            });
+            
+            itemCodeInput.addEventListener('focus', function() {
+                const query = this.value.trim();
+                if (query.length > 0) {
+                    showAutocompleteSuggestions(query, itemRowCounter, suggestionsDiv);
+                }
+            });
+            
+            // Keyboard navigation for autocomplete
+            itemCodeInput.addEventListener('keydown', function(e) {
+                const suggestions = suggestionsDiv.querySelectorAll('.autocomplete-suggestion');
+                const activeSuggestion = suggestionsDiv.querySelector('.autocomplete-suggestion.active');
+                let activeIndex = -1;
+                
+                if (activeSuggestion) {
+                    activeIndex = Array.from(suggestions).indexOf(activeSuggestion);
+                }
+                
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    if (suggestions.length > 0) {
+                        // Remove active class from current
+                        suggestions.forEach(s => s.classList.remove('active'));
+                        // Add active class to next
+                        const nextIndex = (activeIndex + 1) % suggestions.length;
+                        suggestions[nextIndex].classList.add('active');
+                        suggestions[nextIndex].style.backgroundColor = '#e3f2fd';
+                    }
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    if (suggestions.length > 0) {
+                        // Remove active class from current
+                        suggestions.forEach(s => s.classList.remove('active'));
+                        // Add active class to previous
+                        const prevIndex = activeIndex <= 0 ? suggestions.length - 1 : activeIndex - 1;
+                        suggestions[prevIndex].classList.add('active');
+                        suggestions[prevIndex].style.backgroundColor = '#e3f2fd';
+                    }
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (activeSuggestion) {
+                        const itemCode = activeSuggestion.querySelector('.suggestion-code').textContent;
+                        selectItem(itemCode, itemRowCounter);
+                    }
+                } else if (e.key === 'Escape') {
+                    suggestionsDiv.style.display = 'none';
+                }
+            });
+        }
+
+        // Remove item row
+        function removeItemRow(rowId) {
+            const itemRow = document.getElementById(`item-row-${rowId}`);
+            if (itemRow) {
+                itemRow.remove();
+            }
+        }
+
+        // Show autocomplete suggestions
+        function showAutocompleteSuggestions(query, rowId, suggestionsDiv) {
+            if (query.length < 1) {
+                suggestionsDiv.style.display = 'none';
+                return;
+            }
+            
+            // Filter items based on query (search in item_code, name, and description)
+            const filteredItems = items.filter(item => 
+                item.item_code.toLowerCase().includes(query.toLowerCase()) ||
+                item.name.toLowerCase().includes(query.toLowerCase()) ||
+                (item.description && item.description.toLowerCase().includes(query.toLowerCase()))
+            ).slice(0, 10); // Limit to 10 suggestions
+            
+            if (filteredItems.length === 0) {
+                suggestionsDiv.style.display = 'none';
+                return;
+            }
+            
+            // Build suggestions HTML
+            const suggestionsHTML = filteredItems.map(item => `
+                <div class="autocomplete-suggestion" onclick="selectItem('${item.item_code}', ${rowId})">
+                    <div>
+                        <div class="suggestion-code">${item.item_code}</div>
+                        <div class="suggestion-name">${item.name}</div>
+                    </div>
+                    <div class="suggestion-gtin">${item.gtin}</div>
+                </div>
+            `).join('');
+            
+            suggestionsDiv.innerHTML = suggestionsHTML;
+            suggestionsDiv.style.display = 'block';
+        }
+
+        // Select item from autocomplete
+        function selectItem(itemCode, rowId) {
+            const itemCodeInput = document.querySelector(`input[data-row="${rowId}"]`);
+            const suggestionsDiv = document.getElementById(`suggestions-${rowId}`);
+            
+            itemCodeInput.value = itemCode;
+            suggestionsDiv.style.display = 'none';
+            showItemInfo(itemCode, rowId);
+            
+            // Focus on quantity field
+            const quantityInput = itemCodeInput.closest('.item-row').querySelector('.quantity');
+            quantityInput.focus();
+        }
+
+        // Show item information
+        function showItemInfo(itemCode, rowId) {
+            const itemInfoDiv = document.getElementById(`item-info-${rowId}`);
+            
+            if (itemCode) {
+                const item = items.find(i => i.item_code === itemCode);
+                if (item) {
+                    itemInfoDiv.innerHTML = `
+                        <div class="row">
+                            <div class="col-6"><strong>Name:</strong> ${item.name}</div>
+                            <div class="col-6"><strong>GTIN:</strong> ${item.gtin}</div>
+                        </div>
+                        <div class="row">
+                            <div class="col-6"><strong>Description:</strong> ${item.description || 'N/A'}</div>
+                            <div class="col-6"><strong>Category:</strong> ${item.category || 'N/A'}</div>
+                        </div>
+                    `;
+                    itemInfoDiv.style.display = 'block';
+                } else {
+                    itemInfoDiv.style.display = 'none';
+                }
+            } else {
+                itemInfoDiv.style.display = 'none';
+            }
+        }
+
+        // Load recent receipts
+        async function loadRecentReceipts() {
+            try {
+                const response = await fetch('/api/lots');
+                const lots = await response.json();
+                
+                const recentReceipts = document.getElementById('recentReceipts');
+                recentReceipts.innerHTML = '';
+                
+                // Show last 5 lots with vendor information
+                const recentLots = lots
+                    .filter(lot => lot.vendor_name)
+                    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+                    .slice(0, 5);
+                
+                recentLots.forEach(lot => {
+                    const receiptItem = document.createElement('div');
+                    receiptItem.className = 'list-group-item list-group-item-action';
+                    receiptItem.innerHTML = `
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">${lot.lot_code}</h6>
+                            <small>${new Date(lot.created_at).toLocaleDateString()}</small>
+                        </div>
+                        <p class="mb-1">${lot.item_name} - ${lot.vendor_name}</p>
+                        <small>Qty: ${lot.quantity}</small>
+                    `;
+                    receiptItem.onclick = () => viewReceipt(lot.lot_code);
+                    recentReceipts.appendChild(receiptItem);
+                });
+            } catch (error) {
+                console.error('Error loading recent receipts:', error);
+            }
+        }
+
+        // Handle form submission
+        document.getElementById('receivingForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const vendorId = parseInt(document.getElementById('vendor').value);
+            if (!vendorId) {
+                showAlert('Please select a vendor', 'danger');
+                return;
+            }
+            
+            // Collect all items
+            const itemsToReceive = [];
+            const itemRows = document.querySelectorAll('.item-row');
+            
+            for (const row of itemRows) {
+                const itemCode = row.querySelector('.item-code').value.trim();
+                const quantity = parseInt(row.querySelector('.quantity').value);
+                const notes = row.querySelector('.notes').value.trim();
+                
+                if (itemCode && quantity > 0) {
+                    itemsToReceive.push({
+                        item_code: itemCode,
+                        quantity: quantity,
+                        notes: notes
+                    });
+                }
+            }
+            
+            if (itemsToReceive.length === 0) {
+                showAlert('Please add at least one item to receive', 'danger');
+                return;
+            }
+            
+            const data = {
+                vendor_id: vendorId,
+                items: itemsToReceive
+            };
+            
+            try {
+                const response = await fetch('/api/receive/batch', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    currentReceivingData = result;
+                    showSuccessModal(result);
+                    clearForm();
+                    loadRecentReceipts();
+                } else {
+                    showAlert(result.error || 'Error receiving products', 'danger');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('Error receiving products', 'danger');
+            }
+        });
+
+        // Update receipt preview (simplified for multi-line)
+        function updateReceiptPreview() {
+            const vendorSelect = document.getElementById('vendor');
+            const receiptContent = document.getElementById('receiptContent');
+            
+            if (vendorSelect.value) {
+                const vendor = vendors.find(v => v.id == vendorSelect.value);
+                const itemRows = document.querySelectorAll('.item-row');
+                const validItems = Array.from(itemRows).filter(row => {
+                    const itemCode = row.querySelector('.item-code').value.trim();
+                    const quantity = parseInt(row.querySelector('.quantity').value);
+                    return itemCode && quantity > 0;
+                });
+                
+                if (vendor && validItems.length > 0) {
+                    receiptContent.innerHTML = `
+                        <div class="receipt-item">
+                            <span class="receipt-label">Vendor:</span>
+                            <span class="receipt-value">${vendor.name}</span>
+                        </div>
+                        <div class="receipt-item">
+                            <span class="receipt-label">Items:</span>
+                            <span class="receipt-value">${validItems.length}</span>
+                        </div>
+                        <div class="receipt-item">
+                            <span class="receipt-label">Receiving Date:</span>
+                            <span class="receipt-value">${new Date().toLocaleDateString()}</span>
+                        </div>
+                        <div class="text-center mt-3">
+                            <small class="text-muted">Receipt will be generated after receiving</small>
+                        </div>
+                    `;
+                } else {
+                    receiptContent.innerHTML = `
+                        <div class="text-center text-muted">
+                            <i class="fas fa-arrow-left fa-2x mb-3"></i>
+                            <p>Select vendor and add items to see preview</p>
+                        </div>
+                    `;
+                }
+            } else {
+                receiptContent.innerHTML = `
+                    <div class="text-center text-muted">
+                        <i class="fas fa-arrow-left fa-2x mb-3"></i>
+                        <p>Select vendor and add items to see preview</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Add event listeners for receipt preview updates
+        document.getElementById('vendor').addEventListener('change', updateReceiptPreview);
+
+        // Show success modal
+        function showSuccessModal(result) {
+            const successDetails = document.getElementById('successDetails');
+            successDetails.innerHTML = `
+                <div class="alert alert-success">
+                    <h6><i class="fas fa-check-circle me-2"></i>Products Received Successfully!</h6>
+                    <p class="mb-0">Vendor: <strong>${result.vendor_name}</strong></p>
+                </div>
+                <div class="row">
+                    <div class="col-6"><strong>Total Items:</strong></div>
+                    <div class="col-6">${result.total_items}</div>
+                </div>
+                <div class="row">
+                    <div class="col-6"><strong>Receiving Date:</strong></div>
+                    <div class="col-6">${new Date(result.receiving_date).toLocaleDateString()}</div>
+                </div>
+                <div class="row">
+                    <div class="col-6"><strong>Lot Codes Created:</strong></div>
+                    <div class="col-6">${result.lots.map(lot => lot.lot_code).join(', ')}</div>
+                </div>
+            `;
+            
+            const modal = new bootstrap.Modal(document.getElementById('successModal'));
+            modal.show();
+        }
+
+        // Print vendor receipt
+        function printVendorReceipt() {
+            if (currentReceivingData) {
+                const url = `/api/receipt/vendor/${currentReceivingData.vendor_id}/${currentReceivingData.receiving_date}/pdf`;
+                window.open(url, '_blank');
+            }
+        }
+
+        // Print labels
+        function printLabels() {
+            if (currentReceivingData && currentReceivingData.lots.length > 0) {
+                // Open labels for all lots
+                currentReceivingData.lots.forEach(lot => {
+                    window.open(`/api/lots/${lot.lot_code}/label`, '_blank');
+                });
+            }
+        }
+
+        // View lot details
+        function viewLotDetails() {
+            if (currentReceivingData && currentReceivingData.lots.length > 0) {
+                // Open the first lot in the main page
+                window.open(`/?search=${currentReceivingData.lots[0].lot_code}`, '_blank');
+            }
+        }
+
+        // View receipt
+        async function viewReceipt(lotCode) {
+            try {
+                const response = await fetch(`/api/receipt/${lotCode}`);
+                const receipt = await response.json();
+                
+                if (response.ok) {
+                    const receiptContent = document.getElementById('receiptContent');
+                    receiptContent.innerHTML = `
+                        <div class="receipt-item">
+                            <span class="receipt-label">Lot Code:</span>
+                            <span class="receipt-value">${receipt.lot_code}</span>
+                        </div>
+                        <div class="receipt-item">
+                            <span class="receipt-label">Item:</span>
+                            <span class="receipt-value">${receipt.item_name}</span>
+                        </div>
+                        <div class="receipt-item">
+                            <span class="receipt-label">Item Code:</span>
+                            <span class="receipt-value">${receipt.item_code}</span>
+                        </div>
+                        <div class="receipt-item">
+                            <span class="receipt-label">Vendor:</span>
+                            <span class="receipt-value">${receipt.vendor_name}</span>
+                        </div>
+                        <div class="receipt-item">
+                            <span class="receipt-label">Quantity:</span>
+                            <span class="receipt-value">${receipt.quantity}</span>
+                        </div>
+                        <div class="receipt-item">
+                            <span class="receipt-label">Receiving Date:</span>
+                            <span class="receipt-value">${new Date(receipt.receiving_date).toLocaleDateString()}</span>
+                        </div>
+                        <div class="receipt-item">
+                            <span class="receipt-label">Expiry Date:</span>
+                            <span class="receipt-value">${new Date(receipt.expiry_date).toLocaleDateString()}</span>
+                        </div>
+                        ${receipt.notes ? `
+                        <div class="receipt-item">
+                            <span class="receipt-label">Notes:</span>
+                            <span class="receipt-value">${receipt.notes}</span>
+                        </div>
+                        ` : ''}
+                    `;
+                } else {
+                    showAlert('Error loading receipt', 'danger');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('Error loading receipt', 'danger');
+            }
+        }
+
+        // Clear form
+        function clearForm() {
+            document.getElementById('receivingForm').reset();
+            setDefaultDate();
+            
+            // Clear all item rows
+            const itemsList = document.getElementById('itemsList');
+            itemsList.innerHTML = '';
+            itemRowCounter = 0;
+            
+            // Add one empty item row
+            addItemRow();
+            
+            updateReceiptPreview();
+        }
+
+        // Show alert
+        function showAlert(message, type) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            const container = document.querySelector('.container');
+            container.insertBefore(alertDiv, container.firstChild);
+            
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
