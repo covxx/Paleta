@@ -66,6 +66,18 @@
         border-bottom-color: var(--primary-color);
     }
 
+    .nav-tabs a.version-link {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white !important;
+        border-bottom-color: transparent;
+    }
+
+    .nav-tabs a.version-link:hover {
+        background: linear-gradient(135deg, #5a6fd8 0%, #6b46c1 100%);
+        color: white !important;
+        transform: translateY(-1px);
+    }
+
     .tab-content {
         display: none;
         padding: 2rem;
@@ -403,6 +415,9 @@
         <li><a href="#users" onclick="showTab('users')" id="usersTab" style="display: none;">Users</a></li>
         <li><a href="#active-users" onclick="showTab('active-users')">Active Users</a></li>
         <li><a href="#analytics" onclick="showTab('analytics')">Analytics</a></li>
+        <li><a href="/admin/version" class="version-link">
+            <i class="fas fa-code-branch me-1"></i>Version
+        </a></li>
     </ul>
 </div>
 

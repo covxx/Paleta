@@ -1,0 +1,381 @@
+{% extends "base_header.html" %}
+
+{% block title %}Version Management - Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .version-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    }
+
+    .version-info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .version-info-item {
+        background: var(--bg-secondary);
+        border-radius: 12px;
+        padding: 1.5rem;
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow);
+    }
+
+    .version-info-item h6 {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.5rem;
+    }
+
+    .version-info-item .value {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .version-badge-large {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        display: inline-block;
+        margin: 0.5rem 0;
+    }
+
+    .git-status {
+        background: var(--gray-100);
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 1rem 0;
+        font-family: 'Courier New', monospace;
+        font-size: 0.9rem;
+    }
+
+    .git-status.success {
+        background: #d1fae5;
+        color: #065f46;
+        border-left: 4px solid #10b981;
+    }
+
+    .git-status.warning {
+        background: #fef3c7;
+        color: #92400e;
+        border-left: 4px solid #f59e0b;
+    }
+
+    .update-form {
+        background: var(--bg-secondary);
+        border-radius: 12px;
+        padding: 2rem;
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow);
+    }
+
+    .version-input {
+        font-size: 1.1rem;
+        padding: 0.75rem 1rem;
+        border: 2px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-secondary);
+        color: var(--text-primary);
+        transition: all 0.3s ease;
+    }
+
+    .version-input:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        outline: none;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-top: 1.5rem;
+    }
+
+    .btn-version {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .btn-version:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        color: white;
+    }
+
+    .btn-secondary {
+        background: var(--gray-200);
+        color: var(--gray-700);
+    }
+
+    .btn-secondary:hover {
+        background: var(--gray-300);
+        color: var(--gray-800);
+    }
+
+    .commit-hash {
+        font-family: 'Courier New', monospace;
+        background: var(--gray-100);
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.9rem;
+    }
+
+    .branch-badge {
+        background: #667eea;
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    @media (max-width: 768px) {
+        .version-info-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .action-buttons {
+            flex-direction: column;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-1">
+                        <i class="fas fa-code-branch text-primary me-2"></i>
+                        Version Management
+                    </h1>
+                    <p class="text-muted mb-0">Manage application version and track deployment information</p>
+                </div>
+                <a href="/admin" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Admin
+                </a>
+            </div>
+
+            <!-- Current Version Card -->
+            <div class="version-card">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h2 class="h4 mb-2">
+                            <i class="fas fa-tag me-2"></i>
+                            Current Version
+                        </h2>
+                        <div class="version-badge-large">
+                            {{ version_info.display_version if version_info else '1.0.0' }}
+                        </div>
+                        <p class="mb-0 opacity-75">
+                            Last updated: {{ version_info.timestamp[:19] if version_info else 'Unknown' }}
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <i class="fas fa-rocket fa-3x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Version Information Grid -->
+            <div class="version-info-grid">
+                <div class="version-info-item">
+                    <h6>Manual Version</h6>
+                    <div class="value">{{ version_info.manual_version if version_info else '1.0.0' }}</div>
+                </div>
+                
+                {% if version_info and version_info.commit_hash %}
+                <div class="version-info-item">
+                    <h6>Git Commit</h6>
+                    <div class="value">
+                        <span class="commit-hash">{{ version_info.commit_hash }}</span>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if version_info and version_info.branch %}
+                <div class="version-info-item">
+                    <h6>Git Branch</h6>
+                    <div class="value">
+                        <span class="branch-badge">{{ version_info.branch }}</span>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <div class="version-info-item">
+                    <h6>Build Date</h6>
+                    <div class="value">{{ version_info.timestamp[:19] if version_info else 'Unknown' }}</div>
+                </div>
+            </div>
+
+            <!-- Git Status -->
+            {% if version_info and version_info.has_uncommitted %}
+            <div class="git-status warning">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Warning:</strong> You have uncommitted changes in your git repository.
+            </div>
+            {% elif version_info and version_info.commit_hash %}
+            <div class="git-status success">
+                <i class="fas fa-check-circle me-2"></i>
+                <strong>Git Status:</strong> Working directory is clean.
+            </div>
+            {% endif %}
+
+            <!-- Version Update Form -->
+            <div class="update-form">
+                <h4 class="mb-3">
+                    <i class="fas fa-edit me-2"></i>
+                    Update Version
+                </h4>
+                <p class="text-muted mb-4">
+                    Update the manual version number. This will be displayed in the header and used for tracking deployments.
+                </p>
+                
+                <form method="POST">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="new_version" class="form-label">New Version</label>
+                            <input 
+                                type="text" 
+                                class="form-control version-input" 
+                                id="new_version" 
+                                name="new_version" 
+                                placeholder="e.g., 1.2.3, 2.0.0-beta, 1.1.0-rc1"
+                                required
+                            >
+                            <div class="form-text">
+                                Use semantic versioning format: major.minor.patch (e.g., 1.2.3)
+                            </div>
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-save me-2"></i>
+                                Update Version
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <a href="/version" target="_blank" class="btn-version">
+                    <i class="fas fa-external-link-alt me-2"></i>
+                    View Full Version Info (JSON)
+                </a>
+                
+                <a href="/health" target="_blank" class="btn-version btn-secondary">
+                    <i class="fas fa-heartbeat me-2"></i>
+                    Health Check
+                </a>
+                
+                <button onclick="refreshVersionInfo()" class="btn-version btn-secondary">
+                    <i class="fas fa-sync-alt me-2"></i>
+                    Refresh Info
+                </button>
+            </div>
+
+            <!-- Version History (if available) -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history me-2"></i>
+                        Version Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Version Source</h6>
+                            <p class="text-muted">
+                                {% if version_info and version_info.source == 'git' %}
+                                    <i class="fas fa-code-branch text-success me-2"></i>
+                                    Git repository detected
+                                {% else %}
+                                    <i class="fas fa-file-alt text-warning me-2"></i>
+                                    Manual version only
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Last Commit Date</h6>
+                            <p class="text-muted">
+                                {% if version_info and version_info.commit_date %}
+                                    {{ version_info.commit_date[:19] }}
+                                {% else %}
+                                    Not available
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function refreshVersionInfo() {
+        location.reload();
+    }
+
+    // Auto-refresh version info every 30 seconds
+    setInterval(function() {
+        fetch('/version')
+            .then(response => response.json())
+            .then(data => {
+                // Update version display if it changed
+                const currentVersion = '{{ version_info.display_version if version_info else "1.0.0" }}';
+                if (data.version !== currentVersion) {
+                    location.reload();
+                }
+            })
+            .catch(error => {
+                console.log('Version check failed:', error);
+            });
+    }, 30000);
+
+    // Form validation
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const versionInput = document.getElementById('new_version');
+        const version = versionInput.value.trim();
+        
+        // Basic version format validation
+        const versionRegex = /^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$/;
+        if (!versionRegex.test(version)) {
+            e.preventDefault();
+            alert('Please enter a valid version format (e.g., 1.2.3, 1.2.3-beta)');
+            versionInput.focus();
+        }
+    });
+</script>
+{% endblock %}

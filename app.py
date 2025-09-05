@@ -23,6 +23,12 @@ import json
 import threading
 import secrets
 from decimal import Decimal
+import requests
+from version import VERSION_INFO, VERSION, COMMIT_HASH, BRANCH, BUILD_DATE
+from changelog import (
+    load_changelog, get_version_changelog, get_latest_changelog, 
+    get_all_versions, get_changelog_summary, CHANGELOG_DATA
+)
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = config.SECRET_KEY
@@ -49,6 +55,17 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 db = SQLAlchemy(app)
 CORS(app)
+
+# Context processor to make version info available to all templates
+@app.context_processor
+def inject_version_info():
+    return {
+        'version_info': VERSION_INFO,
+        'app_version': VERSION,
+        'commit_hash': COMMIT_HASH,
+        'branch': BRANCH,
+        'build_date': BUILD_DATE
+    }
 
 # Import threading for concurrent operations
 import threading
@@ -127,13 +144,13 @@ def clear_cache():
         cache.clear()
 
 # QuickBooks Online Configuration
-QB_CLIENT_ID = os.getenv('QB_CLIENT_ID', '')
-QB_CLIENT_SECRET = os.getenv('QB_CLIENT_SECRET', '')
+QB_CLIENT_ID = os.getenv('QB_CLIENT_ID', 'ABUW0U3AsMTGyq7bb1ujpj17IodZlrGkMYtjaWGfke6gcztmtY')
+QB_CLIENT_SECRET = os.getenv('QB_CLIENT_SECRET', 'H75cxmzTruVA2LpU27IyAUzJKJlsNgWHMrJaz3MN')
 QB_REDIRECT_URI = os.getenv('QB_REDIRECT_URI', 'http://localhost:5001/qb/callback')
 QB_SCOPE = 'com.intuit.quickbooks.accounting'
 QB_DISCOVERY_DOCUMENT = 'https://appcenter.intuit.com/api/v1/OpenID/QBOpenID'
 QB_BASE_URL = 'https://sandbox-quickbooks.api.intuit.com'  # Use sandbox for testing
-QB_COMPANY_ID = os.getenv('QB_COMPANY_ID', '')  # Company ID from QB
+QB_COMPANY_ID = os.getenv('QB_COMPANY_ID', '9341455300640805')  # Sandbox Company ID for testing
 
 # QuickBooks helper functions
 def generate_order_number():
@@ -173,7 +190,16 @@ def make_qb_api_request(endpoint, method='GET', data=None):
         'Content-Type': 'application/json'
     }
     
-    url = f"{QB_BASE_URL}/v3/company/{QB_COMPANY_ID}/{endpoint}"
+    # QuickBooks API URL structure
+    # For company info: /v3/company/{companyId}/companyinfo/{companyId}
+    # For queries: /v3/company/{companyId}/query?query=<selectStatement>&minorversion=75
+    
+    if endpoint == 'companyinfo/1':
+        # Special case for company info
+        url = f"{QB_BASE_URL}/v3/company/{QB_COMPANY_ID}/companyinfo/{QB_COMPANY_ID}"
+    else:
+        # Standard endpoint structure - endpoint may include query parameters
+        url = f"{QB_BASE_URL}/v3/company/{QB_COMPANY_ID}/{endpoint}"
     
     try:
         if method == 'GET':
@@ -191,8 +217,9 @@ def make_qb_api_request(endpoint, method='GET', data=None):
 def import_qb_customers():
     """Import customers from QuickBooks"""
     try:
-        # Get customers from QuickBooks
-        result = make_qb_api_request('customers')
+        # Get customers from QuickBooks using query endpoint
+        query = "SELECT * FROM Customer"
+        result = make_qb_api_request(f'query?query={query}&minorversion=75')
         if 'error' in result:
             return result
         
@@ -202,11 +229,11 @@ def import_qb_customers():
         
         for qb_customer in result.get('QueryResponse', {}).get('Customer', []):
             try:
-                # Extract customer data from QB response
+                # Extract customer data from QB response with fallbacks
                 customer_data = {
-                    'name': qb_customer.get('Name', ''),
-                    'email': qb_customer.get('PrimaryEmailAddr', {}).get('Address', ''),
-                    'phone': qb_customer.get('PrimaryPhone', {}).get('FreeFormNumber', ''),
+                    'name': qb_customer.get('Name') or qb_customer.get('DisplayName') or qb_customer.get('CompanyName') or 'Unknown Customer',
+                    'email': qb_customer.get('PrimaryEmailAddr', {}).get('Address', '') or qb_customer.get('EmailAddr', {}).get('Address', ''),
+                    'phone': qb_customer.get('PrimaryPhone', {}).get('FreeFormNumber', '') or qb_customer.get('Phone', {}).get('FreeFormNumber', ''),
                     'quickbooks_id': qb_customer.get('Id', ''),
                     'bill_to_name': qb_customer.get('BillAddr', {}).get('Name', ''),
                     'bill_to_address1': qb_customer.get('BillAddr', {}).get('Line1', ''),
@@ -261,8 +288,9 @@ def import_qb_customers():
 def import_qb_items():
     """Import items from QuickBooks"""
     try:
-        # Get items from QuickBooks
-        result = make_qb_api_request('items')
+        # Get items from QuickBooks using query endpoint
+        query = "SELECT * FROM Item WHERE Type = 'Inventory'"
+        result = make_qb_api_request(f'query?query={query}&minorversion=75')
         if 'error' in result:
             return result
         
@@ -276,9 +304,9 @@ def import_qb_items():
                 if qb_item.get('Type') != 'Inventory':
                     continue
                 
-                # Extract item data from QB response
+                # Extract item data from QB response with fallbacks
                 item_data = {
-                    'name': qb_item.get('Name', ''),
+                    'name': qb_item.get('Name') or qb_item.get('DisplayName') or 'Unknown Item',
                     'item_code': qb_item.get('Sku', '') or f"QB-{qb_item.get('Id', '')}",
                     'gtin': qb_item.get('UPC', '') or f"QB{qb_item.get('Id', '').zfill(13)}",
                     'category': qb_item.get('ItemCategoryRef', {}).get('name', 'Imported'),
@@ -3012,6 +3040,64 @@ def quickbooks_connect():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/qb/callback')
+@admin_required
+def quickbooks_callback():
+    """Handle QuickBooks OAuth callback"""
+    try:
+        # Get authorization code and state from callback
+        code = request.args.get('code')
+        state = request.args.get('state')
+        realm_id = request.args.get('realmId')  # Company ID
+        
+        # Verify state parameter
+        if state != session.get('qb_state'):
+            return jsonify({'error': 'Invalid state parameter'}), 400
+        
+        if not code:
+            return jsonify({'error': 'Authorization code not provided'}), 400
+        
+        # Exchange authorization code for access token
+        token_url = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer'
+        token_data = {
+            'grant_type': 'authorization_code',
+            'code': code,
+            'redirect_uri': QB_REDIRECT_URI
+        }
+        
+        # Make token request
+        response = requests.post(token_url, data=token_data, auth=(QB_CLIENT_ID, QB_CLIENT_SECRET))
+        
+        if response.status_code != 200:
+            return jsonify({
+                'error': 'Failed to exchange code for token',
+                'details': response.text
+            }), 400
+        
+        token_response = response.json()
+        
+        # Store tokens in session (in production, store securely)
+        session['qb_access_token'] = token_response.get('access_token')
+        session['qb_refresh_token'] = token_response.get('refresh_token')
+        session['qb_company_id'] = realm_id
+        
+        # Update global company ID
+        global QB_COMPANY_ID
+        QB_COMPANY_ID = realm_id
+        
+        return jsonify({
+            'success': True,
+            'message': 'QuickBooks connected successfully',
+            'company_id': realm_id,
+            'expires_in': token_response.get('expires_in')
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'error': 'OAuth callback failed',
+            'details': str(e)
+        }), 500
+
 @app.route('/api/orders/<int:order_id>/sync-quickbooks', methods=['POST'])
 @admin_required
 def sync_order_to_quickbooks(order_id):
@@ -3082,14 +3168,31 @@ def import_quickbooks_items():
 def test_quickbooks_connection():
     """Test QuickBooks API connection"""
     try:
-        # Test with a simple API call
-        result = make_qb_api_request('companyinfo/1')
+        # Check if we have an access token
+        access_token = get_qb_access_token()
+        if not access_token:
+            return jsonify({
+                'success': False,
+                'error': 'No access token found',
+                'message': 'Please connect to QuickBooks first using the OAuth flow',
+                'action_required': 'oauth_connect',
+                'details': {
+                    'client_id': QB_CLIENT_ID,
+                    'redirect_uri': QB_REDIRECT_URI,
+                    'scope': QB_SCOPE
+                }
+            }), 400
+        
+        # Test with a simple API call using query endpoint
+        query = "SELECT * FROM CompanyInfo"
+        result = make_qb_api_request(f'query?query={query}&minorversion=75')
         
         if 'error' in result:
             return jsonify({
                 'success': False,
                 'error': result['error'],
-                'message': 'QuickBooks connection failed'
+                'message': 'QuickBooks API call failed',
+                'action_required': 'reconnect' if 'token' in result['error'].lower() else 'check_credentials'
             }), 400
         
         return jsonify({
@@ -3101,8 +3204,86 @@ def test_quickbooks_connection():
         return jsonify({
             'success': False,
             'error': str(e),
-            'message': 'QuickBooks connection test failed'
+            'message': 'QuickBooks connection test failed',
+            'action_required': 'check_logs'
         }), 500
+
+@app.route('/version')
+def get_version():
+    """Get application version information"""
+    return jsonify({
+        'version': VERSION,
+        'commit_hash': COMMIT_HASH,
+        'branch': BRANCH,
+        'build_date': BUILD_DATE,
+        'version_info': VERSION_INFO
+    })
+
+@app.route('/changelog')
+def changelog():
+    """Changelog page showing version history"""
+    return render_template('changelog.html', 
+                         changelog_data=CHANGELOG_DATA,
+                         all_versions=get_all_versions(),
+                         changelog_summary=get_changelog_summary())
+
+@app.route('/changelog/<version>')
+def version_changelog(version):
+    """Specific version changelog page"""
+    version_data = get_version_changelog(version)
+    if not version_data:
+        flash(f'Version {version} not found', 'error')
+        return redirect(url_for('changelog'))
+    
+    return render_template('version_changelog.html', 
+                         version=version,
+                         version_data=version_data,
+                         all_versions=get_all_versions())
+
+@app.route('/api/changelog')
+def api_changelog():
+    """API endpoint for changelog data"""
+    return jsonify({
+        'changelog': CHANGELOG_DATA,
+        'versions': get_all_versions(),
+        'summary': get_changelog_summary()
+    })
+
+@app.route('/api/changelog/<version>')
+def api_version_changelog(version):
+    """API endpoint for specific version changelog"""
+    version_data = get_version_changelog(version)
+    if not version_data:
+        return jsonify({'error': 'Version not found'}), 404
+    
+    return jsonify({
+        'version': version,
+        'data': version_data
+    })
+
+@app.route('/admin/version', methods=['GET', 'POST'])
+def admin_version():
+    """Admin version management page"""
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    
+    if request.method == 'POST':
+        new_version = request.form.get('new_version')
+        if new_version:
+            try:
+                from version import update_manual_version
+                result = update_manual_version(new_version)
+                if result:
+                    flash(f'Version updated to {new_version}', 'success')
+                else:
+                    flash('Failed to update version', 'error')
+            except Exception as e:
+                flash(f'Error updating version: {str(e)}', 'error')
+        return redirect(url_for('admin_version'))
+    
+    return render_template('admin_version.html', 
+                         version_info=VERSION_INFO,
+                         changelog_data=CHANGELOG_DATA)
 
 @app.route('/health')
 def health_check():
@@ -3125,7 +3306,8 @@ def health_check():
             'timestamp': datetime.now(timezone.utc).isoformat(),
             'database': 'connected',
             'redis': redis_status,
-            'version': '1.0.0'
+            'version': VERSION,
+            'commit_hash': COMMIT_HASH
         }), 200
     except Exception as e:
         return jsonify({

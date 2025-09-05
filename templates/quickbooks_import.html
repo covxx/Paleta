@@ -40,6 +40,7 @@
                                 <i class="fas fa-users"></i> Customers
                             </a>
                         </li>
+                        {% if session.admin_logged_in %}
                         <li class="nav-item">
                             <a class="nav-link active" href="/quickbooks-import">
                                 <i class="fab fa-quickbooks"></i> QB Import
@@ -50,6 +51,7 @@
                                 <i class="fas fa-tags"></i> Label Designer
                             </a>
                         </li>
+                        {% endif %}
                         <li class="nav-item">
                             <a class="nav-link" href="/admin">
                                 <i class="fas fa-cog"></i> Admin
@@ -221,15 +223,37 @@
                         </div>
                     `;
                 } else {
-                    statusDiv.innerHTML = `
-                        <div class="d-flex align-items-center text-danger">
-                            <i class="fas fa-times-circle me-2"></i>
+                    let statusHtml = `
+                        <div class="d-flex align-items-center text-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
                             <div>
-                                <strong>Connection Failed</strong><br>
+                                <strong>${result.message || 'Connection Issue'}</strong><br>
                                 <small>${result.error || 'Unable to connect to QuickBooks'}</small>
+                    `;
+                    
+                    if (result.action_required === 'oauth_connect') {
+                        statusHtml += `
+                                <div class="mt-2">
+                                    <button class="btn btn-primary btn-sm" onclick="connectToQuickBooks()">
+                                        <i class="fas fa-link me-1"></i> Connect to QuickBooks
+                                    </button>
+                                </div>
+                        `;
+                    } else if (result.action_required === 'reconnect') {
+                        statusHtml += `
+                                <div class="mt-2">
+                                    <button class="btn btn-warning btn-sm" onclick="connectToQuickBooks()">
+                                        <i class="fas fa-redo me-1"></i> Reconnect
+                                    </button>
+                                </div>
+                        `;
+                    }
+                    
+                    statusHtml += `
                             </div>
                         </div>
                     `;
+                    statusDiv.innerHTML = statusHtml;
                 }
             } catch (error) {
                 statusDiv.innerHTML = `
@@ -241,6 +265,22 @@
                         </div>
                     </div>
                 `;
+            }
+        }
+
+        async function connectToQuickBooks() {
+            try {
+                const response = await fetch('/api/quickbooks/connect');
+                const result = await response.json();
+                
+                if (result.auth_url) {
+                    // Redirect to QuickBooks OAuth
+                    window.location.href = result.auth_url;
+                } else {
+                    alert('Failed to get QuickBooks authorization URL: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('Error connecting to QuickBooks: ' + error.message);
             }
         }
 

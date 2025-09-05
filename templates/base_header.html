@@ -222,6 +222,47 @@
         [data-theme="dark"] .notification-close {
             color: #718096;
         }
+
+        /* Version Badge Styles */
+        .version-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .clickable-version {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .clickable-version:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .version-info {
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+
+        .version-info:hover {
+            opacity: 1;
+        }
+
+        /* Dark mode version styles */
+        [data-theme="dark"] .version-badge {
+            background: linear-gradient(135deg, #4c51bf 0%, #553c9a 100%);
+            color: #e2e8f0;
+        }
+
+        [data-theme="dark"] .version-info {
+            color: #a0aec0 !important;
+        }
     </style>
 </head>
 <body>
@@ -231,7 +272,12 @@
             <!-- Brand -->
             <a class="navbar-brand d-flex align-items-center" href="/">
                 <i class="fas fa-warehouse text-primary me-2"></i>
-                <span class="fw-bold">Inventory Management</span>
+                <div class="d-flex flex-column">
+                    <span class="fw-bold">Inventory Management</span>
+                    <small class="text-muted version-info" style="font-size: 0.7rem; line-height: 1;">
+                        v{{ version_info.display_version if version_info else '1.0.0' }}
+                    </small>
+                </div>
             </a>
 
             <!-- Mobile toggle -->
@@ -270,6 +316,7 @@
                             <i class="fas fa-users me-1"></i> Customers
                         </a>
                     </li>
+                    {% if session.admin_logged_in %}
                     <li class="nav-item">
                         <a class="nav-link {% if 'quickbooks' in request.endpoint %}active{% endif %}" href="/quickbooks-import">
                             <i class="fab fa-quickbooks me-1"></i> QB Import
@@ -280,6 +327,7 @@
                             <i class="fas fa-tags me-1"></i> Label Designer
                         </a>
                     </li>
+                    {% endif %}
                     <li class="nav-item">
                         <a class="nav-link {% if 'admin' in request.endpoint %}active{% endif %}" href="/admin">
                             <i class="fas fa-cog me-1"></i> Admin
@@ -289,6 +337,56 @@
 
                 <!-- Right side items -->
                 <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="versionDropdown" role="button" data-bs-toggle="dropdown" title="Version Information">
+                            <i class="fas fa-info-circle me-1"></i>
+                            <span class="version-badge clickable-version" onclick="showVersionModal()">{{ version_info.display_version if version_info else '1.0.0' }}</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li class="dropdown-header">
+                                <i class="fas fa-code-branch me-2"></i>Version Information
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li class="dropdown-item-text">
+                                <small class="text-muted d-block">Version:</small>
+                                <strong>{{ version_info.display_version if version_info else '1.0.0' }}</strong>
+                            </li>
+                            {% if version_info and version_info.commit_hash %}
+                            <li class="dropdown-item-text">
+                                <small class="text-muted d-block">Commit:</small>
+                                <code class="small">{{ version_info.commit_hash }}</code>
+                            </li>
+                            {% endif %}
+                            {% if version_info and version_info.branch %}
+                            <li class="dropdown-item-text">
+                                <small class="text-muted d-block">Branch:</small>
+                                <span class="badge bg-secondary">{{ version_info.branch }}</span>
+                            </li>
+                            {% endif %}
+                            {% if version_info and version_info.commit_date %}
+                            <li class="dropdown-item-text">
+                                <small class="text-muted d-block">Last Commit:</small>
+                                <small>{{ version_info.commit_date[:10] }}</small>
+                            </li>
+                            {% endif %}
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item" href="#" onclick="showVersionModal()">
+                                    <i class="fas fa-list-alt me-2"></i>View Changelog
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="/changelog" target="_blank">
+                                    <i class="fas fa-history me-2"></i>Full Changelog
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="/version" target="_blank">
+                                    <i class="fas fa-external-link-alt me-2"></i>Version API
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
                     <li class="nav-item">
                         <button class="btn btn-outline-secondary btn-sm" onclick="toggleTheme()" id="themeToggle">
                             <i class="fas fa-moon" id="themeIcon"></i>
@@ -301,6 +399,37 @@
 
     <!-- Notification Container -->
     <div class="notification-container" id="notificationContainer"></div>
+
+    <!-- Version Modal -->
+    <div class="modal fade" id="versionModal" tabindex="-1" aria-labelledby="versionModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="versionModalLabel">
+                        <i class="fas fa-code-branch me-2"></i>
+                        Version Information & Changelog
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="versionModalContent">
+                        <div class="text-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2">Loading version information...</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <a href="/changelog" target="_blank" class="btn btn-primary">
+                        <i class="fas fa-history me-2"></i>Full Changelog
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Main content -->
     <main class="container-fluid px-4">
@@ -390,6 +519,173 @@
 
         // Initialize theme on page load
         document.addEventListener('DOMContentLoaded', initTheme);
+
+        // Version Modal Functions
+        function showVersionModal() {
+            const modal = new bootstrap.Modal(document.getElementById('versionModal'));
+            loadVersionModalContent();
+            modal.show();
+        }
+
+        function loadVersionModalContent() {
+            const content = document.getElementById('versionModalContent');
+            
+            // Show loading state
+            content.innerHTML = `
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading version information...</p>
+                </div>
+            `;
+
+            // Fetch version and changelog data
+            Promise.all([
+                fetch('/version').then(r => r.json()),
+                fetch('/api/changelog').then(r => r.json())
+            ]).then(([versionData, changelogData]) => {
+                renderVersionModalContent(versionData, changelogData);
+            }).catch(error => {
+                content.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Error loading version information: ${error.message}
+                    </div>
+                `;
+            });
+        }
+
+        function renderVersionModalContent(versionData, changelogData) {
+            const content = document.getElementById('versionModalContent');
+            const currentVersion = versionData.version;
+            const latestChangelog = changelogData.changelog[currentVersion] || changelogData.changelog[changelogData.versions[0]];
+            
+            content.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header bg-primary text-white">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Current Version
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="text-center mb-3">
+                                    <span class="badge bg-primary fs-5">${currentVersion}</span>
+                                </div>
+                                <div class="version-details">
+                                    <div class="mb-2">
+                                        <strong>Commit:</strong> 
+                                        <code class="ms-1">${versionData.commit_hash || 'N/A'}</code>
+                                    </div>
+                                    <div class="mb-2">
+                                        <strong>Branch:</strong> 
+                                        <span class="badge bg-secondary ms-1">${versionData.branch || 'N/A'}</span>
+                                    </div>
+                                    <div class="mb-2">
+                                        <strong>Build Date:</strong> 
+                                        <small class="text-muted">${new Date(versionData.build_date).toLocaleString()}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header bg-success text-white">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-rocket me-2"></i>
+                                    Latest Changes
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                ${latestChangelog ? `
+                                    <h6 class="text-primary">${latestChangelog.title}</h6>
+                                    <p class="text-muted small">${latestChangelog.description}</p>
+                                    <div class="changelog-preview">
+                                        ${latestChangelog.changes.slice(0, 3).map(change => `
+                                            <div class="change-item mb-2">
+                                                <span class="badge bg-${getChangeTypeColor(change.type)} me-2">${change.type}</span>
+                                                <small>${change.title}</small>
+                                            </div>
+                                        `).join('')}
+                                        ${latestChangelog.changes.length > 3 ? `
+                                            <div class="text-center mt-2">
+                                                <small class="text-muted">+${latestChangelog.changes.length - 3} more changes</small>
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                ` : `
+                                    <p class="text-muted">No changelog available for current version.</p>
+                                `}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-history me-2"></i>
+                                    Recent Versions
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="version-list">
+                                    ${changelogData.versions.slice(0, 5).map(version => {
+                                        const versionInfo = changelogData.changelog[version];
+                                        return `
+                                            <div class="version-item d-flex justify-content-between align-items-center p-2 border-bottom">
+                                                <div>
+                                                    <strong>v${version}</strong>
+                                                    <span class="badge bg-${getVersionTypeColor(versionInfo?.type)} ms-2">${versionInfo?.type || 'unknown'}</span>
+                                                    <br>
+                                                    <small class="text-muted">${versionInfo?.title || 'No title'}</small>
+                                                </div>
+                                                <div class="text-end">
+                                                    <small class="text-muted">${versionInfo?.date || 'Unknown date'}</small>
+                                                    <br>
+                                                    <a href="/changelog/${version}" class="btn btn-sm btn-outline-primary" target="_blank">
+                                                        <i class="fas fa-external-link-alt"></i>
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function getChangeTypeColor(type) {
+            const colors = {
+                'feature': 'success',
+                'improvement': 'info',
+                'bugfix': 'warning',
+                'security': 'danger',
+                'deprecation': 'secondary',
+                'breaking': 'danger'
+            };
+            return colors[type] || 'secondary';
+        }
+
+        function getVersionTypeColor(type) {
+            const colors = {
+                'major': 'danger',
+                'minor': 'warning',
+                'patch': 'info',
+                'beta': 'secondary',
+                'rc': 'primary'
+            };
+            return colors[type] || 'secondary';
+        }
     </script>
 
     {% block extra_js %}{% endblock %}

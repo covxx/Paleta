@@ -1,0 +1,501 @@
+{% extends "base_header.html" %}
+
+{% block title %}Changelog - Version History{% endblock %}
+
+{% block extra_css %}
+<style>
+    .changelog-hero {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 3rem 0;
+        margin: -2rem -1rem 3rem -1rem;
+        text-align: center;
+    }
+
+    .changelog-hero h1 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+    }
+
+    .changelog-hero p {
+        font-size: 1.25rem;
+        opacity: 0.9;
+    }
+
+    .version-card {
+        background: var(--bg-secondary);
+        border-radius: 15px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow);
+        transition: all 0.3s ease;
+    }
+
+    .version-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .version-header {
+        display: flex;
+        justify-content: between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .version-number {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--primary-color);
+        margin: 0;
+    }
+
+    .version-meta {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .version-type-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+
+    .version-type-major { background: #fee2e2; color: #991b1b; }
+    .version-type-minor { background: #fef3c7; color: #92400e; }
+    .version-type-patch { background: #dbeafe; color: #1e40af; }
+    .version-type-beta { background: #f3f4f6; color: #374151; }
+    .version-type-rc { background: #e0e7ff; color: #3730a3; }
+
+    .version-date {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+
+    .version-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+    }
+
+    .version-description {
+        color: var(--text-secondary);
+        font-size: 1.1rem;
+        margin-bottom: 2rem;
+        line-height: 1.6;
+    }
+
+    .changes-section {
+        margin-bottom: 2rem;
+    }
+
+    .section-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .change-item {
+        background: var(--gray-50);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        border-left: 4px solid var(--border-color);
+        transition: all 0.2s ease;
+    }
+
+    .change-item:hover {
+        background: var(--gray-100);
+        transform: translateX(4px);
+    }
+
+    .change-type-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        margin-right: 0.75rem;
+    }
+
+    .change-type-feature { background: #d1fae5; color: #065f46; }
+    .change-type-improvement { background: #dbeafe; color: #1e40af; }
+    .change-type-bugfix { background: #fef3c7; color: #92400e; }
+    .change-type-security { background: #fee2e2; color: #991b1b; }
+    .change-type-deprecation { background: #f3f4f6; color: #374151; }
+    .change-type-breaking { background: #fecaca; color: #991b1b; }
+
+    .change-title {
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+    }
+
+    .change-description {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        line-height: 1.4;
+    }
+
+    .issues-section {
+        background: var(--gray-50);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-top: 2rem;
+    }
+
+    .issue-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem;
+        background: white;
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+        border: 1px solid var(--border-color);
+    }
+
+    .issue-info {
+        flex: 1;
+    }
+
+    .issue-id {
+        font-weight: 600;
+        color: var(--primary-color);
+        margin-right: 0.5rem;
+    }
+
+    .issue-title {
+        color: var(--text-primary);
+    }
+
+    .issue-status {
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .issue-status-completed { background: #d1fae5; color: #065f46; }
+    .issue-status-open { background: #fef3c7; color: #92400e; }
+    .issue-status-in_progress { background: #dbeafe; color: #1e40af; }
+    .issue-status-cancelled { background: #f3f4f6; color: #374151; }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 3rem;
+    }
+
+    .stat-card {
+        background: var(--bg-secondary);
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-align: center;
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow);
+    }
+
+    .stat-number {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--primary-color);
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+
+    .version-filter {
+        background: var(--bg-secondary);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        border: 1px solid var(--border-color);
+    }
+
+    .filter-buttons {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .filter-btn {
+        padding: 0.5rem 1rem;
+        border: 2px solid var(--border-color);
+        background: transparent;
+        color: var(--text-primary);
+        border-radius: 20px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+
+    .filter-btn.active {
+        background: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+    }
+
+    .filter-btn:hover {
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+    }
+
+    .filter-btn.active:hover {
+        background: var(--primary-dark);
+        color: white;
+    }
+
+    @media (max-width: 768px) {
+        .version-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .version-meta {
+            width: 100%;
+            justify-content: space-between;
+        }
+
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .filter-buttons {
+            justify-content: center;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Hero Section -->
+    <div class="changelog-hero">
+        <div class="container">
+            <h1>
+                <i class="fas fa-history me-3"></i>
+                Changelog
+            </h1>
+            <p>Track all changes, improvements, and new features across versions</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Statistics -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number">{{ changelog_summary.total_versions }}</div>
+                <div class="stat-label">Total Versions</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ changelog_summary.total_changes }}</div>
+                <div class="stat-label">Total Changes</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ changelog_summary.total_issues }}</div>
+                <div class="stat-label">Issues Tracked</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ changelog_summary.latest_version }}</div>
+                <div class="stat-label">Latest Version</div>
+            </div>
+        </div>
+
+        <!-- Version Filter -->
+        <div class="version-filter">
+            <h5 class="mb-3">
+                <i class="fas fa-filter me-2"></i>
+                Filter by Version Type
+            </h5>
+            <div class="filter-buttons">
+                <button class="filter-btn active" onclick="filterVersions('all')">All</button>
+                <button class="filter-btn" onclick="filterVersions('major')">Major</button>
+                <button class="filter-btn" onclick="filterVersions('minor')">Minor</button>
+                <button class="filter-btn" onclick="filterVersions('patch')">Patch</button>
+                <button class="filter-btn" onclick="filterVersions('beta')">Beta</button>
+            </div>
+        </div>
+
+        <!-- Version List -->
+        <div id="versionList">
+            {% for version in all_versions %}
+                {% set version_data = changelog_data[version] %}
+                <div class="version-card" data-version-type="{{ version_data.type }}">
+                    <div class="version-header">
+                        <div>
+                            <h2 class="version-number">v{{ version }}</h2>
+                            <div class="version-meta">
+                                <span class="version-type-badge version-type-{{ version_data.type }}">
+                                    {{ version_data.type.title() }}
+                                </span>
+                                <span class="version-date">
+                                    <i class="fas fa-calendar me-1"></i>
+                                    {{ version_data.date }}
+                                </span>
+                            </div>
+                        </div>
+                        <div>
+                            <a href="/changelog/{{ version }}" class="btn btn-outline-primary">
+                                <i class="fas fa-external-link-alt me-2"></i>
+                                View Details
+                            </a>
+                        </div>
+                    </div>
+
+                    <h3 class="version-title">{{ version_data.title }}</h3>
+                    <p class="version-description">{{ version_data.description }}</p>
+
+                    <!-- Changes -->
+                    <div class="changes-section">
+                        <h4 class="section-title">
+                            <i class="fas fa-list-ul me-2"></i>
+                            Changes ({{ version_data.changes|length }})
+                        </h4>
+                        {% for change in version_data.changes[:5] %}
+                            <div class="change-item">
+                                <div class="change-title">
+                                    <span class="change-type-badge change-type-{{ change.type }}">
+                                        {{ change.type.title() }}
+                                    </span>
+                                    {{ change.title }}
+                                </div>
+                                <div class="change-description">{{ change.description }}</div>
+                            </div>
+                        {% endfor %}
+                        {% if version_data.changes|length > 5 %}
+                            <div class="text-center mt-3">
+                                <a href="/changelog/{{ version }}" class="btn btn-outline-secondary">
+                                    View All {{ version_data.changes|length }} Changes
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Issues -->
+                    {% if version_data.issues %}
+                        <div class="issues-section">
+                            <h4 class="section-title">
+                                <i class="fas fa-bug me-2"></i>
+                                Issues ({{ version_data.issues|length }})
+                            </h4>
+                            {% for issue in version_data.issues %}
+                                <div class="issue-item">
+                                    <div class="issue-info">
+                                        <span class="issue-id">{{ issue.id }}</span>
+                                        <span class="issue-title">{{ issue.title }}</span>
+                                    </div>
+                                    <span class="issue-status issue-status-{{ issue.status }}">
+                                        {{ issue.status.replace('_', ' ').title() }}
+                                    </span>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                    <!-- Breaking Changes -->
+                    {% if version_data.breaking_changes %}
+                        <div class="changes-section">
+                            <h4 class="section-title text-danger">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                Breaking Changes
+                            </h4>
+                            {% for breaking in version_data.breaking_changes %}
+                                <div class="change-item" style="border-left-color: #dc2626;">
+                                    <div class="change-title text-danger">{{ breaking.title }}</div>
+                                    <div class="change-description">{{ breaking.description }}</div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-5 mb-4">
+            <p class="text-muted">
+                <i class="fas fa-info-circle me-2"></i>
+                For detailed version information, visit the 
+                <a href="/version" target="_blank">Version API</a> or 
+                <a href="/admin/version">Admin Panel</a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function filterVersions(type) {
+        // Update filter buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        event.target.classList.add('active');
+
+        // Filter version cards
+        const versionCards = document.querySelectorAll('.version-card');
+        versionCards.forEach(card => {
+            if (type === 'all' || card.dataset.versionType === type) {
+                card.style.display = 'block';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
+
+    // Add smooth scrolling for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
+
+    // Add animation on scroll
+    const observerOptions = {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+            }
+        });
+    }, observerOptions);
+
+    // Observe all version cards
+    document.querySelectorAll('.version-card').forEach(card => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        observer.observe(card);
+    });
+</script>
+{% endblock %}

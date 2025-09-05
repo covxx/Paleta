@@ -26,11 +26,11 @@ Create a `.env` file in your project root with the following variables:
 
 ```bash
 # QuickBooks App Credentials
-QB_CLIENT_ID=your_quickbooks_client_id_here
-QB_CLIENT_SECRET=your_quickbooks_client_secret_here
+QB_CLIENT_ID=ABUW0U3AsMTGyq7bb1ujpj17IodZlrGkMYtjaWGfke6gcztmtY
+QB_CLIENT_SECRET=H75cxmzTruVA2LpU27IyAUzJKJlsNgWHMrJaz3MN
 
-# QuickBooks Company ID (found in your QB company settings)
-QB_COMPANY_ID=your_quickbooks_company_id_here
+# QuickBooks Company ID (sandbox company ID for testing)
+QB_COMPANY_ID=9341455300640805
 
 # QuickBooks Redirect URI
 QB_REDIRECT_URI=http://localhost:5001/qb/callback

@@ -1,0 +1,532 @@
+{% extends "base_header.html" %}
+
+{% block title %}Version {{ version }} - Changelog{% endblock %}
+
+{% block extra_css %}
+<style>
+    .version-hero {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 3rem 0;
+        margin: -2rem -1rem 3rem -1rem;
+        text-align: center;
+    }
+
+    .version-hero h1 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+    }
+
+    .version-hero p {
+        font-size: 1.25rem;
+        opacity: 0.9;
+    }
+
+    .version-header {
+        background: var(--bg-secondary);
+        border-radius: 15px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow);
+    }
+
+    .version-number {
+        font-size: 3rem;
+        font-weight: 700;
+        color: var(--primary-color);
+        margin-bottom: 0.5rem;
+    }
+
+    .version-meta {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-bottom: 1rem;
+    }
+
+    .version-type-badge {
+        padding: 0.75rem 1.5rem;
+        border-radius: 25px;
+        font-weight: 600;
+        font-size: 1rem;
+    }
+
+    .version-type-major { background: #fee2e2; color: #991b1b; }
+    .version-type-minor { background: #fef3c7; color: #92400e; }
+    .version-type-patch { background: #dbeafe; color: #1e40af; }
+    .version-type-beta { background: #f3f4f6; color: #374151; }
+    .version-type-rc { background: #e0e7ff; color: #3730a3; }
+
+    .version-date {
+        color: var(--text-secondary);
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .version-title {
+        font-size: 2rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 1rem;
+    }
+
+    .version-description {
+        color: var(--text-secondary);
+        font-size: 1.2rem;
+        line-height: 1.6;
+        margin-bottom: 2rem;
+    }
+
+    .content-section {
+        background: var(--bg-secondary);
+        border-radius: 15px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow);
+    }
+
+    .section-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .change-item {
+        background: var(--gray-50);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        border-left: 4px solid var(--border-color);
+        transition: all 0.3s ease;
+    }
+
+    .change-item:hover {
+        background: var(--gray-100);
+        transform: translateX(4px);
+        box-shadow: var(--shadow);
+    }
+
+    .change-type-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 15px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        margin-right: 1rem;
+    }
+
+    .change-type-feature { background: #d1fae5; color: #065f46; }
+    .change-type-improvement { background: #dbeafe; color: #1e40af; }
+    .change-type-bugfix { background: #fef3c7; color: #92400e; }
+    .change-type-security { background: #fee2e2; color: #991b1b; }
+    .change-type-deprecation { background: #f3f4f6; color: #374151; }
+    .change-type-breaking { background: #fecaca; color: #991b1b; }
+
+    .change-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.75rem;
+    }
+
+    .change-description {
+        color: var(--text-secondary);
+        font-size: 1rem;
+        line-height: 1.6;
+    }
+
+    .issue-item {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow-sm);
+        transition: all 0.2s ease;
+    }
+
+    .issue-item:hover {
+        box-shadow: var(--shadow);
+        transform: translateY(-2px);
+    }
+
+    .issue-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 0.75rem;
+    }
+
+    .issue-id {
+        font-weight: 700;
+        color: var(--primary-color);
+        font-size: 1.1rem;
+        margin-right: 0.75rem;
+    }
+
+    .issue-title {
+        color: var(--text-primary);
+        font-size: 1.1rem;
+        font-weight: 600;
+        flex: 1;
+    }
+
+    .issue-meta {
+        display: flex;
+        gap: 0.75rem;
+        align-items: center;
+    }
+
+    .issue-status {
+        padding: 0.5rem 1rem;
+        border-radius: 15px;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+
+    .issue-status-completed { background: #d1fae5; color: #065f46; }
+    .issue-status-open { background: #fef3c7; color: #92400e; }
+    .issue-status-in_progress { background: #dbeafe; color: #1e40af; }
+    .issue-status-cancelled { background: #f3f4f6; color: #374151; }
+
+    .issue-priority {
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .issue-priority-high { background: #fee2e2; color: #991b1b; }
+    .issue-priority-medium { background: #fef3c7; color: #92400e; }
+    .issue-priority-low { background: #d1fae5; color: #065f46; }
+    .issue-priority-critical { background: #fecaca; color: #991b1b; }
+
+    .breaking-change {
+        background: #fef2f2;
+        border: 2px solid #fecaca;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .breaking-change .change-title {
+        color: #991b1b;
+    }
+
+    .deprecation-notice {
+        background: #f9fafb;
+        border: 2px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .contributors-section {
+        background: var(--gray-50);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-top: 2rem;
+    }
+
+    .contributor-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-top: 1rem;
+    }
+
+    .contributor-badge {
+        background: var(--primary-color);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    .navigation-section {
+        background: var(--bg-secondary);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        border: 1px solid var(--border-color);
+    }
+
+    .nav-buttons {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .nav-btn {
+        flex: 1;
+        min-width: 200px;
+        padding: 1rem;
+        border: 2px solid var(--border-color);
+        background: transparent;
+        color: var(--text-primary);
+        border-radius: 12px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+
+    .nav-btn:hover {
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow);
+    }
+
+    .nav-btn.primary {
+        background: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+    }
+
+    .nav-btn.primary:hover {
+        background: var(--primary-dark);
+        color: white;
+    }
+
+    @media (max-width: 768px) {
+        .version-meta {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+
+        .issue-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+
+        .issue-meta {
+            width: 100%;
+            justify-content: flex-start;
+        }
+
+        .nav-buttons {
+            flex-direction: column;
+        }
+
+        .nav-btn {
+            min-width: auto;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Hero Section -->
+    <div class="version-hero">
+        <div class="container">
+            <h1>Version {{ version }}</h1>
+            <p>{{ version_data.title }}</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Version Header -->
+        <div class="version-header">
+            <div class="text-center">
+                <h1 class="version-number">v{{ version }}</h1>
+                <div class="version-meta justify-content-center">
+                    <span class="version-type-badge version-type-{{ version_data.type }}">
+                        {{ version_data.type.title() }} Release
+                    </span>
+                    <span class="version-date">
+                        <i class="fas fa-calendar me-2"></i>
+                        {{ version_data.date }}
+                    </span>
+                </div>
+                <h2 class="version-title">{{ version_data.title }}</h2>
+                <p class="version-description">{{ version_data.description }}</p>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="navigation-section">
+            <div class="nav-buttons">
+                <a href="/changelog" class="nav-btn">
+                    <i class="fas fa-arrow-left me-2"></i>
+                    Back to Changelog
+                </a>
+                <a href="/admin/version" class="nav-btn">
+                    <i class="fas fa-cog me-2"></i>
+                    Version Management
+                </a>
+                <a href="/version" target="_blank" class="nav-btn primary">
+                    <i class="fas fa-code me-2"></i>
+                    Version API
+                </a>
+            </div>
+        </div>
+
+        <!-- Changes -->
+        <div class="content-section">
+            <h3 class="section-title">
+                <i class="fas fa-list-ul me-2"></i>
+                Changes ({{ version_data.changes|length }})
+            </h3>
+            {% for change in version_data.changes %}
+                <div class="change-item">
+                    <div class="change-title">
+                        <span class="change-type-badge change-type-{{ change.type }}">
+                            {{ change.type.title() }}
+                        </span>
+                        {{ change.title }}
+                    </div>
+                    <div class="change-description">{{ change.description }}</div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Issues -->
+        {% if version_data.issues %}
+            <div class="content-section">
+                <h3 class="section-title">
+                    <i class="fas fa-bug me-2"></i>
+                    Issues ({{ version_data.issues|length }})
+                </h3>
+                {% for issue in version_data.issues %}
+                    <div class="issue-item">
+                        <div class="issue-header">
+                            <div class="d-flex align-items-start">
+                                <span class="issue-id">{{ issue.id }}</span>
+                                <span class="issue-title">{{ issue.title }}</span>
+                            </div>
+                            <div class="issue-meta">
+                                <span class="issue-status issue-status-{{ issue.status }}">
+                                    {{ issue.status.replace('_', ' ').title() }}
+                                </span>
+                                {% if issue.priority %}
+                                    <span class="issue-priority issue-priority-{{ issue.priority }}">
+                                        {{ issue.priority.title() }}
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <!-- Breaking Changes -->
+        {% if version_data.breaking_changes %}
+            <div class="content-section">
+                <h3 class="section-title text-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Breaking Changes
+                </h3>
+                {% for breaking in version_data.breaking_changes %}
+                    <div class="breaking-change">
+                        <div class="change-title">{{ breaking.title }}</div>
+                        <div class="change-description">{{ breaking.description }}</div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <!-- Deprecations -->
+        {% if version_data.deprecations %}
+            <div class="content-section">
+                <h3 class="section-title text-warning">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    Deprecations
+                </h3>
+                {% for deprecation in version_data.deprecations %}
+                    <div class="deprecation-notice">
+                        <div class="change-title">{{ deprecation.title }}</div>
+                        <div class="change-description">{{ deprecation.description }}</div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <!-- Contributors -->
+        {% if version_data.contributors %}
+            <div class="contributors-section">
+                <h4 class="section-title">
+                    <i class="fas fa-users me-2"></i>
+                    Contributors
+                </h4>
+                <div class="contributor-list">
+                    {% for contributor in version_data.contributors %}
+                        <span class="contributor-badge">{{ contributor }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Footer -->
+        <div class="text-center mt-5 mb-4">
+            <p class="text-muted">
+                <i class="fas fa-info-circle me-2"></i>
+                This version was released on {{ version_data.date }}. 
+                For more information, visit the 
+                <a href="/changelog">full changelog</a> or 
+                <a href="/version" target="_blank">version API</a>.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Add smooth scrolling for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
+
+    // Add animation on scroll
+    const observerOptions = {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+            }
+        });
+    }, observerOptions);
+
+    // Observe all content sections
+    document.querySelectorAll('.content-section, .change-item, .issue-item').forEach(item => {
+        item.style.opacity = '0';
+        item.style.transform = 'translateY(20px)';
+        item.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        observer.observe(item);
+    });
+</script>
+{% endblock %}
