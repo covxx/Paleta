@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fill Order - Label Printer Inventory</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+                <div class="position-sticky pt-3">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link" href="/">
+                                <i class="fas fa-home"></i> Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/receiving">
+                                <i class="fas fa-truck"></i> Receiving
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/orders">
+                                <i class="fas fa-shopping-cart"></i> Orders
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/orders/new">
+                                <i class="fas fa-plus"></i> New Order
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/customers">
+                                <i class="fas fa-users"></i> Customers
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/quickbooks-import">
+                                <i class="fab fa-quickbooks"></i> QB Import
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/label-designer">
+                                <i class="fas fa-tags"></i> Label Designer
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/admin">
+                                <i class="fas fa-cog"></i> Admin
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- Main content -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2">Fill Order</h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        <a href="/orders" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left"></i> Back to Orders
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Order Information -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Order Information</h5>
+                    </div>
+                    <div class="card-body" id="orderInfo">
+                        <!-- Order info will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Order Items to Fill -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Order Items</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped" id="orderItemsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Item</th>
+                                        <th>Ordered</th>
+                                        <th>Filled</th>
+                                        <th>Remaining</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Order items will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Fill Item Modal -->
+    <div class="modal fade" id="fillItemModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Fill Order Item</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Item Details</h6>
+                            <p><strong>Item:</strong> <span id="fillItemName"></span></p>
+                            <p><strong>Quantity Ordered:</strong> <span id="fillQuantityOrdered"></span></p>
+                            <p><strong>Quantity Filled:</strong> <span id="fillQuantityFilled"></span></p>
+                            <p><strong>Remaining:</strong> <span id="fillQuantityRemaining"></span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Available Lots</h6>
+                            <div id="availableLots">
+                                <!-- Available lots will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <h6>Lot Allocations</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm" id="lotAllocationsTable">
+                            <thead>
+                                <tr>
+                                    <th>Lot Code</th>
+                                    <th>Available Qty</th>
+                                    <th>Allocate Qty</th>
+                                    <th>Expiry Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Lot allocations will be added here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <div class="alert alert-info">
+                                <strong>Total Allocated:</strong> <span id="totalAllocated">0</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="alert alert-warning">
+                                <strong>Remaining to Fill:</strong> <span id="remainingToFill">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-success" id="confirmFillBtn" onclick="confirmFill()">Confirm Fill</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let order = null;
+        let currentOrderItem = null;
+        let availableLots = [];
+        let lotAllocations = [];
+
+        // Get order ID from URL
+        const orderId = window.location.pathname.split('/').pop();
+
+        // Load data on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadOrder();
+        });
+
+        async function loadOrder() {
+            try {
+                const response = await fetch('/api/orders');
+                const orders = await response.json();
+                order = orders.find(o => o.id == orderId);
+                
+                if (!order) {
+                    alert('Order not found');
+                    window.location.href = '/orders';
+                    return;
+                }
+                
+                displayOrderInfo();
+                displayOrderItems();
+            } catch (error) {
+                console.error('Error loading order:', error);
+                alert('Error loading order');
+            }
+        }
+
+        function displayOrderInfo() {
+            const orderInfo = document.getElementById('orderInfo');
+            orderInfo.innerHTML = `
+                <div class="row">
+                    <div class="col-md-3">
+                        <strong>Order Number:</strong><br>
+                        ${order.order_number}
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Customer:</strong><br>
+                        ${order.customer_name}
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Order Date:</strong><br>
+                        ${formatDate(order.order_date)}
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Delivery Date:</strong><br>
+                        ${formatDate(order.requested_delivery_date)}
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-md-3">
+                        <strong>Status:</strong><br>
+                        <span class="badge bg-${getStatusColor(order.status)}">${order.status}</span>
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Total Amount:</strong><br>
+                        $${order.total_amount.toFixed(2)}
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Notes:</strong><br>
+                        ${order.notes || 'None'}
+                    </div>
+                </div>
+            `;
+        }
+
+        function displayOrderItems() {
+            const tbody = document.querySelector('#orderItemsTable tbody');
+            tbody.innerHTML = '';
+
+            order.order_items.forEach(item => {
+                const remaining = item.quantity_ordered - item.quantity_filled;
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.item_name}</td>
+                    <td>${item.quantity_ordered}</td>
+                    <td>${item.quantity_filled}</td>
+                    <td>${remaining}</td>
+                    <td><span class="badge bg-${getStatusColor(item.status)}">${item.status}</span></td>
+                    <td>
+                        ${remaining > 0 ? 
+                            `<button class="btn btn-sm btn-primary" onclick="fillOrderItem(${item.id})">
+                                <i class="fas fa-boxes"></i> Fill
+                            </button>` : 
+                            '<span class="text-muted">Complete</span>'
+                        }
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function getStatusColor(status) {
+            const colors = {
+                'pending': 'warning',
+                'partial': 'info',
+                'filled': 'success',
+                'in_progress': 'primary',
+                'shipped': 'secondary',
+                'completed': 'success',
+                'cancelled': 'danger'
+            };
+            return colors[status] || 'secondary';
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            return new Date(dateString).toLocaleDateString();
+        }
+
+        async function fillOrderItem(orderItemId) {
+            try {
+                // Get order item details
+                currentOrderItem = order.order_items.find(item => item.id === orderItemId);
+                
+                // Load available lots for this item
+                const response = await fetch(`/api/orders/${orderId}/lots-available?order_item_id=${orderItemId}`);
+                availableLots = await response.json();
+                
+                if (availableLots.length === 0) {
+                    alert('No available lots found for this item');
+                    return;
+                }
+                
+                // Display modal
+                displayFillModal();
+                
+                const modal = new bootstrap.Modal(document.getElementById('fillItemModal'));
+                modal.show();
+                
+            } catch (error) {
+                console.error('Error loading available lots:', error);
+                alert('Error loading available lots');
+            }
+        }
+
+        function displayFillModal() {
+            const remaining = currentOrderItem.quantity_ordered - currentOrderItem.quantity_filled;
+            
+            document.getElementById('fillItemName').textContent = currentOrderItem.item_name;
+            document.getElementById('fillQuantityOrdered').textContent = currentOrderItem.quantity_ordered;
+            document.getElementById('fillQuantityFilled').textContent = currentOrderItem.quantity_filled;
+            document.getElementById('fillQuantityRemaining').textContent = remaining;
+            document.getElementById('remainingToFill').textContent = remaining;
+            
+            // Display available lots
+            const availableLotsDiv = document.getElementById('availableLots');
+            availableLotsDiv.innerHTML = '';
+            
+            availableLots.forEach(lot => {
+                const lotDiv = document.createElement('div');
+                lotDiv.className = 'card mb-2';
+                lotDiv.innerHTML = `
+                    <div class="card-body p-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>${lot.lot_code}</strong><br>
+                                <small class="text-muted">Available: ${lot.quantity} ${lot.unit_type}</small>
+                            </div>
+                            <button class="btn btn-sm btn-outline-primary" onclick="addLotAllocation(${lot.id}, '${lot.lot_code}', ${lot.quantity})">
+                                <i class="fas fa-plus"></i> Add
+                            </button>
+                        </div>
+                    </div>
+                `;
+                availableLotsDiv.appendChild(lotDiv);
+            });
+            
+            // Clear previous allocations
+            lotAllocations = [];
+            updateLotAllocationsTable();
+        }
+
+        function addLotAllocation(lotId, lotCode, availableQuantity) {
+            // Check if lot is already allocated
+            if (lotAllocations.find(alloc => alloc.lot_id === lotId)) {
+                alert('This lot is already allocated');
+                return;
+            }
+            
+            const allocation = {
+                lot_id: lotId,
+                lot_code: lotCode,
+                available_quantity: availableQuantity,
+                allocated_quantity: 0
+            };
+            
+            lotAllocations.push(allocation);
+            updateLotAllocationsTable();
+        }
+
+        function updateLotAllocationsTable() {
+            const tbody = document.querySelector('#lotAllocationsTable tbody');
+            tbody.innerHTML = '';
+            
+            lotAllocations.forEach((allocation, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${allocation.lot_code}</td>
+                    <td>${allocation.available_quantity}</td>
+                    <td>
+                        <input type="number" class="form-control form-control-sm" 
+                               value="${allocation.allocated_quantity}" 
+                               min="0" 
+                               max="${allocation.available_quantity}"
+                               step="0.01"
+                               onchange="updateAllocationQuantity(${index}, this.value)">
+                    </td>
+                    <td>${formatDate(availableLots.find(lot => lot.id === allocation.lot_id)?.expiry_date)}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-danger" onclick="removeLotAllocation(${index})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            updateAllocationSummary();
+        }
+
+        function updateAllocationQuantity(index, quantity) {
+            const allocation = lotAllocations[index];
+            const newQuantity = parseFloat(quantity) || 0;
+            
+            if (newQuantity > allocation.available_quantity) {
+                alert('Allocated quantity cannot exceed available quantity');
+                allocation.allocated_quantity = allocation.available_quantity;
+                document.querySelector(`#lotAllocationsTable tbody tr:nth-child(${index + 1}) input`).value = allocation.available_quantity;
+            } else {
+                allocation.allocated_quantity = newQuantity;
+            }
+            
+            updateAllocationSummary();
+        }
+
+        function removeLotAllocation(index) {
+            lotAllocations.splice(index, 1);
+            updateLotAllocationsTable();
+        }
+
+        function updateAllocationSummary() {
+            const totalAllocated = lotAllocations.reduce((sum, alloc) => sum + alloc.allocated_quantity, 0);
+            const remaining = currentOrderItem.quantity_ordered - currentOrderItem.quantity_filled;
+            
+            document.getElementById('totalAllocated').textContent = totalAllocated;
+            document.getElementById('remainingToFill').textContent = remaining - totalAllocated;
+            
+            // Enable/disable confirm button
+            const confirmBtn = document.getElementById('confirmFillBtn');
+            if (totalAllocated > 0 && totalAllocated <= remaining) {
+                confirmBtn.disabled = false;
+                confirmBtn.className = 'btn btn-success';
+            } else {
+                confirmBtn.disabled = true;
+                confirmBtn.className = 'btn btn-secondary';
+            }
+        }
+
+        async function confirmFill() {
+            const totalAllocated = lotAllocations.reduce((sum, alloc) => sum + alloc.allocated_quantity, 0);
+            const remaining = currentOrderItem.quantity_ordered - currentOrderItem.quantity_filled;
+            
+            if (totalAllocated <= 0) {
+                alert('Please allocate at least some quantity');
+                return;
+            }
+            
+            if (totalAllocated > remaining) {
+                alert('Total allocated quantity cannot exceed remaining quantity');
+                return;
+            }
+            
+            try {
+                const fillData = {
+                    order_item_id: currentOrderItem.id,
+                    lot_allocations: lotAllocations.map(alloc => ({
+                        lot_id: alloc.lot_id,
+                        quantity: alloc.allocated_quantity
+                    }))
+                };
+                
+                const response = await fetch(`/api/orders/${orderId}/fill`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(fillData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('Order item filled successfully!');
+                    bootstrap.Modal.getInstance(document.getElementById('fillItemModal')).hide();
+                    loadOrder(); // Reload order data
+                } else {
+                    alert('Error filling order item: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error filling order item:', error);
+                alert('Error filling order item');
+            }
+        }
+    </script>
+</body>
+</html>

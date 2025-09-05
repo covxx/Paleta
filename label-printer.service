@@ -1,0 +1,35 @@
+[Unit]
+Description=Label Printer Application
+After=network.target
+
+[Service]
+Type=notify
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/label-printer
+Environment=PATH=/opt/label-printer/venv/bin
+Environment=FLASK_ENV=production
+Environment=PYTHONPATH=/opt/label-printer
+ExecStart=/opt/label-printer/venv/bin/gunicorn --config gunicorn.conf.py app:app
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+TimeoutStopSec=5
+PrivateTmp=true
+Restart=always
+RestartSec=10
+
+# Security settings
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/label-printer/uploads /opt/label-printer/instance /var/log/label-printer /var/run/label-printer
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+[Install]
+WantedBy=multi-user.target

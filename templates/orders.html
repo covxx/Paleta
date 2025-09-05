@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Management - Label Printer Inventory</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+                <div class="position-sticky pt-3">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link" href="/">
+                                <i class="fas fa-home"></i> Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/receiving">
+                                <i class="fas fa-truck"></i> Receiving
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link active" href="/orders">
+                                <i class="fas fa-shopping-cart"></i> Orders
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/orders/new">
+                                <i class="fas fa-plus"></i> New Order
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/customers">
+                                <i class="fas fa-users"></i> Customers
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/quickbooks-import">
+                                <i class="fab fa-quickbooks"></i> QB Import
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/label-designer">
+                                <i class="fas fa-tags"></i> Label Designer
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/admin">
+                                <i class="fas fa-cog"></i> Admin
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- Main content -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2">Order Management</h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        <a href="/orders/new" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> New Order
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <select id="statusFilter" class="form-select">
+                            <option value="">All Statuses</option>
+                            <option value="pending">Pending</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="filled">Filled</option>
+                            <option value="shipped">Shipped</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select id="customerFilter" class="form-select">
+                            <option value="">All Customers</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <input type="date" id="dateFilter" class="form-control" placeholder="Filter by date">
+                    </div>
+                    <div class="col-md-3">
+                        <button id="clearFilters" class="btn btn-outline-secondary">
+                            <i class="fas fa-times"></i> Clear Filters
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Orders Table -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Orders</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover" id="ordersTable">
+                                <thead>
+                                    <tr>
+                                        <th>Order #</th>
+                                        <th>Customer</th>
+                                        <th>Date</th>
+                                        <th>Delivery Date</th>
+                                        <th>Status</th>
+                                        <th>Total</th>
+                                        <th>QB Sync</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Orders will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Order Details Modal -->
+                <div class="modal fade" id="orderDetailsModal" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Order Details</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body" id="orderDetailsContent">
+                                <!-- Order details will be loaded here -->
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                <button type="button" class="btn btn-primary" id="fillOrderBtn" style="display: none;">
+                                    <i class="fas fa-boxes"></i> Fill Order
+                                </button>
+                                <button type="button" class="btn btn-success" id="syncQBBtn" style="display: none;">
+                                    <i class="fab fa-quickbooks"></i> Sync to QB
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let orders = [];
+        let customers = [];
+        let currentOrderId = null;
+
+        // Load data on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCustomers();
+            loadOrders();
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            document.getElementById('statusFilter').addEventListener('change', filterOrders);
+            document.getElementById('customerFilter').addEventListener('change', filterOrders);
+            document.getElementById('dateFilter').addEventListener('change', filterOrders);
+            document.getElementById('clearFilters').addEventListener('click', clearFilters);
+            document.getElementById('fillOrderBtn').addEventListener('click', fillOrder);
+            document.getElementById('syncQBBtn').addEventListener('click', syncToQuickBooks);
+        }
+
+        async function loadCustomers() {
+            try {
+                const response = await fetch('/api/customers');
+                customers = await response.json();
+                
+                const customerFilter = document.getElementById('customerFilter');
+                customers.forEach(customer => {
+                    const option = document.createElement('option');
+                    option.value = customer.id;
+                    option.textContent = customer.name;
+                    customerFilter.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading customers:', error);
+            }
+        }
+
+        async function loadOrders() {
+            try {
+                const response = await fetch('/api/orders');
+                orders = await response.json();
+                displayOrders(orders);
+            } catch (error) {
+                console.error('Error loading orders:', error);
+            }
+        }
+
+        function displayOrders(ordersToShow) {
+            const tbody = document.querySelector('#ordersTable tbody');
+            tbody.innerHTML = '';
+
+            ordersToShow.forEach(order => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong>${order.order_number}</strong></td>
+                    <td>${order.customer_name || 'Unknown'}</td>
+                    <td>${formatDate(order.order_date)}</td>
+                    <td>${formatDate(order.requested_delivery_date)}</td>
+                    <td><span class="badge bg-${getStatusColor(order.status)}">${order.status}</span></td>
+                    <td>$${order.total_amount.toFixed(2)}</td>
+                    <td>
+                        ${order.quickbooks_synced ? 
+                            '<i class="fas fa-check text-success" title="Synced to QuickBooks"></i>' : 
+                            '<i class="fas fa-times text-muted" title="Not synced"></i>'
+                        }
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="showOrderDetails(${order.id})">
+                            <i class="fas fa-eye"></i> View
+                        </button>
+                        ${order.status === 'pending' || order.status === 'in_progress' ? 
+                            `<button class="btn btn-sm btn-success" onclick="fillOrder(${order.id})">
+                                <i class="fas fa-boxes"></i> Fill
+                            </button>` : ''
+                        }
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function getStatusColor(status) {
+            const colors = {
+                'pending': 'warning',
+                'in_progress': 'info',
+                'filled': 'primary',
+                'shipped': 'secondary',
+                'completed': 'success',
+                'cancelled': 'danger'
+            };
+            return colors[status] || 'secondary';
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            return new Date(dateString).toLocaleDateString();
+        }
+
+        function filterOrders() {
+            const statusFilter = document.getElementById('statusFilter').value;
+            const customerFilter = document.getElementById('customerFilter').value;
+            const dateFilter = document.getElementById('dateFilter').value;
+
+            let filteredOrders = orders;
+
+            if (statusFilter) {
+                filteredOrders = filteredOrders.filter(order => order.status === statusFilter);
+            }
+
+            if (customerFilter) {
+                filteredOrders = filteredOrders.filter(order => order.customer_id == customerFilter);
+            }
+
+            if (dateFilter) {
+                filteredOrders = filteredOrders.filter(order => {
+                    const orderDate = new Date(order.order_date).toDateString();
+                    const filterDate = new Date(dateFilter).toDateString();
+                    return orderDate === filterDate;
+                });
+            }
+
+            displayOrders(filteredOrders);
+        }
+
+        function clearFilters() {
+            document.getElementById('statusFilter').value = '';
+            document.getElementById('customerFilter').value = '';
+            document.getElementById('dateFilter').value = '';
+            displayOrders(orders);
+        }
+
+        async function showOrderDetails(orderId) {
+            try {
+                const order = orders.find(o => o.id === orderId);
+                if (!order) return;
+
+                currentOrderId = orderId;
+
+                const modal = new bootstrap.Modal(document.getElementById('orderDetailsModal'));
+                const content = document.getElementById('orderDetailsContent');
+                
+                content.innerHTML = `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Order Information</h6>
+                            <p><strong>Order Number:</strong> ${order.order_number}</p>
+                            <p><strong>Customer:</strong> ${order.customer_name}</p>
+                            <p><strong>Order Date:</strong> ${formatDate(order.order_date)}</p>
+                            <p><strong>Delivery Date:</strong> ${formatDate(order.requested_delivery_date)}</p>
+                            <p><strong>Status:</strong> <span class="badge bg-${getStatusColor(order.status)}">${order.status}</span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Financial Information</h6>
+                            <p><strong>Subtotal:</strong> $${order.subtotal.toFixed(2)}</p>
+                            <p><strong>Tax:</strong> $${order.tax_amount.toFixed(2)}</p>
+                            <p><strong>Total:</strong> $${order.total_amount.toFixed(2)}</p>
+                            <p><strong>QuickBooks:</strong> ${order.quickbooks_synced ? 'Synced' : 'Not Synced'}</p>
+                        </div>
+                    </div>
+                    <hr>
+                    <h6>Order Items</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Ordered</th>
+                                    <th>Filled</th>
+                                    <th>Unit Price</th>
+                                    <th>Total</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${order.order_items.map(item => `
+                                    <tr>
+                                        <td>${item.item_name}</td>
+                                        <td>${item.quantity_ordered}</td>
+                                        <td>${item.quantity_filled}</td>
+                                        <td>$${item.unit_price.toFixed(2)}</td>
+                                        <td>$${item.total_price.toFixed(2)}</td>
+                                        <td><span class="badge bg-${getStatusColor(item.status)}">${item.status}</span></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    ${order.notes ? `<hr><h6>Notes</h6><p>${order.notes}</p>` : ''}
+                `;
+
+                // Show/hide action buttons based on order status
+                const fillBtn = document.getElementById('fillOrderBtn');
+                const syncBtn = document.getElementById('syncQBBtn');
+                
+                if (order.status === 'pending' || order.status === 'in_progress') {
+                    fillBtn.style.display = 'inline-block';
+                } else {
+                    fillBtn.style.display = 'none';
+                }
+
+                if (!order.quickbooks_synced && (order.status === 'filled' || order.status === 'completed')) {
+                    syncBtn.style.display = 'inline-block';
+                } else {
+                    syncBtn.style.display = 'none';
+                }
+
+                modal.show();
+            } catch (error) {
+                console.error('Error showing order details:', error);
+                alert('Error loading order details');
+            }
+        }
+
+        function fillOrder(orderId) {
+            if (orderId) {
+                window.location.href = `/orders/${orderId}/fill`;
+            } else if (currentOrderId) {
+                window.location.href = `/orders/${currentOrderId}/fill`;
+            }
+        }
+
+        async function syncToQuickBooks() {
+            if (!currentOrderId) return;
+
+            try {
+                const response = await fetch(`/api/orders/${currentOrderId}/sync-quickbooks`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('Order synced to QuickBooks successfully!');
+                    loadOrders(); // Reload orders to update sync status
+                    bootstrap.Modal.getInstance(document.getElementById('orderDetailsModal')).hide();
+                } else {
+                    alert('Error syncing to QuickBooks: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error syncing to QuickBooks:', error);
+                alert('Error syncing to QuickBooks');
+            }
+        }
+    </script>
+</body>
+</html>

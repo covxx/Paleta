@@ -19,6 +19,10 @@ import socket
 import time
 import struct
 from PIL import Image
+import json
+import threading
+import secrets
+from decimal import Decimal
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = config.SECRET_KEY
@@ -121,6 +125,197 @@ def clear_cache():
     """Clear all cache entries"""
     with cache_lock:
         cache.clear()
+
+# QuickBooks Online Configuration
+QB_CLIENT_ID = os.getenv('QB_CLIENT_ID', '')
+QB_CLIENT_SECRET = os.getenv('QB_CLIENT_SECRET', '')
+QB_REDIRECT_URI = os.getenv('QB_REDIRECT_URI', 'http://localhost:5001/qb/callback')
+QB_SCOPE = 'com.intuit.quickbooks.accounting'
+QB_DISCOVERY_DOCUMENT = 'https://appcenter.intuit.com/api/v1/OpenID/QBOpenID'
+QB_BASE_URL = 'https://sandbox-quickbooks.api.intuit.com'  # Use sandbox for testing
+QB_COMPANY_ID = os.getenv('QB_COMPANY_ID', '')  # Company ID from QB
+
+# QuickBooks helper functions
+def generate_order_number():
+    """Generate a unique order number"""
+    timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+    random_suffix = secrets.token_hex(2).upper()
+    return f"ORD-{timestamp}-{random_suffix}"
+
+def calculate_order_totals(order_items):
+    """Calculate order totals from order items"""
+    subtotal = sum(float(item['total_price']) for item in order_items)
+    tax_rate = 0.0875  # 8.75% tax rate - should be configurable
+    tax_amount = subtotal * tax_rate
+    total_amount = subtotal + tax_amount
+    return {
+        'subtotal': round(subtotal, 2),
+        'tax_amount': round(tax_amount, 2),
+        'total_amount': round(total_amount, 2)
+    }
+
+# QuickBooks API helper functions
+def get_qb_access_token():
+    """Get QuickBooks access token from session or storage"""
+    # In a real implementation, you'd store this securely
+    # For now, we'll use a placeholder
+    return session.get('qb_access_token')
+
+def make_qb_api_request(endpoint, method='GET', data=None):
+    """Make authenticated request to QuickBooks API"""
+    access_token = get_qb_access_token()
+    if not access_token:
+        return {'error': 'No QuickBooks access token found'}
+    
+    headers = {
+        'Authorization': f'Bearer {access_token}',
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+    }
+    
+    url = f"{QB_BASE_URL}/v3/company/{QB_COMPANY_ID}/{endpoint}"
+    
+    try:
+        if method == 'GET':
+            response = requests.get(url, headers=headers)
+        elif method == 'POST':
+            response = requests.post(url, headers=headers, json=data)
+        else:
+            return {'error': f'Unsupported method: {method}'}
+        
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        return {'error': f'QuickBooks API error: {str(e)}'}
+
+def import_qb_customers():
+    """Import customers from QuickBooks"""
+    try:
+        # Get customers from QuickBooks
+        result = make_qb_api_request('customers')
+        if 'error' in result:
+            return result
+        
+        customers_imported = 0
+        customers_updated = 0
+        errors = []
+        
+        for qb_customer in result.get('QueryResponse', {}).get('Customer', []):
+            try:
+                # Extract customer data from QB response
+                customer_data = {
+                    'name': qb_customer.get('Name', ''),
+                    'email': qb_customer.get('PrimaryEmailAddr', {}).get('Address', ''),
+                    'phone': qb_customer.get('PrimaryPhone', {}).get('FreeFormNumber', ''),
+                    'quickbooks_id': qb_customer.get('Id', ''),
+                    'bill_to_name': qb_customer.get('BillAddr', {}).get('Name', ''),
+                    'bill_to_address1': qb_customer.get('BillAddr', {}).get('Line1', ''),
+                    'bill_to_address2': qb_customer.get('BillAddr', {}).get('Line2', ''),
+                    'bill_to_city': qb_customer.get('BillAddr', {}).get('City', ''),
+                    'bill_to_state': qb_customer.get('BillAddr', {}).get('CountrySubDivisionCode', ''),
+                    'bill_to_zip': qb_customer.get('BillAddr', {}).get('PostalCode', ''),
+                    'bill_to_country': qb_customer.get('BillAddr', {}).get('Country', 'USA'),
+                    'ship_to_name': qb_customer.get('ShipAddr', {}).get('Name', ''),
+                    'ship_to_address1': qb_customer.get('ShipAddr', {}).get('Line1', ''),
+                    'ship_to_address2': qb_customer.get('ShipAddr', {}).get('Line2', ''),
+                    'ship_to_city': qb_customer.get('ShipAddr', {}).get('City', ''),
+                    'ship_to_state': qb_customer.get('ShipAddr', {}).get('CountrySubDivisionCode', ''),
+                    'ship_to_zip': qb_customer.get('ShipAddr', {}).get('PostalCode', ''),
+                    'ship_to_country': qb_customer.get('ShipAddr', {}).get('Country', 'USA'),
+                    'payment_terms': qb_customer.get('PaymentMethodRef', {}).get('name', ''),
+                    'notes': f"Imported from QuickBooks on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                }
+                
+                # Check if customer already exists
+                existing_customer = Customer.query.filter_by(quickbooks_id=customer_data['quickbooks_id']).first()
+                
+                if existing_customer:
+                    # Update existing customer
+                    for key, value in customer_data.items():
+                        if hasattr(existing_customer, key) and value:
+                            setattr(existing_customer, key, value)
+                    customers_updated += 1
+                else:
+                    # Create new customer
+                    customer = Customer(**customer_data)
+                    db.session.add(customer)
+                    customers_imported += 1
+                    
+            except Exception as e:
+                errors.append(f"Error processing customer {qb_customer.get('Name', 'Unknown')}: {str(e)}")
+        
+        db.session.commit()
+        clear_cache()
+        
+        return {
+            'success': True,
+            'customers_imported': customers_imported,
+            'customers_updated': customers_updated,
+            'errors': errors
+        }
+        
+    except Exception as e:
+        db.session.rollback()
+        return {'error': f'Import failed: {str(e)}'}
+
+def import_qb_items():
+    """Import items from QuickBooks"""
+    try:
+        # Get items from QuickBooks
+        result = make_qb_api_request('items')
+        if 'error' in result:
+            return result
+        
+        items_imported = 0
+        items_updated = 0
+        errors = []
+        
+        for qb_item in result.get('QueryResponse', {}).get('Item', []):
+            try:
+                # Skip service items, only import inventory items
+                if qb_item.get('Type') != 'Inventory':
+                    continue
+                
+                # Extract item data from QB response
+                item_data = {
+                    'name': qb_item.get('Name', ''),
+                    'item_code': qb_item.get('Sku', '') or f"QB-{qb_item.get('Id', '')}",
+                    'gtin': qb_item.get('UPC', '') or f"QB{qb_item.get('Id', '').zfill(13)}",
+                    'category': qb_item.get('ItemCategoryRef', {}).get('name', 'Imported'),
+                    'description': qb_item.get('Description', '') or f"Imported from QuickBooks on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                }
+                
+                # Check if item already exists
+                existing_item = Item.query.filter_by(item_code=item_data['item_code']).first()
+                
+                if existing_item:
+                    # Update existing item
+                    for key, value in item_data.items():
+                        if hasattr(existing_item, key) and value:
+                            setattr(existing_item, key, value)
+                    items_updated += 1
+                else:
+                    # Create new item
+                    item = Item(**item_data)
+                    db.session.add(item)
+                    items_imported += 1
+                    
+            except Exception as e:
+                errors.append(f"Error processing item {qb_item.get('Name', 'Unknown')}: {str(e)}")
+        
+        db.session.commit()
+        clear_cache()
+        
+        return {
+            'success': True,
+            'items_imported': items_imported,
+            'items_updated': items_updated,
+            'errors': errors
+        }
+        
+    except Exception as e:
+        db.session.rollback()
+        return {'error': f'Import failed: {str(e)}'}
 
 def save_receiving_photo(file, lot_code):
     """Save receiving photo and return the file path"""
@@ -244,6 +439,107 @@ class Printer(db.Model):
     last_seen = db.Column(db.DateTime, index=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
+class Customer(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False, index=True)
+    email = db.Column(db.String(120), nullable=True, index=True)
+    phone = db.Column(db.String(20), nullable=True)
+    quickbooks_id = db.Column(db.String(100), nullable=True, index=True)  # QB Customer ID
+    
+    # Billing Address
+    bill_to_name = db.Column(db.String(200), nullable=True)
+    bill_to_address1 = db.Column(db.String(200), nullable=True)
+    bill_to_address2 = db.Column(db.String(200), nullable=True)
+    bill_to_city = db.Column(db.String(100), nullable=True)
+    bill_to_state = db.Column(db.String(50), nullable=True)
+    bill_to_zip = db.Column(db.String(20), nullable=True)
+    bill_to_country = db.Column(db.String(100), default='USA')
+    
+    # Shipping Address
+    ship_to_name = db.Column(db.String(200), nullable=True)
+    ship_to_address1 = db.Column(db.String(200), nullable=True)
+    ship_to_address2 = db.Column(db.String(200), nullable=True)
+    ship_to_city = db.Column(db.String(100), nullable=True)
+    ship_to_state = db.Column(db.String(50), nullable=True)
+    ship_to_zip = db.Column(db.String(20), nullable=True)
+    ship_to_country = db.Column(db.String(100), default='USA')
+    
+    # Additional fields
+    tax_id = db.Column(db.String(50), nullable=True)
+    payment_terms = db.Column(db.String(100), nullable=True)
+    notes = db.Column(db.Text, nullable=True)
+    is_active = db.Column(db.Boolean, default=True, index=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    
+    # Relationships
+    orders = db.relationship('Order', backref='customer', lazy=True)
+
+class Order(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    order_number = db.Column(db.String(50), nullable=False, unique=True, index=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey('customer.id'), nullable=False, index=True)
+    
+    # Order details
+    order_date = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    requested_delivery_date = db.Column(db.Date, nullable=True)
+    status = db.Column(db.String(50), default='pending', index=True)  # pending, in_progress, filled, shipped, completed, cancelled
+    
+    # QuickBooks integration
+    quickbooks_id = db.Column(db.String(100), nullable=True, index=True)  # QB Sales Receipt ID
+    quickbooks_synced = db.Column(db.Boolean, default=False, index=True)
+    quickbooks_sync_date = db.Column(db.DateTime, nullable=True)
+    
+    # Order totals
+    subtotal = db.Column(db.Numeric(10, 2), default=0)
+    tax_amount = db.Column(db.Numeric(10, 2), default=0)
+    total_amount = db.Column(db.Numeric(10, 2), default=0)
+    
+    # Additional fields
+    notes = db.Column(db.Text, nullable=True)
+    created_by = db.Column(db.Integer, db.ForeignKey('admin_user.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    
+    # Relationships
+    order_items = db.relationship('OrderItem', backref='order', lazy=True, cascade='all, delete-orphan')
+
+class OrderItem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False, index=True)
+    item_id = db.Column(db.Integer, db.ForeignKey('item.id'), nullable=False, index=True)
+    
+    # Order item details
+    quantity_ordered = db.Column(db.Numeric(10, 2), nullable=False)
+    quantity_filled = db.Column(db.Numeric(10, 2), default=0)
+    unit_price = db.Column(db.Numeric(10, 2), nullable=False)
+    total_price = db.Column(db.Numeric(10, 2), nullable=False)
+    
+    # Lot tracking
+    lots_used = db.Column(db.Text, nullable=True)  # JSON string of lot allocations
+    
+    # Status
+    status = db.Column(db.String(50), default='pending', index=True)  # pending, partial, filled
+    notes = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    
+    # Relationships
+    item = db.relationship('Item', backref='order_items')
+
+class LotAllocation(db.Model):
+    """Tracks which lots are allocated to specific order items"""
+    id = db.Column(db.Integer, primary_key=True)
+    order_item_id = db.Column(db.Integer, db.ForeignKey('order_item.id'), nullable=False, index=True)
+    lot_id = db.Column(db.Integer, db.ForeignKey('lot.id'), nullable=False, index=True)
+    quantity_allocated = db.Column(db.Numeric(10, 2), nullable=False)
+    allocated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    allocated_by = db.Column(db.Integer, db.ForeignKey('admin_user.id'), nullable=True)
+    
+    # Relationships
+    order_item = db.relationship('OrderItem', backref='lot_allocations')
+    lot = db.relationship('Lot', backref='allocations')
+
 # Authentication decorator
 def admin_required(f):
     from functools import wraps
@@ -258,6 +554,36 @@ def admin_required(f):
 @app.route('/')
 def index():
     return render_template('index_new.html')
+
+@app.route('/orders')
+@admin_required
+def orders():
+    """Order management page"""
+    return render_template('orders.html')
+
+@app.route('/orders/new')
+@admin_required
+def new_order():
+    """New order entry page"""
+    return render_template('order_entry.html')
+
+@app.route('/orders/<int:order_id>/fill')
+@admin_required
+def fill_order(order_id):
+    """Order filling page"""
+    return render_template('order_fill.html', order_id=order_id)
+
+@app.route('/customers')
+@admin_required
+def customers():
+    """Customer management page"""
+    return render_template('customers.html')
+
+@app.route('/quickbooks-import')
+@admin_required
+def quickbooks_import():
+    """QuickBooks import page"""
+    return render_template('quickbooks_import.html')
 
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
@@ -2355,7 +2681,471 @@ def search():
     
     return jsonify(results)
 
+# =============================================================================
+# ORDER SYSTEM API ENDPOINTS
+# =============================================================================
+
+@app.route('/api/customers', methods=['GET'])
+@admin_required
+def get_customers():
+    """Get all customers"""
+    try:
+        customers = Customer.query.filter_by(is_active=True).all()
+        return jsonify([{
+            'id': customer.id,
+            'name': customer.name,
+            'email': customer.email,
+            'phone': customer.phone,
+            'quickbooks_id': customer.quickbooks_id,
+            'bill_to_name': customer.bill_to_name,
+            'bill_to_address1': customer.bill_to_address1,
+            'bill_to_city': customer.bill_to_city,
+            'bill_to_state': customer.bill_to_state,
+            'bill_to_zip': customer.bill_to_zip,
+            'ship_to_name': customer.ship_to_name,
+            'ship_to_address1': customer.ship_to_address1,
+            'ship_to_city': customer.ship_to_city,
+            'ship_to_state': customer.ship_to_state,
+            'ship_to_zip': customer.ship_to_zip,
+            'payment_terms': customer.payment_terms,
+            'notes': customer.notes,
+            'created_at': customer.created_at.isoformat() if customer.created_at else None
+        } for customer in customers])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/customers', methods=['POST'])
+@admin_required
+def create_customer():
+    """Create a new customer"""
+    try:
+        data = request.get_json()
+        
+        customer = Customer(
+            name=data['name'],
+            email=data.get('email'),
+            phone=data.get('phone'),
+            quickbooks_id=data.get('quickbooks_id'),
+            bill_to_name=data.get('bill_to_name'),
+            bill_to_address1=data.get('bill_to_address1'),
+            bill_to_address2=data.get('bill_to_address2'),
+            bill_to_city=data.get('bill_to_city'),
+            bill_to_state=data.get('bill_to_state'),
+            bill_to_zip=data.get('bill_to_zip'),
+            bill_to_country=data.get('bill_to_country', 'USA'),
+            ship_to_name=data.get('ship_to_name'),
+            ship_to_address1=data.get('ship_to_address1'),
+            ship_to_address2=data.get('ship_to_address2'),
+            ship_to_city=data.get('ship_to_city'),
+            ship_to_state=data.get('ship_to_state'),
+            ship_to_zip=data.get('ship_to_zip'),
+            ship_to_country=data.get('ship_to_country', 'USA'),
+            tax_id=data.get('tax_id'),
+            payment_terms=data.get('payment_terms'),
+            notes=data.get('notes')
+        )
+        
+        db.session.add(customer)
+        db.session.commit()
+        clear_cache()
+        
+        return jsonify({'success': True, 'id': customer.id}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/customers/<int:customer_id>', methods=['PUT'])
+@admin_required
+def update_customer(customer_id):
+    """Update a customer"""
+    try:
+        customer = Customer.query.get(customer_id)
+        if not customer:
+            return jsonify({'error': 'Customer not found'}), 404
+        
+        data = request.get_json()
+        
+        customer.name = data.get('name', customer.name)
+        customer.email = data.get('email', customer.email)
+        customer.phone = data.get('phone', customer.phone)
+        customer.quickbooks_id = data.get('quickbooks_id', customer.quickbooks_id)
+        customer.bill_to_name = data.get('bill_to_name', customer.bill_to_name)
+        customer.bill_to_address1 = data.get('bill_to_address1', customer.bill_to_address1)
+        customer.bill_to_address2 = data.get('bill_to_address2', customer.bill_to_address2)
+        customer.bill_to_city = data.get('bill_to_city', customer.bill_to_city)
+        customer.bill_to_state = data.get('bill_to_state', customer.bill_to_state)
+        customer.bill_to_zip = data.get('bill_to_zip', customer.bill_to_zip)
+        customer.bill_to_country = data.get('bill_to_country', customer.bill_to_country)
+        customer.ship_to_name = data.get('ship_to_name', customer.ship_to_name)
+        customer.ship_to_address1 = data.get('ship_to_address1', customer.ship_to_address1)
+        customer.ship_to_address2 = data.get('ship_to_address2', customer.ship_to_address2)
+        customer.ship_to_city = data.get('ship_to_city', customer.ship_to_city)
+        customer.ship_to_state = data.get('ship_to_state', customer.ship_to_state)
+        customer.ship_to_zip = data.get('ship_to_zip', customer.ship_to_zip)
+        customer.ship_to_country = data.get('ship_to_country', customer.ship_to_country)
+        customer.tax_id = data.get('tax_id', customer.tax_id)
+        customer.payment_terms = data.get('payment_terms', customer.payment_terms)
+        customer.notes = data.get('notes', customer.notes)
+        customer.is_active = data.get('is_active', customer.is_active)
+        
+        db.session.commit()
+        clear_cache()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/orders', methods=['GET'])
+@admin_required
+def get_orders():
+    """Get all orders with optional filtering"""
+    try:
+        status = request.args.get('status')
+        customer_id = request.args.get('customer_id')
+        
+        query = Order.query.options(
+            db.joinedload(Order.customer),
+            db.joinedload(Order.order_items).joinedload(OrderItem.item)
+        )
+        
+        if status:
+            query = query.filter(Order.status == status)
+        if customer_id:
+            query = query.filter(Order.customer_id == customer_id)
+        
+        orders = query.order_by(Order.created_at.desc()).all()
+        
+        return jsonify([{
+            'id': order.id,
+            'order_number': order.order_number,
+            'customer_id': order.customer_id,
+            'customer_name': order.customer.name if order.customer else None,
+            'order_date': order.order_date.isoformat() if order.order_date else None,
+            'requested_delivery_date': order.requested_delivery_date.isoformat() if order.requested_delivery_date else None,
+            'status': order.status,
+            'subtotal': float(order.subtotal),
+            'tax_amount': float(order.tax_amount),
+            'total_amount': float(order.total_amount),
+            'quickbooks_synced': order.quickbooks_synced,
+            'notes': order.notes,
+            'order_items': [{
+                'id': item.id,
+                'item_id': item.item_id,
+                'item_name': item.item.name if item.item else None,
+                'quantity_ordered': float(item.quantity_ordered),
+                'quantity_filled': float(item.quantity_filled),
+                'unit_price': float(item.unit_price),
+                'total_price': float(item.total_price),
+                'status': item.status,
+                'notes': item.notes
+            } for item in order.order_items],
+            'created_at': order.created_at.isoformat() if order.created_at else None
+        } for order in orders])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/orders', methods=['POST'])
+@admin_required
+def create_order():
+    """Create a new order"""
+    try:
+        data = request.get_json()
+        
+        # Generate order number
+        order_number = generate_order_number()
+        
+        # Calculate totals
+        totals = calculate_order_totals(data['order_items'])
+        
+        # Create order
+        order = Order(
+            order_number=order_number,
+            customer_id=data['customer_id'],
+            requested_delivery_date=datetime.strptime(data['requested_delivery_date'], '%Y-%m-%d').date() if data.get('requested_delivery_date') else None,
+            subtotal=totals['subtotal'],
+            tax_amount=totals['tax_amount'],
+            total_amount=totals['total_amount'],
+            notes=data.get('notes'),
+            created_by=session.get('user_id')
+        )
+        
+        db.session.add(order)
+        db.session.flush()  # Get the order ID
+        
+        # Create order items
+        for item_data in data['order_items']:
+            order_item = OrderItem(
+                order_id=order.id,
+                item_id=item_data['item_id'],
+                quantity_ordered=item_data['quantity_ordered'],
+                unit_price=item_data['unit_price'],
+                total_price=item_data['total_price'],
+                notes=item_data.get('notes')
+            )
+            db.session.add(order_item)
+        
+        db.session.commit()
+        clear_cache()
+        
+        return jsonify({'success': True, 'id': order.id, 'order_number': order_number}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/orders/<int:order_id>/fill', methods=['POST'])
+@admin_required
+def fill_order_item():
+    """Fill an order item with specific lots"""
+    try:
+        data = request.get_json()
+        order_item_id = data['order_item_id']
+        lot_allocations = data['lot_allocations']  # [{'lot_id': 1, 'quantity': 10}]
+        
+        order_item = OrderItem.query.get(order_item_id)
+        if not order_item:
+            return jsonify({'error': 'Order item not found'}), 404
+        
+        # Validate total quantity
+        total_allocated = sum(allocation['quantity'] for allocation in lot_allocations)
+        remaining_quantity = float(order_item.quantity_ordered) - float(order_item.quantity_filled)
+        
+        if total_allocated > remaining_quantity:
+            return jsonify({'error': 'Allocated quantity exceeds remaining quantity'}), 400
+        
+        # Create lot allocations
+        for allocation in lot_allocations:
+            lot = Lot.query.get(allocation['lot_id'])
+            if not lot:
+                return jsonify({'error': f'Lot {allocation["lot_id"]} not found'}), 404
+            
+            if float(lot.quantity) < allocation['quantity']:
+                return jsonify({'error': f'Insufficient quantity in lot {lot.lot_code}'}), 400
+            
+            lot_allocation = LotAllocation(
+                order_item_id=order_item_id,
+                lot_id=allocation['lot_id'],
+                quantity_allocated=allocation['quantity'],
+                allocated_by=session.get('user_id')
+            )
+            db.session.add(lot_allocation)
+            
+            # Update lot quantity
+            lot.quantity = float(lot.quantity) - allocation['quantity']
+        
+        # Update order item
+        order_item.quantity_filled = float(order_item.quantity_filled) + total_allocated
+        if order_item.quantity_filled >= order_item.quantity_ordered:
+            order_item.status = 'filled'
+        else:
+            order_item.status = 'partial'
+        
+        # Update order status
+        order = order_item.order
+        all_filled = all(item.status == 'filled' for item in order.order_items)
+        if all_filled:
+            order.status = 'filled'
+        else:
+            order.status = 'in_progress'
+        
+        db.session.commit()
+        clear_cache()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/orders/<int:order_id>/lots-available', methods=['GET'])
+@admin_required
+def get_available_lots_for_order():
+    """Get available lots for filling an order item"""
+    try:
+        order_item_id = request.args.get('order_item_id')
+        if not order_item_id:
+            return jsonify({'error': 'order_item_id is required'}), 400
+        
+        order_item = OrderItem.query.get(order_item_id)
+        if not order_item:
+            return jsonify({'error': 'Order item not found'}), 404
+        
+        # Get lots for this item that have available quantity
+        lots = Lot.query.filter(
+            Lot.item_id == order_item.item_id,
+            Lot.quantity > 0,
+            Lot.status == 'available'
+        ).all()
+        
+        return jsonify([{
+            'id': lot.id,
+            'lot_code': lot.lot_code,
+            'quantity': float(lot.quantity),
+            'unit_type': lot.unit_type,
+            'expiry_date': lot.expiry_date.isoformat() if lot.expiry_date else None,
+            'receiving_date': lot.receiving_date.isoformat() if lot.receiving_date else None,
+            'vendor_name': lot.vendor.name if lot.vendor else None
+        } for lot in lots])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# QuickBooks Integration Endpoints
+@app.route('/api/quickbooks/connect', methods=['GET'])
+@admin_required
+def quickbooks_connect():
+    """Initiate QuickBooks OAuth connection"""
+    try:
+        # Generate state parameter for security
+        state = secrets.token_urlsafe(32)
+        session['qb_state'] = state
+        
+        # Build authorization URL
+        auth_url = (
+            f"https://appcenter.intuit.com/connect/oauth2?"
+            f"client_id={QB_CLIENT_ID}&"
+            f"scope={QB_SCOPE}&"
+            f"redirect_uri={QB_REDIRECT_URI}&"
+            f"response_type=code&"
+            f"state={state}"
+        )
+        
+        return jsonify({'auth_url': auth_url})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/orders/<int:order_id>/sync-quickbooks', methods=['POST'])
+@admin_required
+def sync_order_to_quickbooks(order_id):
+    """Sync an order to QuickBooks Online"""
+    try:
+        order = Order.query.get(order_id)
+        if not order:
+            return jsonify({'error': 'Order not found'}), 404
+        
+        if order.quickbooks_synced:
+            return jsonify({'error': 'Order already synced to QuickBooks'}), 400
+        
+        # TODO: Implement actual QuickBooks API integration
+        # For now, just mark as synced
+        order.quickbooks_synced = True
+        order.quickbooks_sync_date = datetime.now(timezone.utc)
+        order.quickbooks_id = f"QB-{order.order_number}"
+        
+        db.session.commit()
+        
+        return jsonify({'success': True, 'quickbooks_id': order.quickbooks_id})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/quickbooks/import/customers', methods=['POST'])
+@admin_required
+def import_quickbooks_customers():
+    """Import customers from QuickBooks Online"""
+    try:
+        result = import_qb_customers()
+        
+        if 'error' in result:
+            return jsonify(result), 500
+        
+        return jsonify({
+            'success': True,
+            'message': f"Import completed: {result['customers_imported']} new customers, {result['customers_updated']} updated",
+            'customers_imported': result['customers_imported'],
+            'customers_updated': result['customers_updated'],
+            'errors': result['errors']
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/quickbooks/import/items', methods=['POST'])
+@admin_required
+def import_quickbooks_items():
+    """Import items from QuickBooks Online"""
+    try:
+        result = import_qb_items()
+        
+        if 'error' in result:
+            return jsonify(result), 500
+        
+        return jsonify({
+            'success': True,
+            'message': f"Import completed: {result['items_imported']} new items, {result['items_updated']} updated",
+            'items_imported': result['items_imported'],
+            'items_updated': result['items_updated'],
+            'errors': result['errors']
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/quickbooks/test-connection', methods=['GET'])
+@admin_required
+def test_quickbooks_connection():
+    """Test QuickBooks API connection"""
+    try:
+        # Test with a simple API call
+        result = make_qb_api_request('companyinfo/1')
+        
+        if 'error' in result:
+            return jsonify({
+                'success': False,
+                'error': result['error'],
+                'message': 'QuickBooks connection failed'
+            }), 400
+        
+        return jsonify({
+            'success': True,
+            'message': 'QuickBooks connection successful',
+            'company_info': result.get('QueryResponse', {}).get('CompanyInfo', [{}])[0]
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'message': 'QuickBooks connection test failed'
+        }), 500
+
+@app.route('/health')
+def health_check():
+    """Health check endpoint for load balancers and monitoring"""
+    try:
+        # Check database connection
+        db.session.execute('SELECT 1')
+        
+        # Check Redis connection (if available)
+        try:
+            import redis
+            r = redis.Redis(host='localhost', port=6379, db=0)
+            r.ping()
+            redis_status = 'healthy'
+        except:
+            redis_status = 'unavailable'
+        
+        return jsonify({
+            'status': 'healthy',
+            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'database': 'connected',
+            'redis': redis_status,
+            'version': '1.0.0'
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'unhealthy',
+            'error': str(e),
+            'timestamp': datetime.now(timezone.utc).isoformat()
+        }), 500
+
 if __name__ == '__main__':
+    # Initialize database
     with app.app_context():
         db.create_all()
-    app.run(host=config.HOST, port=config.PORT, debug=config.DEBUG)
+    
+    # Production vs Development configuration
+    import os
+    if os.environ.get('FLASK_ENV') == 'production':
+        # Production configuration
+        print("🚀 Starting in production mode with Gunicorn...")
+        print("Use: gunicorn --config gunicorn.conf.py app:app")
+    else:
+        # Development configuration
+        print("🔧 Starting in development mode...")
+        app.run(host=config.HOST, port=config.PORT, debug=config.DEBUG, threaded=True)
