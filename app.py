@@ -18,6 +18,7 @@ import config
 import socket
 import time
 import struct
+from functools import lru_cache
 from PIL import Image
 import json
 import threading
@@ -41,6 +42,22 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_timeout': 20,
     'max_overflow': 0
 }
+
+# Request logging middleware
+@app.before_request
+def log_request():
+    """Log all incoming requests for monitoring"""
+    start_time = time.time()
+    request.start_time = start_time
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {request.method} {request.path} - {request.remote_addr}")
+
+@app.after_request
+def log_response(response):
+    """Log response times"""
+    if hasattr(request, 'start_time'):
+        duration = time.time() - request.start_time
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {request.method} {request.path} - {response.status_code} - {duration:.3f}s")
+    return response
 
 # File upload configuration
 UPLOAD_FOLDER = 'uploads'
@@ -174,15 +191,65 @@ def calculate_order_totals(order_items):
 # QuickBooks API helper functions
 def get_qb_access_token():
     """Get QuickBooks access token from session or storage"""
-    # In a real implementation, you'd store this securely
-    # For now, we'll use a placeholder
     return session.get('qb_access_token')
 
+def refresh_qb_access_token():
+    """Refresh QuickBooks access token using refresh token"""
+    try:
+        refresh_token = session.get('qb_refresh_token')
+        if not refresh_token:
+            return {'error': 'No refresh token available'}
+        
+        # Prepare token refresh request
+        token_data = {
+            'grant_type': 'refresh_token',
+            'refresh_token': refresh_token
+        }
+        
+        # Make request to QuickBooks token endpoint
+        response = requests.post(
+            'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer',
+            data=token_data,
+            auth=(QB_CLIENT_ID, QB_CLIENT_SECRET),
+            headers={'Accept': 'application/json'}
+        )
+        
+        if response.status_code == 200:
+            token_info = response.json()
+            
+            # Update session with new tokens
+            session['qb_access_token'] = token_info.get('access_token')
+            session['qb_refresh_token'] = token_info.get('refresh_token')
+            session['qb_token_expires'] = datetime.now(timezone.utc) + timedelta(seconds=token_info.get('expires_in', 3600))
+            
+            return {'success': True, 'access_token': token_info.get('access_token')}
+        else:
+            return {'error': f'Token refresh failed: {response.status_code} - {response.text}'}
+            
+    except Exception as e:
+        return {'error': f'Token refresh error: {str(e)}'}
+
+def is_qb_token_expired():
+    """Check if QuickBooks access token is expired"""
+    expires_at = session.get('qb_token_expires')
+    if not expires_at:
+        return True
+    
+    # Add 5 minute buffer before expiration
+    buffer_time = timedelta(minutes=5)
+    return datetime.now(timezone.utc) + buffer_time >= expires_at
+
 def make_qb_api_request(endpoint, method='GET', data=None):
-    """Make authenticated request to QuickBooks API"""
+    """Make authenticated request to QuickBooks API with automatic token refresh"""
+    # Check if token is expired and refresh if needed
+    if is_qb_token_expired():
+        refresh_result = refresh_qb_access_token()
+        if 'error' in refresh_result:
+            return {'error': f'Token refresh failed: {refresh_result["error"]}'}
+    
     access_token = get_qb_access_token()
     if not access_token:
-        return {'error': 'No QuickBooks access token found'}
+        return {'error': 'No QuickBooks access token found. Please connect to QuickBooks first.'}
     
     headers = {
         'Authorization': f'Bearer {access_token}',
@@ -209,10 +276,37 @@ def make_qb_api_request(endpoint, method='GET', data=None):
         else:
             return {'error': f'Unsupported method: {method}'}
         
+        # Handle 401 Unauthorized - token might be invalid
+        if response.status_code == 401:
+            # Try to refresh token once more
+            refresh_result = refresh_qb_access_token()
+            if 'error' in refresh_result:
+                return {'error': 'QuickBooks access token expired and refresh failed. Please reconnect to QuickBooks.'}
+            
+            # Retry the request with new token
+            new_access_token = get_qb_access_token()
+            headers['Authorization'] = f'Bearer {new_access_token}'
+            
+            if method == 'GET':
+                response = requests.get(url, headers=headers)
+            elif method == 'POST':
+                response = requests.post(url, headers=headers, json=data)
+        
         response.raise_for_status()
         return response.json()
+        
     except requests.exceptions.RequestException as e:
-        return {'error': f'QuickBooks API error: {str(e)}'}
+        error_msg = str(e)
+        if '401' in error_msg:
+            return {'error': 'QuickBooks access token expired. Please reconnect to QuickBooks.'}
+        elif '400' in error_msg:
+            return {'error': 'Invalid QuickBooks API request. Please check your data.'}
+        elif '403' in error_msg:
+            return {'error': 'QuickBooks API access forbidden. Please check your permissions.'}
+        elif '429' in error_msg:
+            return {'error': 'QuickBooks API rate limit exceeded. Please try again later.'}
+        else:
+            return {'error': f'QuickBooks API error: {error_msg}'}
 
 def import_qb_customers():
     """Import customers from QuickBooks"""
@@ -548,11 +642,32 @@ class OrderItem(db.Model):
     
     # Status
     status = db.Column(db.String(50), default='pending', index=True)  # pending, partial, filled
+
+class SyncLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    sync_type = db.Column(db.String(50), nullable=False, index=True)  # customers, items, orders, pricing
+    status = db.Column(db.String(20), nullable=False, index=True)  # success, error, warning
+    message = db.Column(db.Text, nullable=False)
+    timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    details = db.Column(db.Text, nullable=True)  # JSON string for additional details
+    records_processed = db.Column(db.Integer, default=0)
+    records_successful = db.Column(db.Integer, default=0)
+    records_failed = db.Column(db.Integer, default=0)
     notes = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-    
-    # Relationships
+
+class SyncStatus(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    sync_type = db.Column(db.String(50), nullable=False, unique=True, index=True)  # customers, items, orders, pricing
+    last_sync_time = db.Column(db.DateTime, nullable=True)
+    next_sync_time = db.Column(db.DateTime, nullable=True)
+    sync_interval_minutes = db.Column(db.Integer, default=60)
+    is_enabled = db.Column(db.Boolean, default=True)
+    last_success = db.Column(db.Boolean, default=False)
+    last_error = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     item = db.relationship('Item', backref='order_items')
 
 class LotAllocation(db.Model):
@@ -610,8 +725,14 @@ def customers():
 @app.route('/quickbooks-import')
 @admin_required
 def quickbooks_import():
-    """QuickBooks import page"""
+    """QuickBooks import page (legacy)"""
     return render_template('quickbooks_import.html')
+
+@app.route('/quickbooks-admin')
+@admin_required
+def quickbooks_admin():
+    """QuickBooks admin page"""
+    return render_template('quickbooks_admin.html')
 
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
@@ -2916,6 +3037,21 @@ def create_order():
         db.session.commit()
         clear_cache()
         
+        # Auto-sync to QuickBooks if enabled and prerequisites met
+        try:
+            auto_sync_result = auto_sync_order_to_quickbooks(order)
+            if auto_sync_result.get('success'):
+                return jsonify({
+                    'success': True, 
+                    'id': order.id, 
+                    'order_number': order_number,
+                    'quickbooks_synced': True,
+                    'quickbooks_id': auto_sync_result.get('invoice_id')
+                }), 201
+        except Exception as e:
+            # Log error but don't fail order creation
+            print(f"Auto-sync failed for order {order_number}: {str(e)}")
+        
         return jsonify({'success': True, 'id': order.id, 'order_number': order_number}), 201
     except Exception as e:
         db.session.rollback()
@@ -3080,6 +3216,7 @@ def quickbooks_callback():
         session['qb_access_token'] = token_response.get('access_token')
         session['qb_refresh_token'] = token_response.get('refresh_token')
         session['qb_company_id'] = realm_id
+        session['qb_token_expires'] = datetime.now(timezone.utc) + timedelta(seconds=token_response.get('expires_in', 3600))
         
         # Update global company ID
         global QB_COMPANY_ID
@@ -3098,6 +3235,142 @@ def quickbooks_callback():
             'details': str(e)
         }), 500
 
+def create_qb_sales_invoice(order):
+    """Create a sales invoice in QuickBooks for an order"""
+    try:
+        # Get customer QuickBooks ID
+        customer = order.customer
+        if not customer.quickbooks_id:
+            return {'error': 'Customer not synced to QuickBooks. Please import customers first.'}
+        
+        # Build sales invoice data
+        invoice_data = {
+            "Line": []
+        }
+        
+        # Add customer reference
+        invoice_data["CustomerRef"] = {
+            "value": customer.quickbooks_id
+        }
+        
+        # Add order items as line items
+        for order_item in order.order_items:
+            item = order_item.item
+            if not item.quickbooks_id:
+                return {'error': f'Item "{item.name}" not synced to QuickBooks. Please import items first.'}
+            
+            line_item = {
+                "DetailType": "SalesItemLineDetail",
+                "Amount": float(order_item.total_price),
+                "SalesItemLineDetail": {
+                    "ItemRef": {
+                        "value": item.quickbooks_id
+                    },
+                    "Qty": order_item.quantity_ordered,
+                    "UnitPrice": float(order_item.unit_price)
+                }
+            }
+            
+            if order_item.notes:
+                line_item["Description"] = order_item.notes
+            
+            invoice_data["Line"].append(line_item)
+        
+        # Add totals and metadata
+        invoice_data["TotalAmt"] = float(order.total_amount)
+        invoice_data["TxnDate"] = order.order_date.strftime('%Y-%m-%d')
+        invoice_data["DocNumber"] = order.order_number
+        
+        if order.notes:
+            invoice_data["PrivateNote"] = order.notes
+        
+        # Create sales invoice in QuickBooks
+        result = make_qb_api_request('invoice', method='POST', data=invoice_data)
+        
+        if 'error' in result:
+            return result
+        
+        # Extract invoice ID from response
+        invoice_id = result.get('Invoice', {}).get('Id')
+        if not invoice_id:
+            return {'error': 'Failed to get invoice ID from QuickBooks response'}
+        
+        return {'success': True, 'invoice_id': invoice_id}
+        
+    except Exception as e:
+        return {'error': f'Failed to create sales invoice: {str(e)}'}
+
+def auto_sync_order_to_quickbooks(order):
+    """Automatically sync order to QuickBooks if prerequisites are met"""
+    try:
+        # Check if auto-sync is enabled
+        if not get_auto_sync_setting('orders'):
+            return {'error': 'Auto-sync for orders is disabled'}
+        
+        # Check if customer is synced to QuickBooks
+        if not order.customer.quickbooks_id:
+            return {'error': 'Customer not synced to QuickBooks'}
+        
+        # Check if all items are synced to QuickBooks
+        for order_item in order.order_items:
+            if not order_item.item.quickbooks_id:
+                return {'error': f'Item "{order_item.item.name}" not synced to QuickBooks'}
+        
+        # Create sales invoice in QuickBooks
+        result = create_qb_sales_invoice(order)
+        
+        if 'error' in result:
+            return result
+        
+        # Update order with QuickBooks sync info
+        order.quickbooks_synced = True
+        order.quickbooks_sync_date = datetime.now(timezone.utc)
+        order.quickbooks_id = result['invoice_id']
+        
+        db.session.commit()
+        
+        # Log sync activity
+        log_sync_activity('order', 'success', f'Order {order.order_number} auto-synced to QuickBooks')
+        
+        return {'success': True, 'invoice_id': result['invoice_id']}
+        
+    except Exception as e:
+        # Log sync error
+        log_sync_activity('order', 'error', f'Auto-sync failed for order {order.order_number}: {str(e)}')
+        return {'error': f'Auto-sync failed: {str(e)}'}
+
+def get_auto_sync_setting(sync_type):
+    """Get auto-sync setting for a specific type"""
+    # For now, return True for all types. In production, this would check database settings
+    return True
+
+def log_sync_activity(sync_type, status, message, details=None, records_processed=0, records_successful=0, records_failed=0):
+    """Log sync activity for monitoring"""
+    try:
+        # Create sync log entry
+        sync_log = SyncLog(
+            sync_type=sync_type,
+            status=status,
+            message=message,
+            details=details,
+            records_processed=records_processed,
+            records_successful=records_successful,
+            records_failed=records_failed
+        )
+        
+        db.session.add(sync_log)
+        db.session.commit()
+        
+        # Also print to console for debugging
+        timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+        print(f"[{timestamp}] QB Sync - {sync_type.upper()}: {status.upper()} - {message}")
+        
+    except Exception as e:
+        print(f"Error logging sync activity: {e}")
+        # Fallback to console logging
+        timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+        print(f"[{timestamp}] QB Sync - {sync_type.upper()}: {status.upper()} - {message}")
+
 @app.route('/api/orders/<int:order_id>/sync-quickbooks', methods=['POST'])
 @admin_required
 def sync_order_to_quickbooks(order_id):
@@ -3110,15 +3383,32 @@ def sync_order_to_quickbooks(order_id):
         if order.quickbooks_synced:
             return jsonify({'error': 'Order already synced to QuickBooks'}), 400
         
-        # TODO: Implement actual QuickBooks API integration
-        # For now, just mark as synced
+        # Check if order has items
+        if not order.order_items:
+            return jsonify({'error': 'Order has no items to sync'}), 400
+        
+        # Check if customer is synced to QuickBooks
+        if not order.customer.quickbooks_id:
+            return jsonify({'error': 'Customer not synced to QuickBooks. Please import customers first.'}), 400
+        
+        # Create sales invoice in QuickBooks
+        result = create_qb_sales_invoice(order)
+        
+        if 'error' in result:
+            return jsonify({'error': result['error']}), 400
+        
+        # Update order with QuickBooks sync info
         order.quickbooks_synced = True
         order.quickbooks_sync_date = datetime.now(timezone.utc)
-        order.quickbooks_id = f"QB-{order.order_number}"
+        order.quickbooks_id = result['invoice_id']
         
         db.session.commit()
         
-        return jsonify({'success': True, 'quickbooks_id': order.quickbooks_id})
+        return jsonify({
+            'success': True, 
+            'quickbooks_id': order.quickbooks_id,
+            'message': f'Order {order.order_number} synced to QuickBooks as Invoice {order.quickbooks_id}'
+        })
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
@@ -3316,10 +3606,302 @@ def health_check():
             'timestamp': datetime.now(timezone.utc).isoformat()
         }), 500
 
+# QuickBooks Admin API Endpoints
+
+@app.route('/api/quickbooks/sync/customers', methods=['POST'])
+@admin_required
+def sync_customers():
+    """Sync customers with QuickBooks"""
+    try:
+        result = import_qb_customers()
+        
+        if 'error' in result:
+            return jsonify(result), 500
+        
+        log_sync_activity('customers', 'success', f'Synced {result["customers_imported"]} new, {result["customers_updated"]} updated customers')
+        
+        return jsonify({
+            'success': True,
+            'message': f"Customer sync completed: {result['customers_imported']} new, {result['customers_updated']} updated",
+            'customers_imported': result['customers_imported'],
+            'customers_updated': result['customers_updated']
+        })
+    except Exception as e:
+        log_sync_activity('customers', 'error', f'Customer sync failed: {str(e)}')
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/quickbooks/sync/items', methods=['POST'])
+@admin_required
+def sync_items():
+    """Sync items with QuickBooks"""
+    try:
+        result = import_qb_items()
+        
+        if 'error' in result:
+            return jsonify(result), 500
+        
+        log_sync_activity('items', 'success', f'Synced {result["items_imported"]} new, {result["items_updated"]} updated items')
+        
+        return jsonify({
+            'success': True,
+            'message': f"Item sync completed: {result['items_imported']} new, {result['items_updated']} updated",
+            'items_imported': result['items_imported'],
+            'items_updated': result['items_updated']
+        })
+    except Exception as e:
+        log_sync_activity('items', 'error', f'Item sync failed: {str(e)}')
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/quickbooks/sync/orders', methods=['POST'])
+@admin_required
+def sync_orders():
+    """Sync pending orders with QuickBooks"""
+    try:
+        # Get pending orders (not synced yet)
+        pending_orders = Order.query.filter_by(quickbooks_synced=False).all()
+        
+        synced_count = 0
+        errors = []
+        
+        for order in pending_orders:
+            try:
+                # Check if customer and items are synced
+                if not order.customer.quickbooks_id:
+                    errors.append(f"Order {order.order_number}: Customer not synced")
+                    continue
+                
+                unsynced_items = [item for item in order.order_items if not item.item.quickbooks_id]
+                if unsynced_items:
+                    item_names = [item.item.name for item in unsynced_items]
+                    errors.append(f"Order {order.order_number}: Items not synced: {', '.join(item_names)}")
+                    continue
+                
+                # Sync the order
+                result = create_qb_sales_invoice(order)
+                
+                if 'error' in result:
+                    errors.append(f"Order {order.order_number}: {result['error']}")
+                    continue
+                
+                # Update order
+                order.quickbooks_synced = True
+                order.quickbooks_sync_date = datetime.now(timezone.utc)
+                order.quickbooks_id = result['invoice_id']
+                
+                synced_count += 1
+                
+            except Exception as e:
+                errors.append(f"Order {order.order_number}: {str(e)}")
+        
+        db.session.commit()
+        
+        if synced_count > 0:
+            log_sync_activity('orders', 'success', f'Synced {synced_count} orders to QuickBooks')
+        
+        return jsonify({
+            'success': True,
+            'orders_synced': synced_count,
+            'errors': errors,
+            'message': f'Synced {synced_count} orders successfully'
+        })
+        
+    except Exception as e:
+        log_sync_activity('orders', 'error', f'Order sync failed: {str(e)}')
+        return jsonify({'error': str(e)}), 500
+
+@lru_cache(maxsize=1)
+def get_sync_status_cached():
+    """Cached version of sync status for better performance"""
+    return get_sync_status_data()
+
+def get_sync_status_data():
+    """Get sync status data without caching"""
+    try:
+        # Count synced vs unsynced with error handling
+        try:
+            total_customers = Customer.query.count()
+            synced_customers = Customer.query.filter(Customer.quickbooks_id.isnot(None)).count()
+        except Exception as e:
+            print(f"Error counting customers: {e}")
+            total_customers = 0
+            synced_customers = 0
+        
+        try:
+            total_items = Item.query.count()
+            synced_items = Item.query.filter(Item.quickbooks_id.isnot(None)).count()
+        except Exception as e:
+            print(f"Error counting items: {e}")
+            total_items = 0
+            synced_items = 0
+        
+        try:
+            pending_orders = Order.query.filter_by(quickbooks_synced=False).count()
+        except Exception as e:
+            print(f"Error counting pending orders: {e}")
+            pending_orders = 0
+        
+        try:
+            # Count custom pricing entries (placeholder for now)
+            custom_pricing_count = 0  # This would count actual custom pricing records
+        except Exception as e:
+            print(f"Error counting custom pricing: {e}")
+            custom_pricing_count = 0
+        
+        # Get real sync times from database
+        try:
+            # Get overall sync status
+            overall_sync = SyncStatus.query.filter_by(sync_type='overall').first()
+            if overall_sync and overall_sync.last_sync_time:
+                last_sync_time = overall_sync.last_sync_time.strftime('%Y-%m-%d %H:%M:%S')
+            else:
+                last_sync_time = "Never"
+            
+            if overall_sync and overall_sync.next_sync_time:
+                next_sync_time = overall_sync.next_sync_time.strftime('%Y-%m-%d %H:%M:%S')
+            else:
+                next_sync_time = "In 1 hour"
+        except Exception as e:
+            print(f"Error getting sync times: {e}")
+            last_sync_time = "Never"
+            next_sync_time = "In 1 hour"
+        
+        # Debug logging
+        print(f"DEBUG: Sync Status - Customers: {synced_customers}/{total_customers}, Items: {synced_items}/{total_items}, Pending Orders: {pending_orders}")
+        
+        return {
+            'success': True,
+            'customer_status': f'{synced_customers}/{total_customers} synced',
+            'item_status': f'{synced_items}/{total_items} synced',
+            'pending_orders': pending_orders,
+            'custom_pricing_count': custom_pricing_count,
+            'last_sync_time': last_sync_time,
+            'next_sync_time': next_sync_time
+        }
+        
+    except Exception as e:
+        print(f"Error in get_sync_status_data: {e}")
+        return {'error': str(e)}
+
+@app.route('/api/quickbooks/sync/status', methods=['GET'])
+@admin_required
+def get_sync_status():
+    """Get current sync status with caching"""
+    try:
+        # Use cached version for better performance
+        result = get_sync_status_cached()
+        
+        if 'error' in result:
+            return jsonify(result), 500
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print(f"Error in get_sync_status: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/quickbooks/sync/log', methods=['GET'])
+@admin_required
+def get_sync_log():
+    """Get sync activity log"""
+    try:
+        # Get recent sync logs from database
+        logs = SyncLog.query.order_by(SyncLog.timestamp.desc()).limit(50).all()
+        
+        log_data = []
+        for log in logs:
+            log_data.append({
+                'type': log.sync_type,
+                'status': log.status,
+                'message': log.message,
+                'timestamp': log.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+                'details': log.details,
+                'records_processed': log.records_processed,
+                'records_successful': log.records_successful,
+                'records_failed': log.records_failed
+            })
+        
+        # If no logs exist, create some sample data
+        if not log_data:
+            log_data = [
+                {
+                    'type': 'customers',
+                    'status': 'success',
+                    'message': 'No sync activity yet',
+                    'timestamp': datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S'),
+                    'details': None,
+                    'records_processed': 0,
+                    'records_successful': 0,
+                    'records_failed': 0
+                }
+            ]
+        
+        return jsonify({
+            'success': True,
+            'logs': log_data
+        })
+        
+    except Exception as e:
+        print(f"Error in get_sync_log: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/quickbooks/connect', methods=['GET'])
+@admin_required
+def connect_to_quickbooks():
+    """Initiate QuickBooks OAuth connection"""
+    try:
+        import secrets
+        state = secrets.token_urlsafe(32)
+        session['qb_oauth_state'] = state
+        
+        auth_url = (
+            f"https://appcenter.intuit.com/connect/oauth2?"
+            f"client_id={QB_CLIENT_ID}&"
+            f"scope={QB_SCOPE}&"
+            f"redirect_uri={QB_REDIRECT_URI}&"
+            f"response_type=code&"
+            f"state={state}"
+        )
+        
+        return jsonify({
+            'success': True,
+            'auth_url': auth_url
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/quickbooks/disconnect', methods=['POST'])
+@admin_required
+def disconnect_quickbooks():
+    """Disconnect from QuickBooks and clear tokens"""
+    try:
+        # Clear all QB-related session data
+        session.pop('qb_access_token', None)
+        session.pop('qb_refresh_token', None)
+        session.pop('qb_company_id', None)
+        session.pop('qb_token_expires', None)
+        session.pop('qb_oauth_state', None)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Disconnected from QuickBooks successfully'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     # Initialize database
     with app.app_context():
         db.create_all()
+    
+    # Start QuickBooks auto-sync scheduler
+    try:
+        from qb_scheduler import start_qb_scheduler
+        start_qb_scheduler(app)
+        print("QuickBooks auto-sync scheduler started")
+    except Exception as e:
+        print(f"Failed to start QB scheduler: {e}")
     
     # Production vs Development configuration
     import os

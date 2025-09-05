@@ -83,9 +83,14 @@
                                 <div class="col-md-6">
                                     <div class="mb-3">
                                         <label for="customerSelect" class="form-label">Customer *</label>
-                                        <select id="customerSelect" class="form-select" required>
-                                            <option value="">Select a customer...</option>
-                                        </select>
+                                        <div class="input-group">
+                                            <select id="customerSelect" class="form-select" required>
+                                                <option value="">Select a customer...</option>
+                                            </select>
+                                            <span class="input-group-text" id="customerQBStatus" style="display: none;">
+                                                <i class="fab fa-quickbooks text-success" title="Synced to QuickBooks"></i>
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
@@ -130,6 +135,7 @@
                                             <th>Unit Price</th>
                                             <th>Total</th>
                                             <th>Notes</th>
+                                            <th>QB Status</th>
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
@@ -175,6 +181,13 @@
                         </div>
                     </div>
 
+                    <!-- QuickBooks Sync Warning -->
+                    <div id="qbSyncWarning" class="alert alert-warning" style="display: none;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>QuickBooks Sync Warning:</strong>
+                        <span id="qbSyncWarningText"></span>
+                    </div>
+
                     <!-- Submit Buttons -->
                     <div class="d-flex justify-content-between">
                         <button type="button" class="btn btn-outline-secondary" onclick="clearForm()">
@@ -205,9 +218,14 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="itemSelect" class="form-label">Item *</label>
-                        <select id="itemSelect" class="form-select" required>
-                            <option value="">Select an item...</option>
-                        </select>
+                        <div class="input-group">
+                            <select id="itemSelect" class="form-select" required>
+                                <option value="">Select an item...</option>
+                            </select>
+                            <span class="input-group-text" id="itemQBStatus" style="display: none;">
+                                <i class="fab fa-quickbooks text-success" title="Synced to QuickBooks"></i>
+                            </span>
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label for="itemQuantity" class="form-label">Quantity *</label>
@@ -246,6 +264,7 @@
         function setupEventListeners() {
             document.getElementById('customerSelect').addEventListener('change', loadCustomerDetails);
             document.getElementById('orderForm').addEventListener('submit', createOrder);
+            document.getElementById('itemSelect').addEventListener('change', checkItemQBStatus);
         }
 
         async function loadCustomers() {
@@ -308,6 +327,9 @@
             } else {
                 document.getElementById('customerDetails').style.display = 'none';
             }
+            
+            // Check QB status
+            checkCustomerQBStatus();
         }
 
         function addOrderItem() {
@@ -356,6 +378,9 @@
             tbody.innerHTML = '';
             
             orderItems.forEach((item, index) => {
+                const itemData = items.find(i => i.id == item.item_id);
+                const isQBSynced = itemData && itemData.quickbooks_id;
+                
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${item.item_name}</td>
@@ -364,6 +389,12 @@
                     <td>$${item.total_price.toFixed(2)}</td>
                     <td>${item.notes || ''}</td>
                     <td>
+                        ${isQBSynced ? 
+                            '<i class="fab fa-quickbooks text-success" title="Synced to QuickBooks"></i>' : 
+                            '<i class="fas fa-exclamation-triangle text-warning" title="Not synced to QuickBooks"></i>'
+                        }
+                    </td>
+                    <td>
                         <button class="btn btn-sm btn-outline-danger" onclick="removeOrderItem(${index})">
                             <i class="fas fa-trash"></i>
                         </button>
@@ -371,6 +402,9 @@
                 `;
                 tbody.appendChild(row);
             });
+            
+            // Check QB sync warning after updating table
+            checkQBSyncWarning();
         }
 
         function removeOrderItem(index) {
@@ -430,6 +464,73 @@
             } catch (error) {
                 console.error('Error creating order:', error);
                 alert('Error creating order');
+            }
+        }
+
+        function checkCustomerQBStatus() {
+            const customerId = document.getElementById('customerSelect').value;
+            const qbStatus = document.getElementById('customerQBStatus');
+            
+            if (customerId) {
+                const customer = customers.find(c => c.id == customerId);
+                if (customer && customer.quickbooks_id) {
+                    qbStatus.style.display = 'block';
+                } else {
+                    qbStatus.style.display = 'none';
+                }
+            } else {
+                qbStatus.style.display = 'none';
+            }
+            
+            checkQBSyncWarning();
+        }
+
+        function checkItemQBStatus() {
+            const itemId = document.getElementById('itemSelect').value;
+            const qbStatus = document.getElementById('itemQBStatus');
+            
+            if (itemId) {
+                const item = items.find(i => i.id == itemId);
+                if (item && item.quickbooks_id) {
+                    qbStatus.style.display = 'block';
+                } else {
+                    qbStatus.style.display = 'none';
+                }
+            } else {
+                qbStatus.style.display = 'none';
+            }
+        }
+
+        function checkQBSyncWarning() {
+            const warning = document.getElementById('qbSyncWarning');
+            const warningText = document.getElementById('qbSyncWarningText');
+            const customerId = document.getElementById('customerSelect').value;
+            
+            if (customerId) {
+                const customer = customers.find(c => c.id == customerId);
+                if (!customer || !customer.quickbooks_id) {
+                    warningText.textContent = 'Selected customer is not synced to QuickBooks. Order cannot be synced until customer is imported.';
+                    warning.style.display = 'block';
+                    return;
+                }
+            }
+            
+            // Check if any order items are not synced
+            const unsyncedItems = orderItems.filter(item => {
+                const itemData = items.find(i => i.id == item.item_id);
+                return !itemData || !itemData.quickbooks_id;
+            });
+            
+            if (unsyncedItems.length > 0) {
+                const itemNames = unsyncedItems.map(item => {
+                    const itemData = items.find(i => i.id == item.item_id);
+                    return itemData ? itemData.name : 'Unknown Item';
+                }).join(', ');
+                
+                warningText.textContent = `Items not synced to QuickBooks: ${itemNames}. These items cannot be synced to QuickBooks.`;
+                warning.style.display = 'block';
+            } else {
+                warning.style.display = 'none';
             }
         }
 

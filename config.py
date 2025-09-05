@@ -2,7 +2,7 @@
 
 # Server Configuration
 HOST = '0.0.0.0'  # Bind to all network interfaces for multi-PC access
-PORT = 5001        # Port number for the web server
+PORT = 5002        # Port number for the web server
 DEBUG = True       # Set to False for production use
 
 # Database Configuration

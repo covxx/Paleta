@@ -1,43 +1,316 @@
-# Production requirements for Ubuntu VPS deployment
-# Optimized for 4-core system
+# Production Requirements for QuickBooks Label Printer
+# Optimized for VPS deployment
 
-# Core Flask dependencies
-Flask>=2.3.0
-Flask-SQLAlchemy>=3.0.0
-Flask-CORS>=4.0.0
-Werkzeug>=2.3.0
+# Core Flask Framework
+Flask==3.1.2
+Flask-SQLAlchemy==3.1.1
+Flask-CORS==6.0.1
 
-# WSGI Server
-gunicorn==21.2.0
+# Production WSGI Server
+gunicorn==23.0.0
 
-# Database and caching
-redis==5.0.1
-psutil==5.9.6
+# Database
+SQLAlchemy==2.0.43
 
-# Date and time handling
-python-dateutil>=2.8.0
+# HTTP Requests
+requests==2.32.5
 
-# Image processing
-Pillow>=10.0.0
+# Image Processing
+Pillow==11.3.0
 
-# QR Code generation
-qrcode>=7.4.0
+# Barcode Generation
+python-barcode==0.16.1
+qrcode==8.2
 
-# PDF generation
-reportlab>=4.0.0
+# PDF Generation
+reportlab==4.4.3
 
-# Barcode generation
-python-barcode>=0.15.0
-
-# Production monitoring and logging
-structlog==23.2.0
-sentry-sdk[flask]==1.38.0
+# Date/Time Handling
+python-dateutil==2.9.0
 
 # Security
-cryptography>=41.0.0
+Werkzeug==3.1.3
+itsdangerous==2.2.0
+Jinja2==3.1.6
+MarkupSafe==3.0.2
 
-# Performance monitoring
-newrelic==9.2.0
+# Utilities
+click==8.2.1
+blinker==1.9.0
+six==1.17.0
 
-# Additional production utilities
-python-dotenv==1.0.0
+# Background Tasks
+schedule==1.2.0
+
+# Caching (optional)
+Flask-Caching==2.3.0
+
+# Rate Limiting (optional)
+Flask-Limiter==3.8.0
+
+# Monitoring (optional)
+psutil==6.1.0
+
+# Logging
+structlog==24.4.0
+
+# Environment Variables
+python-dotenv==1.0.1
+
+# Health Checks
+flask-healthz==1.0.1
+
+# Performance Monitoring
+flask-profiler==1.8.1
+
+# Error Tracking (optional)
+sentry-sdk[flask]==2.19.2
+
+# Email Support (optional)
+Flask-Mail==0.10.0
+
+# File Upload
+secure-filename==0.1.0
+
+# JSON Web Tokens (optional)
+PyJWT==2.10.1
+
+# Cryptography
+cryptography==44.0.0
+
+# Compression
+Flask-Compress==1.15
+
+# Session Management
+Flask-Session==0.8.0
+
+# API Documentation (optional)
+flask-restx==1.3.1
+
+# Database Migrations
+Flask-Migrate==4.0.7
+
+# Admin Interface (optional)
+Flask-Admin==1.6.2
+
+# Form Handling
+WTForms==3.1.2
+Flask-WTF==1.2.1
+
+# File Storage (optional)
+boto3==1.35.93
+botocore==1.35.93
+
+# Redis (optional)
+redis==5.2.0
+Flask-Redis==0.4.0
+
+# Celery (optional)
+celery==5.4.0
+Flask-Celery==0.2.0
+
+# WebSocket Support (optional)
+Flask-SocketIO==5.4.1
+
+# API Rate Limiting
+flask-limiter==3.8.0
+
+# CORS
+flask-cors==6.0.1
+
+# Security Headers
+flask-talisman==1.1.0
+
+# Content Security Policy
+flask-csp==0.1.0
+
+# HTTP/2 Support (optional)
+h2==4.1.0
+
+# Performance Profiling
+py-spy==0.3.14
+
+# Memory Profiling
+memory-profiler==0.61.0
+
+# Database Connection Pooling
+SQLAlchemy-Utils==0.41.2
+
+# Database Migrations
+alembic==1.14.0
+
+# Configuration Management
+python-decouple==3.8
+
+# Logging Configuration
+loguru==0.7.2
+
+# Health Check Endpoints
+flask-healthz==1.0.1
+
+# Metrics Collection
+prometheus-client==0.21.1
+flask-prometheus-metrics==1.2.0
+
+# Error Handling
+flask-error-handler==1.0.0
+
+# Request ID Tracking
+flask-request-id==0.1.0
+
+# API Versioning
+flask-api-versioning==1.0.0
+
+# Database Backup
+flask-db-backup==0.1.0
+
+# File Upload Security
+secure-filename==0.1.0
+
+# Image Optimization
+Pillow-SIMD==10.0.1
+
+# PDF Optimization
+PyPDF2==3.0.1
+
+# Excel Support
+openpyxl==3.1.5
+pandas==2.2.3
+
+# CSV Support
+csvkit==1.1.1
+
+# Data Validation
+marshmallow==3.23.2
+flask-marshmallow==1.2.1
+
+# API Documentation
+flask-restx==1.3.1
+flasgger==0.9.7.1
+
+# Testing (development only)
+pytest==8.3.4
+pytest-flask==1.3.0
+pytest-cov==6.0.0
+
+# Code Quality
+black==24.10.0
+flake8==7.1.1
+isort==5.13.2
+
+# Type Checking
+mypy==1.13.0
+types-requests==2.32.0.20241016
+
+# Documentation
+sphinx==8.1.3
+sphinx-rtd-theme==3.1.1
+
+# Deployment
+fabric==3.3.0
+invoke==2.4.0
+
+# Monitoring
+newrelic==11.4.0.1
+
+# Log Aggregation
+fluent-logger==0.10.0
+
+# Performance Monitoring
+newrelic==11.4.0.1
+
+# Error Tracking
+sentry-sdk[flask]==2.19.2
+
+# Health Checks
+flask-healthz==1.0.1
+
+# Metrics
+prometheus-client==0.21.1
+
+# Caching
+redis==5.2.0
+Flask-Caching==2.3.0
+
+# Session Storage
+Flask-Session==0.8.0
+
+# File Storage
+boto3==1.35.93
+
+# Background Tasks
+celery==5.4.0
+
+# WebSocket
+Flask-SocketIO==5.4.1
+
+# API Rate Limiting
+flask-limiter==3.8.0
+
+# Security
+flask-talisman==1.1.0
+
+# Content Security Policy
+flask-csp==0.1.0
+
+# HTTP/2
+h2==4.1.0
+
+# Performance Profiling
+py-spy==0.3.14
+
+# Memory Profiling
+memory-profiler==0.61.0
+
+# Database
+SQLAlchemy-Utils==0.41.2
+alembic==1.14.0
+
+# Configuration
+python-decouple==3.8
+
+# Logging
+loguru==0.7.2
+
+# Health Checks
+flask-healthz==1.0.1
+
+# Metrics
+prometheus-client==0.21.1
+flask-prometheus-metrics==1.2.0
+
+# Error Handling
+flask-error-handler==1.0.0
+
+# Request ID
+flask-request-id==0.1.0
+
+# API Versioning
+flask-api-versioning==1.0.0
+
+# Database Backup
+flask-db-backup==0.1.0
+
+# File Upload
+secure-filename==0.1.0
+
+# Image Processing
+Pillow-SIMD==10.0.1
+
+# PDF Processing
+PyPDF2==3.0.1
+
+# Excel Processing
+openpyxl==3.1.5
+pandas==2.2.3
+
+# CSV Processing
+csvkit==1.1.1
+
+# Data Validation
+marshmallow==3.23.2
+flask-marshmallow==1.2.1
+
+# API Documentation
+flask-restx==1.3.1
+flasgger==0.9.7.1
