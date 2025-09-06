@@ -663,12 +663,24 @@ main() {
         print_status "  - Email is used for Let's Encrypt notifications"
         echo
         
-        if [ -z "$DOMAIN_NAME" ]; then
-            read -p "Enter your domain name (e.g., yourdomain.com) or press Enter to skip SSL: " DOMAIN_NAME
-        fi
-        
-        if [ -n "$DOMAIN_NAME" ] && [ -z "$SSL_EMAIL" ]; then
-            read -p "Enter your email address for Let's Encrypt notifications: " SSL_EMAIL
+        # Check if we're in an interactive environment
+        if [ -t 0 ]; then
+            print_status "Interactive mode detected. Prompting for SSL configuration..."
+            
+            if [ -z "$DOMAIN_NAME" ]; then
+                echo -n "Enter your domain name (e.g., yourdomain.com) or press Enter to skip SSL: "
+                read DOMAIN_NAME
+            fi
+            
+            if [ -n "$DOMAIN_NAME" ] && [ -z "$SSL_EMAIL" ]; then
+                echo -n "Enter your email address for Let's Encrypt notifications: "
+                read SSL_EMAIL
+            fi
+        else
+            print_warning "Non-interactive mode detected. SSL setup will be skipped."
+            print_status "To set up SSL later, run: sudo ./setup_ssl.sh -d yourdomain.com -e admin@yourdomain.com"
+            DOMAIN_NAME=""
+            SSL_EMAIL=""
         fi
         
         if [ -n "$DOMAIN_NAME" ] && [ -n "$SSL_EMAIL" ]; then
