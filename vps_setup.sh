@@ -648,17 +648,64 @@ main() {
     print_status "Starting QuickBooks Label Printer VPS Setup..."
     echo
     
-    # Display configuration
-    if [ -n "$DOMAIN_NAME" ]; then
-        print_status "Domain name: $DOMAIN_NAME"
-        if [ -n "$SSL_EMAIL" ]; then
-            print_status "SSL email: $SSL_EMAIL"
-        else
-            print_warning "No SSL email provided. SSL setup will be skipped."
-            DOMAIN_NAME=""
+    # Prompt for SSL configuration if not provided
+    if [ -z "$DOMAIN_NAME" ] || [ -z "$SSL_EMAIL" ]; then
+        echo
+        print_status "SSL Certificate Configuration"
+        echo "=================================="
+        echo
+        print_status "You can set up free SSL certificates using Let's Encrypt."
+        print_status "This will enable HTTPS access to your application."
+        echo
+        print_warning "SSL Requirements:"
+        print_status "  - Domain name must point to this server's IP address"
+        print_status "  - Ports 80 and 443 must be open in firewall"
+        print_status "  - Email is used for Let's Encrypt notifications"
+        echo
+        
+        if [ -z "$DOMAIN_NAME" ]; then
+            read -p "Enter your domain name (e.g., yourdomain.com) or press Enter to skip SSL: " DOMAIN_NAME
         fi
+        
+        if [ -n "$DOMAIN_NAME" ] && [ -z "$SSL_EMAIL" ]; then
+            read -p "Enter your email address for Let's Encrypt notifications: " SSL_EMAIL
+        fi
+        
+        if [ -n "$DOMAIN_NAME" ] && [ -n "$SSL_EMAIL" ]; then
+            print_success "SSL will be configured for domain: $DOMAIN_NAME"
+            print_success "SSL email: $SSL_EMAIL"
+            
+            # Validate domain configuration
+            print_status "Validating domain configuration..."
+            SERVER_IP=$(curl -s ifconfig.me 2>/dev/null || echo "unknown")
+            DOMAIN_IP=$(dig +short "$DOMAIN_NAME" 2>/dev/null | tail -n1 || echo "unknown")
+            
+            if [ "$DOMAIN_IP" != "$SERVER_IP" ] && [ "$DOMAIN_IP" != "unknown" ] && [ "$SERVER_IP" != "unknown" ]; then
+                print_warning "Domain $DOMAIN_NAME does not resolve to this server's IP ($SERVER_IP)"
+                print_warning "Current domain IP: $DOMAIN_IP"
+                print_status "Please update your DNS records before proceeding with SSL setup."
+                echo
+                read -p "Continue with SSL setup anyway? (y/N): " -n 1 -r
+                echo
+                if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                    print_status "SSL setup will be skipped."
+                    DOMAIN_NAME=""
+                    SSL_EMAIL=""
+                fi
+            elif [ "$DOMAIN_IP" = "$SERVER_IP" ]; then
+                print_success "Domain configuration looks good!"
+            else
+                print_warning "Could not verify domain configuration. SSL setup will continue."
+            fi
+        else
+            print_status "SSL setup will be skipped."
+            DOMAIN_NAME=""
+            SSL_EMAIL=""
+        fi
+        echo
     else
-        print_status "No domain name provided. SSL setup will be skipped."
+        print_status "Domain name: $DOMAIN_NAME"
+        print_status "SSL email: $SSL_EMAIL"
     fi
     
     # Pre-flight checks
