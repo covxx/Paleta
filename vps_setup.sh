@@ -162,14 +162,8 @@ setup_database() {
     # Create instance directory
     sudo -u "$APP_USER" -H bash -c "cd '$APP_DIR' && mkdir -p instance"
     
-    # Initialize database
-    sudo -u "$APP_USER" -H bash -c "cd '$APP_DIR' && source venv/bin/activate && python -c '
-from app import app, db
-with app.app_context():
-    db.create_all()
-    print(\"Database tables created successfully\")
-'
-    "
+    # Initialize database using dedicated script
+    sudo -u "$APP_USER" -H bash -c "cd '$APP_DIR' && source venv/bin/activate && python init_database.py"
     
     print_success "Database setup complete"
 }
