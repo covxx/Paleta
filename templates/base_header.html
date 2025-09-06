@@ -323,6 +323,11 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link {% if 'updates' in request.endpoint %}active{% endif %}" href="/admin/updates">
+                            <i class="fas fa-download me-1"></i> Updates
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link {% if 'label' in request.endpoint %}active{% endif %}" href="/label-designer">
                             <i class="fas fa-tags me-1"></i> Label Designer
                         </a>

@@ -3913,3 +3913,272 @@ if __name__ == '__main__':
         # Development configuration
         print("🔧 Starting in development mode...")
         app.run(host=config.HOST, port=config.PORT, debug=config.DEBUG, threaded=True)
+
+# System Update API Endpoints
+@app.route('/api/admin/system-status', methods=['GET'])
+@admin_required
+def get_system_status():
+    """Get system status including version information"""
+    try:
+        import subprocess
+        import os
+        
+        # Get current version
+        current_version = "unknown"
+        version_file = os.path.join(os.getcwd(), 'version.txt')
+        if os.path.exists(version_file):
+            with open(version_file, 'r') as f:
+                current_version = f.read().strip()
+        
+        # Get latest version from git
+        latest_version = "unknown"
+        try:
+            result = subprocess.run(['git', 'describe', '--tags', '--always', 'origin/main'], 
+                                  capture_output=True, text=True, cwd=os.getcwd())
+            if result.returncode == 0:
+                latest_version = result.stdout.strip()
+        except:
+            pass
+        
+        # Check service status
+        service_status = "unknown"
+        try:
+            result = subprocess.run(['systemctl', 'is-active', 'label-printer'], 
+                                  capture_output=True, text=True)
+            if result.returncode == 0:
+                service_status = result.stdout.strip()
+        except:
+            pass
+        
+        # Get last update time
+        last_update = "unknown"
+        if os.path.exists(version_file):
+            import time
+            last_update = time.strftime('%Y-%m-%d %H:%M:%S', 
+                                      time.localtime(os.path.getmtime(version_file)))
+        
+        # Check if updates are available
+        updates_available = current_version != latest_version and latest_version != "unknown"
+        
+        return jsonify({
+            'success': True,
+            'current_version': current_version,
+            'latest_version': latest_version,
+            'service_status': service_status,
+            'last_update': last_update,
+            'updates_available': updates_available
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/check-updates', methods=['POST'])
+@admin_required
+def check_for_updates():
+    """Check for available updates"""
+    try:
+        import subprocess
+        import os
+        
+        # Fetch latest changes
+        result = subprocess.run(['git', 'fetch', 'origin'], 
+                              capture_output=True, text=True, cwd=os.getcwd())
+        
+        if result.returncode != 0:
+            return jsonify({'error': 'Failed to fetch updates'}), 500
+        
+        # Check if there are updates
+        current_commit = subprocess.run(['git', 'rev-parse', 'HEAD'], 
+                                      capture_output=True, text=True, cwd=os.getcwd())
+        latest_commit = subprocess.run(['git', 'rev-parse', 'origin/main'], 
+                                     capture_output=True, text=True, cwd=os.getcwd())
+        
+        if current_commit.returncode == 0 and latest_commit.returncode == 0:
+            updates_available = current_commit.stdout.strip() != latest_commit.stdout.strip()
+            
+            return jsonify({
+                'success': True,
+                'updates_available': updates_available,
+                'current_commit': current_commit.stdout.strip(),
+                'latest_commit': latest_commit.stdout.strip()
+            })
+        else:
+            return jsonify({'error': 'Failed to check for updates'}), 500
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/update-system', methods=['POST'])
+@admin_required
+def update_system():
+    """Update the system to the latest version"""
+    try:
+        import subprocess
+        import os
+        
+        # Run the update script
+        update_script = os.path.join(os.getcwd(), 'update_system.sh')
+        if not os.path.exists(update_script):
+            return jsonify({'error': 'Update script not found'}), 500
+        
+        # Make sure script is executable
+        os.chmod(update_script, 0o755)
+        
+        # Run update
+        result = subprocess.run(['sudo', '-u', 'labelprinter', update_script, 'update'], 
+                              capture_output=True, text=True, cwd=os.getcwd())
+        
+        if result.returncode == 0:
+            return jsonify({
+                'success': True,
+                'message': 'System updated successfully',
+                'output': result.stdout
+            })
+        else:
+            return jsonify({
+                'error': 'Update failed',
+                'output': result.stderr
+            }), 500
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/rollback-system', methods=['POST'])
+@admin_required
+def rollback_system():
+    """Rollback the system to a previous version"""
+    try:
+        import subprocess
+        import os
+        
+        # Run the update script
+        update_script = os.path.join(os.getcwd(), 'update_system.sh')
+        if not os.path.exists(update_script):
+            return jsonify({'error': 'Update script not found'}), 500
+        
+        # Make sure script is executable
+        os.chmod(update_script, 0o755)
+        
+        # Run rollback
+        result = subprocess.run(['sudo', '-u', 'labelprinter', update_script, 'rollback'], 
+                              capture_output=True, text=True, cwd=os.getcwd())
+        
+        if result.returncode == 0:
+            return jsonify({
+                'success': True,
+                'message': 'System rolled back successfully',
+                'output': result.stdout
+            })
+        else:
+            return jsonify({
+                'error': 'Rollback failed',
+                'output': result.stderr
+            }), 500
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/update-log', methods=['GET'])
+@admin_required
+def get_update_log():
+    """Get the update log"""
+    try:
+        import os
+        
+        log_file = '/opt/label-printer/logs/update.log'
+        if os.path.exists(log_file):
+            with open(log_file, 'r') as f:
+                log_content = f.read()
+        else:
+            log_content = "No update log available"
+        
+        return jsonify({
+            'success': True,
+            'log_content': log_content
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/backups', methods=['GET'])
+@admin_required
+def get_backups():
+    """Get list of available backups"""
+    try:
+        import os
+        import glob
+        
+        backup_dir = '/opt/backups/label-printer'
+        backups = []
+        
+        if os.path.exists(backup_dir):
+            backup_folders = glob.glob(os.path.join(backup_dir, 'pre_update_*'))
+            
+            for folder in sorted(backup_folders, reverse=True):
+                folder_name = os.path.basename(folder)
+                backup_info = {
+                    'id': folder_name,
+                    'date': folder_name.replace('pre_update_', '').replace('_', ' '),
+                    'version': 'Unknown',
+                    'type': 'Pre-update backup',
+                    'size': 'Unknown'
+                }
+                
+                # Try to get version from backup info
+                info_file = os.path.join(folder, 'backup_info.txt')
+                if os.path.exists(info_file):
+                    with open(info_file, 'r') as f:
+                        content = f.read()
+                        for line in content.split('\n'):
+                            if 'Current version:' in line:
+                                backup_info['version'] = line.split('Current version:')[1].strip()
+                
+                # Get folder size
+                try:
+                    size = sum(os.path.getsize(os.path.join(dirpath, filename))
+                             for dirpath, dirnames, filenames in os.walk(folder)
+                             for filename in filenames)
+                    backup_info['size'] = f"{size / 1024 / 1024:.1f} MB"
+                except:
+                    pass
+                
+                backups.append(backup_info)
+        
+        return jsonify({
+            'success': True,
+            'backups': backups
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/download-backup/<backup_id>', methods=['GET'])
+@admin_required
+def download_backup(backup_id):
+    """Download a backup file"""
+    try:
+        import os
+        import tarfile
+        from flask import send_file
+        
+        backup_dir = '/opt/backups/label-printer'
+        backup_path = os.path.join(backup_dir, backup_id)
+        
+        if not os.path.exists(backup_path):
+            return jsonify({'error': 'Backup not found'}), 404
+        
+        # Create tar file
+        tar_path = f"/tmp/{backup_id}.tar.gz"
+        with tarfile.open(tar_path, "w:gz") as tar:
+            tar.add(backup_path, arcname=backup_id)
+        
+        return send_file(tar_path, as_attachment=True, download_name=f"{backup_id}.tar.gz")
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/updates')
+@admin_required
+def admin_updates():
+    """Admin updates page"""
+    return render_template('admin_updates.html')

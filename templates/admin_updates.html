@@ -1,0 +1,500 @@
+{% extends "base.html" %}
+
+{% block title %}System Updates - Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="fas fa-sync-alt"></i> System Updates</h1>
+                <div class="btn-group">
+                    <button class="btn btn-outline-primary" onclick="checkForUpdates()">
+                        <i class="fas fa-search"></i> Check for Updates
+                    </button>
+                    <button class="btn btn-success" onclick="updateSystem()" id="updateBtn" disabled>
+                        <i class="fas fa-download"></i> Update System
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">Current Version</h4>
+                            <h2 id="currentVersion">Loading...</h2>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-tag fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">Latest Version</h4>
+                            <h2 id="latestVersion">Loading...</h2>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-cloud fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">Service Status</h4>
+                            <h2 id="serviceStatus">Loading...</h2>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-server fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">Last Update</h4>
+                            <h2 id="lastUpdate">Loading...</h2>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-clock fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Update Status -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-info-circle"></i> Update Status</h5>
+                </div>
+                <div class="card-body">
+                    <div id="updateStatus" class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> Click "Check for Updates" to see if updates are available.
+                    </div>
+                    <div id="updateProgress" class="progress" style="display: none;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Update Log -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="fas fa-list"></i> Update Log</h5>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="refreshUpdateLog()">
+                        <i class="fas fa-refresh"></i> Refresh
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="updateLog" class="bg-dark text-light p-3 rounded" style="height: 300px; overflow-y: auto; font-family: monospace;">
+                        <div class="text-muted">Update log will appear here...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Backup Management -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="fas fa-database"></i> Backup Management</h5>
+                    <button class="btn btn-sm btn-outline-primary" onclick="refreshBackups()">
+                        <i class="fas fa-refresh"></i> Refresh
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="backupList">
+                        <div class="text-center">
+                            <div class="spinner-border" role="status">
+                                <span class="sr-only">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Update Confirmation Modal -->
+<div class="modal fade" id="updateModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-exclamation-triangle"></i> Confirm Update</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Warning:</strong> This will update the system to the latest version. A backup will be created automatically before the update.
+                </div>
+                <p>Are you sure you want to proceed with the update?</p>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="confirmUpdate">
+                    <label class="form-check-label" for="confirmUpdate">
+                        I understand that the system will be temporarily unavailable during the update
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="confirmUpdate()" id="confirmUpdateBtn" disabled>
+                    <i class="fas fa-download"></i> Proceed with Update
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Rollback Modal -->
+<div class="modal fade" id="rollbackModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-undo"></i> Confirm Rollback</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Warning:</strong> This will rollback the system to the previous version. This action cannot be undone.
+                </div>
+                <p>Are you sure you want to rollback to the previous version?</p>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="confirmRollback">
+                    <label class="form-check-label" for="confirmRollback">
+                        I understand that this will revert all changes made since the last update
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" onclick="confirmRollback()" id="confirmRollbackBtn" disabled>
+                    <i class="fas fa-undo"></i> Proceed with Rollback
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let updateInProgress = false;
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    loadSystemStatus();
+    refreshUpdateLog();
+    refreshBackups();
+    
+    // Auto-refresh status every 30 seconds
+    setInterval(loadSystemStatus, 30000);
+});
+
+// Load system status
+function loadSystemStatus() {
+    fetch('/api/admin/system-status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('currentVersion').textContent = data.current_version || 'Unknown';
+                document.getElementById('latestVersion').textContent = data.latest_version || 'Unknown';
+                document.getElementById('serviceStatus').textContent = data.service_status || 'Unknown';
+                document.getElementById('lastUpdate').textContent = data.last_update || 'Unknown';
+                
+                // Update update button state
+                const updateBtn = document.getElementById('updateBtn');
+                if (data.updates_available) {
+                    updateBtn.disabled = false;
+                    updateBtn.innerHTML = '<i class="fas fa-download"></i> Update Available';
+                } else {
+                    updateBtn.disabled = true;
+                    updateBtn.innerHTML = '<i class="fas fa-check"></i> Up to Date';
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error loading system status:', error);
+        });
+}
+
+// Check for updates
+function checkForUpdates() {
+    const statusDiv = document.getElementById('updateStatus');
+    statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking for updates...';
+    statusDiv.className = 'alert alert-info';
+    
+    fetch('/api/admin/check-updates', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                if (data.updates_available) {
+                    statusDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Updates are available! Click "Update System" to proceed.';
+                    statusDiv.className = 'alert alert-warning';
+                    document.getElementById('updateBtn').disabled = false;
+                } else {
+                    statusDiv.innerHTML = '<i class="fas fa-check"></i> System is up to date.';
+                    statusDiv.className = 'alert alert-success';
+                    document.getElementById('updateBtn').disabled = true;
+                }
+            } else {
+                statusDiv.innerHTML = '<i class="fas fa-times"></i> Error checking for updates: ' + (data.error || 'Unknown error');
+                statusDiv.className = 'alert alert-danger';
+            }
+        })
+        .catch(error => {
+            statusDiv.innerHTML = '<i class="fas fa-times"></i> Error checking for updates: ' + error.message;
+            statusDiv.className = 'alert alert-danger';
+        });
+}
+
+// Update system
+function updateSystem() {
+    if (updateInProgress) return;
+    
+    $('#updateModal').modal('show');
+}
+
+// Confirm update
+function confirmUpdate() {
+    const checkbox = document.getElementById('confirmUpdate');
+    const btn = document.getElementById('confirmUpdateBtn');
+    btn.disabled = !checkbox.checked;
+}
+
+// Proceed with update
+function confirmUpdate() {
+    if (updateInProgress) return;
+    
+    updateInProgress = true;
+    $('#updateModal').modal('hide');
+    
+    const statusDiv = document.getElementById('updateStatus');
+    const progressDiv = document.getElementById('updateProgress');
+    const updateBtn = document.getElementById('updateBtn');
+    
+    statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting update...';
+    statusDiv.className = 'alert alert-info';
+    progressDiv.style.display = 'block';
+    updateBtn.disabled = true;
+    
+    // Start update process
+    startUpdateProcess();
+}
+
+// Start update process with progress tracking
+function startUpdateProcess() {
+    const progressBar = document.querySelector('.progress-bar');
+    const statusDiv = document.getElementById('updateStatus');
+    
+    // Simulate progress updates
+    let progress = 0;
+    const interval = setInterval(() => {
+        progress += Math.random() * 10;
+        if (progress > 90) progress = 90;
+        progressBar.style.width = progress + '%';
+        
+        if (progress < 30) {
+            statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating backup...';
+        } else if (progress < 60) {
+            statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Downloading updates...';
+        } else if (progress < 90) {
+            statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Installing updates...';
+        }
+    }, 1000);
+    
+    // Make actual update request
+    fetch('/api/admin/update-system', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            clearInterval(interval);
+            progressBar.style.width = '100%';
+            
+            if (data.success) {
+                statusDiv.innerHTML = '<i class="fas fa-check"></i> Update completed successfully!';
+                statusDiv.className = 'alert alert-success';
+                setTimeout(() => {
+                    location.reload();
+                }, 2000);
+            } else {
+                statusDiv.innerHTML = '<i class="fas fa-times"></i> Update failed: ' + (data.error || 'Unknown error');
+                statusDiv.className = 'alert alert-danger';
+                document.getElementById('updateBtn').disabled = false;
+            }
+            
+            progressDiv.style.display = 'none';
+            updateInProgress = false;
+            refreshUpdateLog();
+        })
+        .catch(error => {
+            clearInterval(interval);
+            statusDiv.innerHTML = '<i class="fas fa-times"></i> Update failed: ' + error.message;
+            statusDiv.className = 'alert alert-danger';
+            progressDiv.style.display = 'none';
+            updateInProgress = false;
+            document.getElementById('updateBtn').disabled = false;
+        });
+}
+
+// Rollback system
+function rollbackSystem(backupId) {
+    $('#rollbackModal').modal('show');
+    $('#rollbackModal').data('backup-id', backupId);
+}
+
+// Confirm rollback
+function confirmRollback() {
+    const checkbox = document.getElementById('confirmRollback');
+    const btn = document.getElementById('confirmRollbackBtn');
+    btn.disabled = !checkbox.checked;
+}
+
+// Proceed with rollback
+function confirmRollback() {
+    const backupId = $('#rollbackModal').data('backup-id');
+    
+    fetch('/api/admin/rollback-system', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ backup_id: backupId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        $('#rollbackModal').modal('hide');
+        
+        if (data.success) {
+            showAlert('success', 'Rollback completed successfully!');
+            setTimeout(() => {
+                location.reload();
+            }, 2000);
+        } else {
+            showAlert('danger', 'Rollback failed: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        $('#rollbackModal').modal('hide');
+        showAlert('danger', 'Rollback failed: ' + error.message);
+    });
+}
+
+// Refresh update log
+function refreshUpdateLog() {
+    fetch('/api/admin/update-log')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const logDiv = document.getElementById('updateLog');
+                if (data.log_content) {
+                    logDiv.innerHTML = '<pre>' + data.log_content + '</pre>';
+                } else {
+                    logDiv.innerHTML = '<div class="text-muted">No update log available</div>';
+                }
+                logDiv.scrollTop = logDiv.scrollHeight;
+            }
+        })
+        .catch(error => {
+            console.error('Error refreshing update log:', error);
+        });
+}
+
+// Refresh backups
+function refreshBackups() {
+    fetch('/api/admin/backups')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const backupList = document.getElementById('backupList');
+                if (data.backups && data.backups.length > 0) {
+                    let html = '<div class="table-responsive"><table class="table table-striped">';
+                    html += '<thead><tr><th>Date</th><th>Version</th><th>Type</th><th>Size</th><th>Actions</th></tr></thead><tbody>';
+                    
+                    data.backups.forEach(backup => {
+                        html += '<tr>';
+                        html += '<td>' + backup.date + '</td>';
+                        html += '<td>' + backup.version + '</td>';
+                        html += '<td>' + backup.type + '</td>';
+                        html += '<td>' + backup.size + '</td>';
+                        html += '<td>';
+                        html += '<button class="btn btn-sm btn-outline-primary" onclick="downloadBackup(\'' + backup.id + '\')">';
+                        html += '<i class="fas fa-download"></i> Download</button> ';
+                        html += '<button class="btn btn-sm btn-outline-danger" onclick="rollbackSystem(\'' + backup.id + '\')">';
+                        html += '<i class="fas fa-undo"></i> Rollback</button>';
+                        html += '</td></tr>';
+                    });
+                    
+                    html += '</tbody></table></div>';
+                    backupList.innerHTML = html;
+                } else {
+                    backupList.innerHTML = '<div class="text-center text-muted">No backups available</div>';
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error refreshing backups:', error);
+        });
+}
+
+// Download backup
+function downloadBackup(backupId) {
+    window.open('/api/admin/download-backup/' + backupId, '_blank');
+}
+
+// Show alert
+function showAlert(type, message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-' + type + ' alert-dismissible fade show';
+    alertDiv.innerHTML = message + '<button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>';
+    
+    document.body.insertBefore(alertDiv, document.body.firstChild);
+    
+    setTimeout(() => {
+        alertDiv.remove();
+    }, 5000);
+}
+
+// Enable/disable update button based on checkbox
+document.getElementById('confirmUpdate').addEventListener('change', function() {
+    document.getElementById('confirmUpdateBtn').disabled = !this.checked;
+});
+
+document.getElementById('confirmRollback').addEventListener('change', function() {
+    document.getElementById('confirmRollbackBtn').disabled = !this.checked;
+});
+</script>
+{% endblock %}

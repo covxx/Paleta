@@ -16,7 +16,7 @@ NC='\033[0m' # No Color
 APP_NAME="label-printer"
 APP_USER="labelprinter"
 APP_DIR="/opt/$APP_NAME"
-GIT_REPO="https://github.com/yourusername/label-printer.git"  # Update with your repo
+GIT_REPO="https://github.com/covxx/Paleta.git"  # Update with your repo
 SERVICE_NAME="label-printer"
 NGINX_SITE="label-printer"
 
