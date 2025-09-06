@@ -122,14 +122,20 @@ setup_app_directory() {
 clone_repository() {
     print_status "Cloning repository..."
     
-    cd "$APP_DIR"
+    # Ensure the directory exists and has correct permissions
+    if [ ! -d "$APP_DIR" ]; then
+        print_status "Creating application directory..."
+        sudo mkdir -p "$APP_DIR"
+        sudo chown "$APP_USER:$APP_USER" "$APP_DIR"
+    fi
     
-    if [ -d ".git" ]; then
+    # Check if repository already exists
+    if [ -d "$APP_DIR/.git" ]; then
         print_warning "Repository already exists, pulling latest changes..."
-        sudo -u "$APP_USER" git pull origin main
+        sudo -u "$APP_USER" -H bash -c "cd '$APP_DIR' && git pull origin main"
     else
         print_status "Cloning repository from $GIT_REPO"
-        sudo -u "$APP_USER" git clone "$GIT_REPO" .
+        sudo -u "$APP_USER" -H bash -c "cd '$APP_DIR' && git clone '$GIT_REPO' ."
     fi
     
     print_success "Repository cloned/updated"
@@ -139,17 +145,12 @@ clone_repository() {
 setup_python_env() {
     print_status "Setting up Python virtual environment..."
     
-    cd "$APP_DIR"
-    
     # Create virtual environment
-    sudo -u "$APP_USER" python3 -m venv venv
+    sudo -u "$APP_USER" -H bash -c "cd '$APP_DIR' && python3 -m venv venv"
     
     # Activate virtual environment and install dependencies
-    sudo -u "$APP_USER" bash -c "
-        source venv/bin/activate
-        pip install --upgrade pip
-        pip install -r requirements.txt
-    "
+    sudo -u "$APP_USER" -H bash -c "cd '$APP_DIR' && source venv/bin/activate && pip install --upgrade pip"
+    sudo -u "$APP_USER" -H bash -c "cd '$APP_DIR' && source venv/bin/activate && pip install -r requirements.txt"
     
     print_success "Python environment setup complete"
 }
@@ -158,15 +159,11 @@ setup_python_env() {
 setup_database() {
     print_status "Setting up database..."
     
-    cd "$APP_DIR"
-    
     # Create instance directory
-    sudo -u "$APP_USER" mkdir -p instance
+    sudo -u "$APP_USER" -H bash -c "cd '$APP_DIR' && mkdir -p instance"
     
     # Initialize database
-    sudo -u "$APP_USER" bash -c "
-        source venv/bin/activate
-        python -c '
+    sudo -u "$APP_USER" -H bash -c "cd '$APP_DIR' && source venv/bin/activate && python -c '
 from app import app, db
 with app.app_context():
     db.create_all()
