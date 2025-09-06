@@ -20,6 +20,10 @@ GIT_REPO="https://github.com/covxx/Paleta.git"  # Update with your repo
 SERVICE_NAME="label-printer"
 NGINX_SITE="label-printer"
 
+# SSL Configuration (Optional)
+DOMAIN_NAME=""  # Set your domain name here (e.g., "yourdomain.com")
+SSL_EMAIL=""    # Set your email for Let's Encrypt notifications
+
 # Function to print colored output
 print_status() {
     echo -e "${BLUE}[INFO]${NC} $1"
@@ -230,7 +234,7 @@ server {
     gzip on;
     gzip_vary on;
     gzip_min_length 1024;
-    gzip_proxied expired no-cache no-store private must-revalidate auth;
+    gzip_proxied expired no-cache no-store private auth;
     gzip_types text/plain text/css text/xml text/javascript application/x-javascript application/xml+rss;
     
     # Client max body size
@@ -290,9 +294,143 @@ setup_ssl() {
     # Install certbot
     sudo apt install -y certbot python3-certbot-nginx
     
-    print_warning "SSL setup requires a domain name"
-    print_status "To setup SSL, run: sudo certbot --nginx -d yourdomain.com"
-    print_status "This will automatically configure SSL certificates"
+    # Check if domain is provided
+    if [ -z "$DOMAIN_NAME" ]; then
+        print_warning "No domain name provided. SSL setup skipped."
+        print_status "To setup SSL later, run: sudo certbot --nginx -d yourdomain.com"
+        return 0
+    fi
+    
+    print_status "Setting up SSL for domain: $DOMAIN_NAME"
+    
+    # Update Nginx configuration with domain name
+    update_nginx_config_with_domain
+    
+    # Test Nginx configuration
+    if ! sudo nginx -t; then
+        print_error "Nginx configuration test failed. Cannot proceed with SSL setup."
+        return 1
+    fi
+    
+    # Restart Nginx
+    sudo systemctl restart nginx
+    
+    # Obtain SSL certificate
+    print_status "Obtaining SSL certificate for $DOMAIN_NAME..."
+    
+    # Run certbot with automatic configuration
+    if sudo certbot --nginx -d "$DOMAIN_NAME" --non-interactive --agree-tos --email "$SSL_EMAIL" --redirect; then
+        print_success "SSL certificate obtained and configured successfully!"
+        
+        # Test SSL configuration
+        print_status "Testing SSL configuration..."
+        if curl -s -I "https://$DOMAIN_NAME" | grep -q "200 OK"; then
+            print_success "SSL is working correctly!"
+        else
+            print_warning "SSL certificate installed but may need time to propagate"
+        fi
+        
+        # Setup automatic renewal
+        setup_ssl_renewal
+        
+    else
+        print_error "Failed to obtain SSL certificate"
+        print_status "You can try manually: sudo certbot --nginx -d $DOMAIN_NAME"
+        return 1
+    fi
+}
+
+# Function to update Nginx configuration with domain name
+update_nginx_config_with_domain() {
+    print_status "Updating Nginx configuration for domain: $DOMAIN_NAME"
+    
+    # Create Nginx configuration with domain name
+    sudo tee /etc/nginx/sites-available/$NGINX_SITE > /dev/null <<EOF
+server {
+    listen 80;
+    server_name $DOMAIN_NAME;
+    
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    
+    # Gzip compression
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_proxied expired no-cache no-store private auth;
+    gzip_types text/plain text/css text/xml text/javascript application/x-javascript application/xml+rss;
+    
+    # Client max body size
+    client_max_body_size 16M;
+    
+    # Main application
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        
+        # WebSocket support
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        
+        # Timeouts
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+    
+    # Static files
+    location /static {
+        alias $APP_DIR/static;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+    
+    # Uploads
+    location /uploads {
+        alias $APP_DIR/uploads;
+        expires 1d;
+        add_header Cache-Control "public";
+    }
+}
+EOF
+
+    # Enable site
+    sudo ln -sf /etc/nginx/sites-available/$NGINX_SITE /etc/nginx/sites-enabled/
+    
+    # Remove default site
+    sudo rm -f /etc/nginx/sites-enabled/default
+    
+    print_success "Nginx configuration updated for domain: $DOMAIN_NAME"
+}
+
+# Function to setup SSL certificate renewal
+setup_ssl_renewal() {
+    print_status "Setting up automatic SSL certificate renewal..."
+    
+    # Test renewal
+    if sudo certbot renew --dry-run; then
+        print_success "SSL certificate renewal test passed"
+        
+        # Create renewal script
+        sudo tee /etc/cron.d/certbot-renewal > /dev/null <<EOF
+# Renew Let's Encrypt certificates twice daily
+0 */12 * * * root certbot renew --quiet --post-hook "systemctl reload nginx"
+EOF
+        
+        print_success "Automatic SSL certificate renewal configured"
+        print_status "Certificates will be renewed automatically twice daily"
+        
+    else
+        print_warning "SSL certificate renewal test failed"
+        print_status "You may need to check certificate renewal manually"
+    fi
 }
 
 # Function to setup firewall
@@ -421,7 +559,12 @@ display_final_info() {
     echo "  - Application Server: Flask (Gunicorn recommended for production)"
     echo
     echo "Access Information:"
-    echo "  - Web Interface: http://$(curl -s ifconfig.me)"
+    if [ -n "$DOMAIN_NAME" ]; then
+        echo "  - Web Interface: https://$DOMAIN_NAME (SSL enabled)"
+        echo "  - HTTP Redirect: http://$DOMAIN_NAME (redirects to HTTPS)"
+    else
+        echo "  - Web Interface: http://$(curl -s ifconfig.me)"
+    fi
     echo "  - Admin Login: /admin/login"
     echo
     echo "Service Management:"
@@ -451,10 +594,72 @@ display_final_info() {
     echo "=========================================="
 }
 
+# Function to show help
+show_help() {
+    echo "QuickBooks Label Printer - VPS Setup Script"
+    echo
+    echo "Usage: sudo $0 [OPTIONS]"
+    echo
+    echo "Options:"
+    echo "  -d, --domain DOMAIN    Set domain name for SSL certificate (e.g., yourdomain.com)"
+    echo "  -e, --email EMAIL      Set email for Let's Encrypt notifications"
+    echo "  -h, --help            Show this help message"
+    echo
+    echo "Examples:"
+    echo "  sudo $0                                    # Basic setup without SSL"
+    echo "  sudo $0 -d yourdomain.com -e admin@yourdomain.com  # Setup with SSL"
+    echo
+    echo "SSL Configuration:"
+    echo "  - Domain name must point to this server's IP address"
+    echo "  - Ports 80 and 443 must be open in firewall"
+    echo "  - Email is used for Let's Encrypt notifications and renewal warnings"
+}
+
+# Function to parse command line arguments
+parse_arguments() {
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -d|--domain)
+                DOMAIN_NAME="$2"
+                shift 2
+                ;;
+            -e|--email)
+                SSL_EMAIL="$2"
+                shift 2
+                ;;
+            -h|--help)
+                show_help
+                exit 0
+                ;;
+            *)
+                print_error "Unknown option: $1"
+                show_help
+                exit 1
+                ;;
+        esac
+    done
+}
+
 # Main execution
 main() {
+    # Parse command line arguments
+    parse_arguments "$@"
+    
     print_status "Starting QuickBooks Label Printer VPS Setup..."
     echo
+    
+    # Display configuration
+    if [ -n "$DOMAIN_NAME" ]; then
+        print_status "Domain name: $DOMAIN_NAME"
+        if [ -n "$SSL_EMAIL" ]; then
+            print_status "SSL email: $SSL_EMAIL"
+        else
+            print_warning "No SSL email provided. SSL setup will be skipped."
+            DOMAIN_NAME=""
+        fi
+    else
+        print_status "No domain name provided. SSL setup will be skipped."
+    fi
     
     # Pre-flight checks
     check_root
@@ -470,6 +675,7 @@ main() {
     setup_database
     create_systemd_service
     setup_nginx
+    setup_ssl
     setup_firewall
     setup_monitoring
     create_backup_script
