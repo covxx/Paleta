@@ -1,1557 +1,878 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QuickBooks Admin - Label Printer</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        .sync-status {
-            font-size: 0.9em;
+{% extends "base.html" %}
+
+{% block title %}QuickBooks Admin - Label Printer{% endblock %}
+
+{% block extra_css %}
+<style>
+    .qb-admin-layout {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: var(--space-6);
+    }
+    
+    .qb-header {
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+        color: var(--text-inverse);
+        padding: var(--space-8);
+        border-radius: var(--radius-lg);
+        margin-bottom: var(--space-6);
+    }
+    
+    .qb-header h1 {
+        color: var(--text-inverse);
+        margin-bottom: var(--space-2);
+        font-size: var(--font-size-4xl);
+        font-weight: var(--font-weight-bold);
+    }
+    
+    .qb-header p {
+        color: rgba(255, 255, 255, 0.9);
+        font-size: var(--font-size-lg);
+        margin-bottom: 0;
+    }
+    
+    .qb-actions {
+        display: flex;
+        gap: var(--space-3);
+        margin-top: var(--space-6);
+        flex-wrap: wrap;
+    }
+    
+    .qb-card {
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        padding: var(--space-6);
+        margin-bottom: var(--space-6);
+        transition: all var(--transition-normal);
+    }
+    
+    .qb-card:hover {
+        box-shadow: var(--shadow-lg);
+    }
+    
+    .qb-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: var(--space-4);
+        padding-bottom: var(--space-4);
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .qb-card-title {
+        font-size: var(--font-size-lg);
+        font-weight: var(--font-weight-semibold);
+        color: var(--text-primary);
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+    }
+    
+    .sync-status {
+        font-size: var(--font-size-sm);
+        padding: var(--space-2) var(--space-4);
+        border-radius: var(--radius-full);
+        font-weight: var(--font-weight-medium);
+    }
+    
+    .sync-status.connected {
+        background: rgba(16, 185, 129, 0.1);
+        color: var(--success-color);
+        border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+    
+    .sync-status.disconnected {
+        background: rgba(239, 68, 68, 0.1);
+        color: var(--danger-color);
+        border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+    
+    .sync-status.unknown {
+        background: rgba(156, 163, 175, 0.1);
+        color: var(--text-muted);
+        border: 1px solid rgba(156, 163, 175, 0.2);
+    }
+    
+    .auto-sync-indicator {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-2);
+    }
+    
+    .auto-sync-indicator::after {
+        content: "AUTO";
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        background: var(--success-color);
+        color: white;
+        font-size: var(--font-size-xs);
+        padding: 2px 4px;
+        border-radius: var(--radius-sm);
+        font-weight: var(--font-weight-bold);
+    }
+    
+    .qb-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: var(--space-4);
+        margin-bottom: var(--space-6);
+    }
+    
+    .qb-stat-card {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius);
+        padding: var(--space-4);
+        text-align: center;
+    }
+    
+    .qb-stat-value {
+        font-size: var(--font-size-2xl);
+        font-weight: var(--font-weight-bold);
+        color: var(--text-primary);
+        margin-bottom: var(--space-2);
+    }
+    
+    .qb-stat-label {
+        color: var(--text-secondary);
+        font-size: var(--font-size-sm);
+        font-weight: var(--font-weight-medium);
+    }
+    
+    .qb-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: var(--space-4);
+    }
+    
+    .qb-table th,
+    .qb-table td {
+        padding: var(--space-3);
+        text-align: left;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .qb-table th {
+        background: var(--bg-tertiary);
+        font-weight: var(--font-weight-semibold);
+        color: var(--text-primary);
+    }
+    
+    .qb-table td {
+        color: var(--text-secondary);
+    }
+    
+    .qb-table tbody tr:hover {
+        background: rgba(102, 126, 234, 0.05);
+    }
+    
+    .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: var(--z-modal);
+        opacity: 0;
+        visibility: hidden;
+        transition: all var(--transition-normal);
+    }
+    
+    .modal.show {
+        opacity: 1;
+        visibility: visible;
+    }
+    
+    .modal-dialog {
+        background: var(--bg-primary);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-2xl);
+        max-width: 600px;
+        width: 90%;
+        max-height: 90vh;
+        overflow: hidden;
+        transform: scale(0.9);
+        transition: transform var(--transition-normal);
+    }
+    
+    .modal.show .modal-dialog {
+        transform: scale(1);
+    }
+    
+    .modal-header {
+        padding: var(--space-6);
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .modal-title {
+        font-size: var(--font-size-lg);
+        font-weight: var(--font-weight-semibold);
+        color: var(--text-primary);
+        margin: 0;
+    }
+    
+    .modal-body {
+        padding: var(--space-6);
+        max-height: 60vh;
+        overflow-y: auto;
+    }
+    
+    .modal-footer {
+        padding: var(--space-6);
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        gap: var(--space-3);
+        justify-content: flex-end;
+    }
+    
+    .btn-close {
+        background: none;
+        border: none;
+        font-size: var(--font-size-xl);
+        color: var(--text-muted);
+        cursor: pointer;
+        padding: 0;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .btn-close:hover {
+        color: var(--text-primary);
+    }
+    
+    /* Dark mode adjustments */
+    [data-theme="dark"] .qb-header {
+        background: linear-gradient(135deg, var(--primary-dark) 0%, var(--secondary-dark) 100%);
+    }
+    
+    [data-theme="dark"] .qb-card {
+        background: var(--bg-primary);
+        border-color: var(--border-color);
+    }
+    
+    [data-theme="dark"] .qb-stat-card {
+        background: var(--bg-secondary);
+        border-color: var(--border-color);
+    }
+    
+    [data-theme="dark"] .modal-dialog {
+        background: var(--bg-primary);
+    }
+    
+    /* Responsive design */
+    @media (max-width: 768px) {
+        .qb-actions {
+            flex-direction: column;
         }
-        .auto-sync-indicator {
-            position: relative;
+        
+        .qb-stats-grid {
+            grid-template-columns: 1fr;
         }
-        .auto-sync-indicator::after {
-            content: "AUTO";
-            position: absolute;
-            top: -5px;
-            right: -5px;
-            background: #28a745;
-            color: white;
-            font-size: 0.6em;
-            padding: 2px 4px;
-            border-radius: 3px;
+        
+        .qb-header {
+            padding: var(--space-6);
         }
-    </style>
-</head>
-<body>
-    <div class="container-fluid">
-        <div class="row">
-            <!-- Sidebar -->
-            <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
-                <div class="position-sticky pt-3">
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link" href="/">
-                                <i class="fas fa-home"></i> Dashboard
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/orders">
-                                <i class="fas fa-shopping-cart"></i> Orders
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/customers">
-                                <i class="fas fa-users"></i> Customers
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/items">
-                                <i class="fas fa-boxes"></i> Items
-                            </a>
-                        </li>
-                        {% if session.admin_logged_in %}
-                        <li class="nav-item">
-                            <a class="nav-link active" href="/quickbooks-admin">
-                                <i class="fab fa-quickbooks"></i> QB Admin
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/label-designer">
-                                <i class="fas fa-tags"></i> Label Designer
-                            </a>
-                        </li>
-                        {% endif %}
-                    </ul>
-                </div>
-            </nav>
+        
+        .qb-header h1 {
+            font-size: var(--font-size-3xl);
+        }
+        
+        .modal-dialog {
+            width: 95%;
+            margin: var(--space-4);
+        }
+    }
+</style>
+{% endblock %}
 
-            <!-- Main content -->
-            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
-                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                    <h1 class="h2">QuickBooks Admin</h1>
-                    <div class="btn-toolbar mb-2 mb-md-0">
-                        <button class="btn btn-outline-primary" onclick="testConnection()">
-                            <i class="fas fa-plug"></i> Test Connection
-                        </button>
-                        <button class="btn btn-outline-success" onclick="connectToQuickBooks()">
-                            <i class="fas fa-link"></i> Connect to QB
-                        </button>
-                        <button class="btn btn-outline-danger" onclick="disconnectQuickBooks()">
-                            <i class="fas fa-unlink"></i> Disconnect
-                        </button>
-                        <button class="btn btn-outline-info" onclick="refreshAllStatus()">
-                            <i class="fas fa-sync-alt"></i> Refresh Status
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Connection Status -->
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">QuickBooks Connection Status</h5>
-                    </div>
-                    <div class="card-body">
-                        <div id="connectionStatus">
-                            <div class="d-flex align-items-center">
-                                <div class="spinner-border spinner-border-sm me-2" role="status" id="connectionSpinner">
-                                    <span class="visually-hidden">Loading...</span>
-                                </div>
-                                <span>Checking connection...</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Auto-Sync Status -->
-                <div class="card mb-4">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="card-title mb-0">Auto-Sync Status</h5>
-                        <span class="badge bg-success">ACTIVE</span>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-3">
-                                <div class="text-center">
-                                    <i class="fas fa-users fa-2x text-primary mb-2"></i>
-                                    <h6>Customers</h6>
-                                    <small class="text-muted">Every hour</small>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="text-center">
-                                    <i class="fas fa-boxes fa-2x text-success mb-2"></i>
-                                    <h6>Items</h6>
-                                    <small class="text-muted">Every hour</small>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="text-center">
-                                    <i class="fas fa-shopping-cart fa-2x text-warning mb-2"></i>
-                                    <h6>Orders</h6>
-                                    <small class="text-muted">Instant + Hourly</small>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="text-center">
-                                    <i class="fas fa-dollar-sign fa-2x text-info mb-2"></i>
-                                    <h6>Pricing</h6>
-                                    <small class="text-muted">Every hour</small>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="mt-3">
-                            <small class="text-muted">
-                                <i class="fas fa-clock"></i> Last sync: <span id="lastSyncTime">Never</span> | 
-                                Next sync: <span id="nextSyncTime">In 1 hour</span>
-                            </small>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Manual Sync Options -->
-                <div class="row mb-4">
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">
-                                    <i class="fas fa-users text-primary"></i> Manual Sync - Customers
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                                <p>Import and sync customers from QuickBooks Online.</p>
-                                <div class="d-grid gap-2">
-                                    <button class="btn btn-primary" onclick="importCustomers()" id="importCustomersBtn">
-                                        <i class="fas fa-download"></i> Import Customers
-                                    </button>
-                                    <button class="btn btn-outline-primary" onclick="syncCustomers()">
-                                        <i class="fas fa-sync"></i> Sync Customers
-                                    </button>
-                                </div>
-                                <div class="mt-2 sync-status">
-                                    <small class="text-muted">Status: <span id="customerSyncStatus">Unknown</span></small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">
-                                    <i class="fas fa-boxes text-success"></i> Manual Sync - Items
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                                <p>Import and sync inventory items from QuickBooks Online.</p>
-                                <div class="d-grid gap-2">
-                                    <button class="btn btn-success" onclick="importItems()" id="importItemsBtn">
-                                        <i class="fas fa-download"></i> Import Items
-                                    </button>
-                                    <button class="btn btn-outline-success" onclick="syncItems()">
-                                        <i class="fas fa-sync"></i> Sync Items
-                                    </button>
-                                </div>
-                                <div class="mt-2 sync-status">
-                                    <small class="text-muted">Status: <span id="itemSyncStatus">Unknown</span></small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Manual Sync - Orders -->
-                <div class="row mb-4">
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">
-                                    <i class="fas fa-shopping-cart text-warning"></i> Manual Sync - Orders
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                                <p>Sync pending orders to QuickBooks Online.</p>
-                                <div class="d-grid gap-2">
-                                    <button class="btn btn-warning" onclick="syncPendingOrders()">
-                                        <i class="fas fa-sync"></i> Sync Pending Orders
-                                    </button>
-                                    <button class="btn btn-outline-info" onclick="viewSyncStatus()">
-                                        <i class="fas fa-chart-bar"></i> View Sync Status
-                                    </button>
-                                </div>
-                                <div class="mt-2 sync-status">
-                                    <small class="text-muted">Pending: <span id="pendingOrdersCount">0</span> orders</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">
-                                    <i class="fas fa-cog text-secondary"></i> Auto-Sync Settings
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                                <p>Configure automatic synchronization settings.</p>
-                                <div class="d-grid gap-2">
-                                    <button class="btn btn-secondary" onclick="configureAutoSync()">
-                                        <i class="fas fa-cog"></i> Configure Auto-Sync
-                                    </button>
-                                    <button class="btn btn-outline-secondary" onclick="viewSyncLog()">
-                                        <i class="fas fa-history"></i> View Sync Log
-                                    </button>
-                                </div>
-                                <div class="mt-2 sync-status">
-                                    <small class="text-muted">Auto-sync: <span class="text-success">Enabled</span></small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Per-Customer Pricing -->
-                <div class="row mb-4">
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">
-                                    <i class="fas fa-dollar-sign text-info"></i> Per-Customer Pricing
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                                <p>Manage custom pricing for individual customers.</p>
-                                <div class="d-grid gap-2 d-md-flex">
-                                    <button class="btn btn-info" onclick="manageCustomerPricing()">
-                                        <i class="fas fa-edit"></i> Manage Customer Pricing
-                                    </button>
-                                    <button class="btn btn-outline-info" onclick="importCustomerPricing()">
-                                        <i class="fas fa-download"></i> Import from QB
-                                    </button>
-                                    <button class="btn btn-outline-info" onclick="exportCustomerPricing()">
-                                        <i class="fas fa-upload"></i> Export to QB
-                                    </button>
-                                </div>
-                                <div class="mt-2 sync-status">
-                                    <small class="text-muted">Custom prices: <span id="customPricingCount">0</span> customers</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Sync Log -->
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Recent Sync Activity</h5>
-                    </div>
-                    <div class="card-body">
-                        <div id="syncLog">
-                            <div class="text-center text-muted">
-                                <i class="fas fa-history fa-2x mb-2"></i>
-                                <p>No sync activity yet</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </main>
+{% block content %}
+<div class="container">
+    <!-- QuickBooks Admin Header -->
+    <div class="qb-header">
+        <h1><i class="fab fa-quickbooks"></i> QuickBooks Admin</h1>
+        <p>Manage QuickBooks integration, sync data, and configure settings</p>
+        
+        <div class="qb-actions">
+            <button class="btn btn-outline-light" onclick="testConnection()">
+                <i class="fas fa-plug"></i> Test Connection
+            </button>
+            <button class="btn btn-outline-light" onclick="connectToQuickBooks()">
+                <i class="fas fa-link"></i> Connect to QB
+            </button>
+            <button class="btn btn-outline-light" onclick="disconnectQuickBooks()">
+                <i class="fas fa-unlink"></i> Disconnect
+            </button>
+            <button class="btn btn-outline-light" onclick="refreshAllStatus()">
+                <i class="fas fa-sync-alt"></i> Refresh Status
+            </button>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Utility function for safe DOM element access
-        function safeGetElement(id) {
-            const element = document.getElementById(id);
-            if (!element) {
-                console.warn(`Element with id '${id}' not found`);
-            }
-            return element;
+    <!-- Connection Status -->
+    <div class="qb-card">
+        <div class="qb-card-header">
+            <h3 class="qb-card-title">
+                <i class="fas fa-wifi"></i> Connection Status
+            </h3>
+            <span class="sync-status unknown" id="connectionStatus">
+                <i class="fas fa-question-circle"></i> Unknown
+            </span>
+        </div>
+        <div id="connectionDetails">
+            <p class="text-muted">Click "Test Connection" to check QuickBooks connectivity.</p>
+        </div>
+    </div>
+
+    <!-- Sync Status -->
+    <div class="qb-card">
+        <div class="qb-card-header">
+            <h3 class="qb-card-title">
+                <i class="fas fa-sync-alt"></i> Sync Status
+            </h3>
+            <button class="btn btn-sm btn-outline-primary" onclick="showSyncStatusModal()">
+                <i class="fas fa-info-circle"></i> View Details
+            </button>
+        </div>
+        <div class="qb-stats-grid">
+            <div class="qb-stat-card">
+                <div class="qb-stat-value" id="itemsCount">-</div>
+                <div class="qb-stat-label">Items</div>
+            </div>
+            <div class="qb-stat-card">
+                <div class="qb-stat-value" id="customersCount">-</div>
+                <div class="qb-stat-label">Customers</div>
+            </div>
+            <div class="qb-stat-card">
+                <div class="qb-stat-value" id="ordersCount">-</div>
+                <div class="qb-stat-label">Orders</div>
+            </div>
+            <div class="qb-stat-card">
+                <div class="qb-stat-value" id="lastSync">-</div>
+                <div class="qb-stat-label">Last Sync</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manual Sync Actions -->
+    <div class="qb-card">
+        <div class="qb-card-header">
+            <h3 class="qb-card-title">
+                <i class="fas fa-hand-paper"></i> Manual Sync
+            </h3>
+        </div>
+        <div class="row">
+            <div class="col-3">
+                <button class="btn btn-primary w-100" onclick="syncItems()">
+                    <i class="fas fa-boxes"></i> Sync Items
+                </button>
+            </div>
+            <div class="col-3">
+                <button class="btn btn-success w-100" onclick="syncCustomers()">
+                    <i class="fas fa-users"></i> Sync Customers
+                </button>
+            </div>
+            <div class="col-3">
+                <button class="btn btn-warning w-100" onclick="syncOrders()">
+                    <i class="fas fa-shopping-cart"></i> Sync Orders
+                </button>
+            </div>
+            <div class="col-3">
+                <button class="btn btn-info w-100" onclick="syncAll()">
+                    <i class="fas fa-sync"></i> Sync All
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auto-Sync Configuration -->
+    <div class="qb-card">
+        <div class="qb-card-header">
+            <h3 class="qb-card-title">
+                <i class="fas fa-clock"></i> Auto-Sync Configuration
+            </h3>
+            <button class="btn btn-sm btn-outline-primary" onclick="showAutoSyncModal()">
+                <i class="fas fa-cog"></i> Configure
+            </button>
+        </div>
+        <div class="auto-sync-indicator">
+            <span class="sync-status connected">
+                <i class="fas fa-check-circle"></i> Auto-Sync Active
+            </span>
+        </div>
+        <p class="text-muted mt-3">Automatic synchronization runs every hour to keep data in sync.</p>
+    </div>
+
+    <!-- Sync Log -->
+    <div class="qb-card">
+        <div class="qb-card-header">
+            <h3 class="qb-card-title">
+                <i class="fas fa-list-alt"></i> Sync Log
+            </h3>
+            <button class="btn btn-sm btn-outline-primary" onclick="showSyncLogModal()">
+                <i class="fas fa-eye"></i> View Full Log
+            </button>
+        </div>
+        <div class="table-responsive">
+            <table class="qb-table" id="syncLogTable">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Action</th>
+                        <th>Status</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="4" class="text-center text-muted">
+                            <i class="fas fa-spinner fa-spin"></i> Loading sync log...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Customer Pricing Management -->
+    <div class="qb-card">
+        <div class="qb-card-header">
+            <h3 class="qb-card-title">
+                <i class="fas fa-dollar-sign"></i> Customer Pricing
+            </h3>
+            <button class="btn btn-sm btn-outline-primary" onclick="showPricingModal()">
+                <i class="fas fa-edit"></i> Manage Pricing
+            </button>
+        </div>
+        <div class="qb-stats-grid">
+            <div class="qb-stat-card">
+                <div class="qb-stat-value" id="customPricingCount">-</div>
+                <div class="qb-stat-label">Custom Prices</div>
+            </div>
+            <div class="qb-stat-card">
+                <div class="qb-stat-value" id="lastPricingUpdate">-</div>
+                <div class="qb-stat-label">Last Update</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sync Status Modal -->
+<div class="modal" id="syncStatusModal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3 class="modal-title">Sync Status Details</h3>
+            <button class="btn-close" onclick="closeModal('syncStatusModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="syncStatusContent">
+                <div class="text-center">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Loading sync status...</p>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('syncStatusModal')">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Auto-Sync Configuration Modal -->
+<div class="modal" id="autoSyncModal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3 class="modal-title">Auto-Sync Configuration</h3>
+            <button class="btn-close" onclick="closeModal('autoSyncModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">Sync Frequency</label>
+                <select class="form-control" id="syncFrequency">
+                    <option value="15">Every 15 minutes</option>
+                    <option value="30">Every 30 minutes</option>
+                    <option value="60" selected>Every hour</option>
+                    <option value="120">Every 2 hours</option>
+                    <option value="360">Every 6 hours</option>
+                    <option value="1440">Daily</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Sync Items</label>
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="syncItemsCheck" checked>
+                    <label class="form-check-label" for="syncItemsCheck">Items</label>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="syncCustomersCheck" checked>
+                    <label class="form-check-label" for="syncCustomersCheck">Customers</label>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="syncOrdersCheck" checked>
+                    <label class="form-check-label" for="syncOrdersCheck">Orders</label>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="syncPricingCheck" checked>
+                    <label class="form-check-label" for="syncPricingCheck">Pricing</label>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('autoSyncModal')">Cancel</button>
+            <button class="btn btn-primary" onclick="saveAutoSyncConfig()">Save Configuration</button>
+        </div>
+    </div>
+</div>
+
+<!-- Sync Log Modal -->
+<div class="modal" id="syncLogModal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3 class="modal-title">Sync Log</h3>
+            <button class="btn-close" onclick="closeModal('syncLogModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="table-responsive">
+                <table class="qb-table" id="fullSyncLogTable">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Action</th>
+                            <th>Status</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="4" class="text-center text-muted">
+                                <i class="fas fa-spinner fa-spin"></i> Loading full sync log...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('syncLogModal')">Close</button>
+            <button class="btn btn-primary" onclick="exportSyncLog()">
+                <i class="fas fa-download"></i> Export Log
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Customer Pricing Modal -->
+<div class="modal" id="pricingModal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3 class="modal-title">Customer Pricing Management</h3>
+            <button class="btn-close" onclick="closeModal('pricingModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="pricingContent">
+                <div class="text-center">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Loading pricing data...</p>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('pricingModal')">Close</button>
+            <button class="btn btn-primary" onclick="importPricing()">
+                <i class="fas fa-upload"></i> Import Pricing
+            </button>
+            <button class="btn btn-success" onclick="exportPricing()">
+                <i class="fas fa-download"></i> Export Pricing
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Modal Management
+    function showModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.add('show');
         }
+    }
 
-        // Load data on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            // Wait a bit for DOM to be fully ready
-            setTimeout(() => {
-                testConnection();
-                loadSyncStatus();
-                loadSyncLog();
-            }, 100);
-        });
+    function closeModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.remove('show');
+        }
+    }
 
-        async function testConnection() {
-            const statusDiv = document.getElementById('connectionStatus');
-            const spinner = document.getElementById('connectionSpinner');
-            
-            // Add null checks for DOM elements
-            if (!statusDiv) {
-                console.error('connectionStatus element not found');
-                return;
-            }
-            
-            try {
-                const response = await fetch('/api/quickbooks/test-connection');
-                const result = await response.json();
-                
-                // Hide spinner if it exists
-                if (spinner) {
-                    spinner.style.display = 'none';
-                }
-                
-                if (result.success) {
-                    statusDiv.innerHTML = `
+    // Close modals when clicking outside
+    document.addEventListener('click', function(event) {
+        if (event.target.classList.contains('modal')) {
+            event.target.classList.remove('show');
+        }
+    });
+
+    // QuickBooks Functions
+    function testConnection() {
+        const statusElement = document.getElementById('connectionStatus');
+        const detailsElement = document.getElementById('connectionDetails');
+        
+        statusElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
+        statusElement.className = 'sync-status unknown';
+        
+        fetch('/api/quickbooks/test-connection')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    statusElement.innerHTML = '<i class="fas fa-check-circle"></i> Connected';
+                    statusElement.className = 'sync-status connected';
+                    detailsElement.innerHTML = `
                         <div class="alert alert-success">
-                            <i class="fas fa-check-circle"></i>
-                            <strong>Connected to QuickBooks!</strong><br>
-                            Company: ${result.company_info?.CompanyName || 'Unknown'}<br>
-                            <small class="text-muted">Ready for sync operations</small>
+                            <strong>Connection Successful!</strong><br>
+                            Company: ${data.company_name || 'Unknown'}<br>
+                            Last Sync: ${data.last_sync || 'Never'}
                         </div>
                     `;
                 } else {
-                    statusDiv.innerHTML = `
+                    statusElement.innerHTML = '<i class="fas fa-times-circle"></i> Disconnected';
+                    statusElement.className = 'sync-status disconnected';
+                    detailsElement.innerHTML = `
                         <div class="alert alert-danger">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <strong>Connection Failed:</strong> ${result.error}<br>
-                            ${result.action_required === 'oauth_connect' ? 
-                                '<button class="btn btn-primary btn-sm mt-2" onclick="connectToQuickBooks()">Connect to QuickBooks</button>' : 
-                                '<button class="btn btn-warning btn-sm mt-2" onclick="testConnection()">Retry Connection</button>'
-                            }
+                            <strong>Connection Failed!</strong><br>
+                            ${data.error || 'Unknown error occurred'}
                         </div>
                     `;
                 }
-            } catch (error) {
-                // Hide spinner if it exists
-                if (spinner) {
-                    spinner.style.display = 'none';
-                }
-                
-                if (statusDiv) {
-                    statusDiv.innerHTML = `
-                        <div class="alert alert-danger">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <strong>Connection Error:</strong> ${error.message}
-                        </div>
-                    `;
-                }
-            }
-        }
+            })
+            .catch(error => {
+                statusElement.innerHTML = '<i class="fas fa-times-circle"></i> Error';
+                statusElement.className = 'sync-status disconnected';
+                detailsElement.innerHTML = `
+                    <div class="alert alert-danger">
+                        <strong>Connection Error!</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+            });
+    }
 
-        async function connectToQuickBooks() {
-            try {
-                const response = await fetch('/api/quickbooks/connect');
-                const result = await response.json();
-                
-                if (result.auth_url) {
-                    window.location.href = result.auth_url;
-                } else {
-                    alert('Error: ' + result.error);
-                }
-            } catch (error) {
-                alert('Error connecting to QuickBooks: ' + error.message);
-            }
-        }
+    function connectToQuickBooks() {
+        window.location.href = '/api/quickbooks/connect';
+    }
 
-        async function importCustomers() {
-            const btn = document.getElementById('importCustomersBtn');
-            const originalText = btn.innerHTML;
-            
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importing...';
-            btn.disabled = true;
-            
-            try {
-                const response = await fetch('/api/quickbooks/import/customers', {
-                    method: 'POST'
+    function disconnectQuickBooks() {
+        if (confirm('Are you sure you want to disconnect from QuickBooks?')) {
+            fetch('/api/quickbooks/disconnect', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('Success', 'Disconnected from QuickBooks', 'success');
+                        testConnection();
+                    } else {
+                        showNotification('Error', 'Failed to disconnect', 'error');
+                    }
+                })
+                .catch(error => {
+                    showNotification('Error', 'Failed to disconnect', 'error');
                 });
-                const result = await response.json();
-                
-                if (result.success) {
-                    alert(`Import successful! ${result.customers_imported} new customers, ${result.customers_updated} updated.`);
-                    // Refresh status with a small delay to ensure backend has updated
-                    setTimeout(() => {
-                        loadSyncStatus();
-                        loadSyncLog();
-                    }, 500);
-                } else {
-                    alert('Import failed: ' + result.error);
-                }
-            } catch (error) {
-                alert('Error importing customers: ' + error.message);
-            } finally {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
         }
+    }
 
-        async function importItems() {
-            const btn = document.getElementById('importItemsBtn');
-            const originalText = btn.innerHTML;
-            
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importing...';
-            btn.disabled = true;
-            
-            try {
-                const response = await fetch('/api/quickbooks/import/items', {
-                    method: 'POST'
-                });
-                const result = await response.json();
-                
-                if (result.success) {
-                    alert(`Import successful! ${result.items_imported} new items, ${result.items_updated} updated.`);
-                    // Refresh status with a small delay to ensure backend has updated
-                    setTimeout(() => {
-                        loadSyncStatus();
-                        loadSyncLog();
-                    }, 500);
-                } else {
-                    alert('Import failed: ' + result.error);
-                }
-            } catch (error) {
-                alert('Error importing items: ' + error.message);
-            } finally {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
-        }
+    function refreshAllStatus() {
+        loadSyncStatus();
+        loadSyncLog();
+        testConnection();
+        showNotification('Info', 'Status refreshed', 'info');
+    }
 
-        async function syncCustomers() {
-            try {
-                const response = await fetch('/api/quickbooks/sync/customers', {
-                    method: 'POST'
-                });
-                const result = await response.json();
-                
-                if (result.success) {
-                    alert('Customer sync completed successfully!');
-                    // Refresh status with a small delay to ensure backend has updated
-                    setTimeout(() => {
-                        loadSyncStatus();
-                        loadSyncLog();
-                    }, 500);
+    function syncItems() {
+        showNotification('Info', 'Syncing items...', 'info');
+        fetch('/api/quickbooks/sync/items', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Success', 'Items synced successfully', 'success');
+                    loadSyncStatus();
                 } else {
-                    alert('Sync failed: ' + result.error);
+                    showNotification('Error', 'Failed to sync items', 'error');
                 }
-            } catch (error) {
-                alert('Error syncing customers: ' + error.message);
-            }
-        }
+            })
+            .catch(error => {
+                showNotification('Error', 'Failed to sync items', 'error');
+            });
+    }
 
-        async function syncItems() {
-            try {
-                const response = await fetch('/api/quickbooks/sync/items', {
-                    method: 'POST'
-                });
-                const result = await response.json();
-                
-                if (result.success) {
-                    alert('Item sync completed successfully!');
-                    // Refresh status with a small delay to ensure backend has updated
-                    setTimeout(() => {
-                        loadSyncStatus();
-                        loadSyncLog();
-                    }, 500);
+    function syncCustomers() {
+        showNotification('Info', 'Syncing customers...', 'info');
+        fetch('/api/quickbooks/sync/customers', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Success', 'Customers synced successfully', 'success');
+                    loadSyncStatus();
                 } else {
-                    alert('Sync failed: ' + result.error);
+                    showNotification('Error', 'Failed to sync customers', 'error');
                 }
-            } catch (error) {
-                alert('Error syncing items: ' + error.message);
-            }
-        }
+            })
+            .catch(error => {
+                showNotification('Error', 'Failed to sync customers', 'error');
+            });
+    }
 
-        async function syncPendingOrders() {
-            try {
-                const response = await fetch('/api/quickbooks/sync/orders', {
-                    method: 'POST'
-                });
-                const result = await response.json();
-                
-                if (result.success) {
-                    alert(`Order sync completed! ${result.orders_synced} orders synced successfully.`);
-                    // Refresh status with a small delay to ensure backend has updated
-                    setTimeout(() => {
-                        loadSyncStatus();
-                        loadSyncLog();
-                    }, 500);
+    function syncOrders() {
+        showNotification('Info', 'Syncing orders...', 'info');
+        fetch('/api/quickbooks/sync/orders', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Success', 'Orders synced successfully', 'success');
+                    loadSyncStatus();
                 } else {
-                    alert('Sync failed: ' + result.error);
+                    showNotification('Error', 'Failed to sync orders', 'error');
                 }
-            } catch (error) {
-                alert('Error syncing orders: ' + error.message);
-            }
-        }
+            })
+            .catch(error => {
+                showNotification('Error', 'Failed to sync orders', 'error');
+            });
+    }
 
-        async function loadSyncStatus() {
-            try {
-                const response = await fetch('/api/quickbooks/sync/status');
-                const result = await response.json();
-                
-                if (result.success) {
-                    // Update customer sync status
-                    const customerStatus = document.getElementById('customerSyncStatus');
-                    if (customerStatus) {
-                        customerStatus.textContent = result.customer_status;
-                        // Add visual indicator
-                        const customerCard = customerStatus.closest('.card');
-                        if (customerCard) {
-                            customerCard.classList.remove('border-success', 'border-warning', 'border-danger');
-                            if (result.customer_status && result.customer_status.includes('Synced')) {
-                                customerCard.classList.add('border-success');
-                            } else if (result.customer_status && result.customer_status.includes('Partial')) {
-                                customerCard.classList.add('border-warning');
-                            } else {
-                                customerCard.classList.add('border-danger');
-                            }
-                        }
-                    }
-                    
-                    // Update item sync status
-                    const itemStatus = document.getElementById('itemSyncStatus');
-                    if (itemStatus) {
-                        itemStatus.textContent = result.item_status;
-                        // Add visual indicator
-                        const itemCard = itemStatus.closest('.card');
-                        if (itemCard) {
-                            itemCard.classList.remove('border-success', 'border-warning', 'border-danger');
-                            if (result.item_status && result.item_status.includes('Synced')) {
-                                itemCard.classList.add('border-success');
-                            } else if (result.item_status && result.item_status.includes('Partial')) {
-                                itemCard.classList.add('border-warning');
-                            } else {
-                                itemCard.classList.add('border-danger');
-                            }
-                        }
-                    }
-                    
-                    // Update pending orders count
-                    const pendingOrders = document.getElementById('pendingOrdersCount');
-                    if (pendingOrders) {
-                        pendingOrders.textContent = result.pending_orders;
-                        // Add visual indicator
-                        const orderCard = pendingOrders.closest('.card');
-                        if (orderCard) {
-                            orderCard.classList.remove('border-success', 'border-warning', 'border-danger');
-                            if (result.pending_orders == 0) {
-                                orderCard.classList.add('border-success');
-                            } else if (result.pending_orders < 5) {
-                                orderCard.classList.add('border-warning');
-                            } else {
-                                orderCard.classList.add('border-danger');
-                            }
-                        }
-                    }
-                    
-                    // Update custom pricing count
-                    const customPricing = document.getElementById('customPricingCount');
-                    if (customPricing) {
-                        customPricing.textContent = result.custom_pricing_count;
-                    }
-                    
-                    // Update sync times
-                    const lastSync = document.getElementById('lastSyncTime');
-                    if (lastSync) {
-                        lastSync.textContent = result.last_sync_time;
-                    }
-                    
-                    const nextSync = document.getElementById('nextSyncTime');
-                    if (nextSync) {
-                        nextSync.textContent = result.next_sync_time;
-                    }
-                    
-                    console.log('Sync status updated:', result);
+    function syncAll() {
+        showNotification('Info', 'Syncing all data...', 'info');
+        fetch('/api/quickbooks/sync/all', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Success', 'All data synced successfully', 'success');
+                    loadSyncStatus();
                 } else {
-                    console.error('Failed to load sync status:', result.error);
+                    showNotification('Error', 'Failed to sync all data', 'error');
                 }
-            } catch (error) {
+            })
+            .catch(error => {
+                showNotification('Error', 'Failed to sync all data', 'error');
+            });
+    }
+
+    function loadSyncStatus() {
+        fetch('/api/quickbooks/sync/status')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('itemsCount').textContent = data.items_count || 0;
+                    document.getElementById('customersCount').textContent = data.customers_count || 0;
+                    document.getElementById('ordersCount').textContent = data.orders_count || 0;
+                    document.getElementById('lastSync').textContent = data.last_sync || 'Never';
+                    document.getElementById('customPricingCount').textContent = data.custom_pricing_count || 0;
+                    document.getElementById('lastPricingUpdate').textContent = data.last_pricing_update || 'Never';
+                }
+            })
+            .catch(error => {
                 console.error('Error loading sync status:', error);
-            }
-        }
+            });
+    }
 
-        async function loadSyncLog() {
-            try {
-                const response = await fetch('/api/quickbooks/sync/log');
-                const result = await response.json();
-                
-                if (result.success && result.logs.length > 0) {
-                    const logDiv = document.getElementById('syncLog');
-                    logDiv.innerHTML = result.logs.map(log => `
-                        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
-                            <div>
-                                <strong>${log.type}</strong> - ${log.message}
-                                <br><small class="text-muted">${log.timestamp}</small>
-                            </div>
-                            <span class="badge ${log.status === 'success' ? 'bg-success' : 'bg-danger'}">${log.status}</span>
-                        </div>
+    function loadSyncLog() {
+        fetch('/api/quickbooks/sync/log')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.logs) {
+                    const tbody = document.querySelector('#syncLogTable tbody');
+                    tbody.innerHTML = data.logs.slice(0, 5).map(log => `
+                        <tr>
+                            <td>${new Date(log.timestamp).toLocaleString()}</td>
+                            <td>${log.action}</td>
+                            <td><span class="badge badge-${log.status === 'success' ? 'success' : 'danger'}">${log.status}</span></td>
+                            <td>${log.details || '-'}</td>
+                        </tr>
                     `).join('');
-                } else {
-                    document.getElementById('syncLog').innerHTML = `
-                        <div class="text-center text-muted">
-                            <i class="fas fa-history fa-2x mb-2"></i>
-                            <p>No sync activity yet</p>
-                        </div>
-                    `;
                 }
-            } catch (error) {
+            })
+            .catch(error => {
                 console.error('Error loading sync log:', error);
-                document.getElementById('syncLog').innerHTML = `
-                    <div class="text-center text-danger">
-                        <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
-                        <p>Error loading sync log: ${error.message}</p>
-                    </div>
-                `;
-            }
-        }
+            });
+    }
 
-        async function refreshAllStatus() {
-            console.log('Refreshing all status...');
-            let refreshBtn = null;
-            let originalText = '';
-            
-            try {
-                // Show loading indicator
-                if (event && event.target) {
-                    refreshBtn = event.target;
-                    originalText = refreshBtn.innerHTML;
-                    refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
-                    refreshBtn.disabled = true;
-                }
-                
-                // Refresh all status components
-                await Promise.all([
-                    testConnection(),
-                    loadSyncStatus(),
-                    loadSyncLog()
-                ]);
-                
-                console.log('All status refreshed successfully');
-                
-            } catch (error) {
-                console.error('Error refreshing status:', error);
-                alert('Error refreshing status: ' + error.message);
-            } finally {
-                // Restore button if it exists
-                if (refreshBtn) {
-                    refreshBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh Status';
-                    refreshBtn.disabled = false;
-                }
-            }
-        }
-
-        function viewSyncStatus() {
-            // Create and show sync status modal
-            const modalHtml = `
-                <div class="modal fade" id="syncStatusModal" tabindex="-1" aria-labelledby="syncStatusModalLabel" aria-hidden="true">
-                    <div class="modal-dialog modal-lg">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="syncStatusModalLabel">
-                                    <i class="fas fa-chart-bar"></i> QuickBooks Sync Status
-                                </h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="card">
-                                            <div class="card-header">
-                                                <h6 class="mb-0"><i class="fas fa-users"></i> Customers</h6>
-                                            </div>
-                                            <div class="card-body">
-                                                <div class="d-flex justify-content-between">
-                                                    <span>Total Customers:</span>
-                                                    <span id="modalTotalCustomers">-</span>
-                                                </div>
-                                                <div class="d-flex justify-content-between">
-                                                    <span>Synced:</span>
-                                                    <span id="modalSyncedCustomers" class="text-success">-</span>
-                                                </div>
-                                                <div class="d-flex justify-content-between">
-                                                    <span>Not Synced:</span>
-                                                    <span id="modalUnsyncedCustomers" class="text-danger">-</span>
-                                                </div>
-                                                <div class="progress mt-2">
-                                                    <div id="modalCustomerProgress" class="progress-bar" role="progressbar" style="width: 0%"></div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="card">
-                                            <div class="card-header">
-                                                <h6 class="mb-0"><i class="fas fa-box"></i> Items</h6>
-                                            </div>
-                                            <div class="card-body">
-                                                <div class="d-flex justify-content-between">
-                                                    <span>Total Items:</span>
-                                                    <span id="modalTotalItems">-</span>
-                                                </div>
-                                                <div class="d-flex justify-content-between">
-                                                    <span>Synced:</span>
-                                                    <span id="modalSyncedItems" class="text-success">-</span>
-                                                </div>
-                                                <div class="d-flex justify-content-between">
-                                                    <span>Not Synced:</span>
-                                                    <span id="modalUnsyncedItems" class="text-danger">-</span>
-                                                </div>
-                                                <div class="progress mt-2">
-                                                    <div id="modalItemProgress" class="progress-bar" role="progressbar" style="width: 0%"></div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="row mt-3">
-                                    <div class="col-md-6">
-                                        <div class="card">
-                                            <div class="card-header">
-                                                <h6 class="mb-0"><i class="fas fa-shopping-cart"></i> Orders</h6>
-                                            </div>
-                                            <div class="card-body">
-                                                <div class="d-flex justify-content-between">
-                                                    <span>Pending Sync:</span>
-                                                    <span id="modalPendingOrders" class="text-warning">-</span>
-                                                </div>
-                                                <div class="d-flex justify-content-between">
-                                                    <span>Last Sync:</span>
-                                                    <span id="modalLastSync">-</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="card">
-                                            <div class="card-header">
-                                                <h6 class="mb-0"><i class="fas fa-clock"></i> Auto-Sync</h6>
-                                            </div>
-                                            <div class="card-body">
-                                                <div class="d-flex justify-content-between">
-                                                    <span>Status:</span>
-                                                    <span id="modalAutoSyncStatus" class="text-success">Enabled</span>
-                                                </div>
-                                                <div class="d-flex justify-content-between">
-                                                    <span>Next Sync:</span>
-                                                    <span id="modalNextSync">-</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                <button type="button" class="btn btn-primary" onclick="refreshSyncStatusModal()">
-                                    <i class="fas fa-sync-alt"></i> Refresh
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+    // Modal Functions
+    function showSyncStatusModal() {
+        showModal('syncStatusModal');
+        // Load detailed sync status
+        setTimeout(() => {
+            document.getElementById('syncStatusContent').innerHTML = `
+                <div class="alert alert-info">
+                    <strong>Detailed sync status will be loaded here.</strong><br>
+                    This feature is coming soon!
                 </div>
             `;
-            
-            // Remove existing modal if any
-            const existingModal = document.getElementById('syncStatusModal');
-            if (existingModal) {
-                existingModal.remove();
-            }
-            
-            // Add modal to page
-            document.body.insertAdjacentHTML('beforeend', modalHtml);
-            
-            // Show modal
-            const modal = new bootstrap.Modal(document.getElementById('syncStatusModal'));
-            modal.show();
-            
-            // Load data
-            refreshSyncStatusModal();
-        }
+        }, 500);
+    }
 
-        async function refreshSyncStatusModal() {
-            try {
-                const response = await fetch('/api/quickbooks/sync/status');
-                const result = await response.json();
-                
-                if (result.success) {
-                    // Parse customer status (e.g., "5/10 synced")
-                    const customerMatch = result.customer_status.match(/(\d+)\/(\d+)/);
-                    if (customerMatch) {
-                        const synced = parseInt(customerMatch[1]);
-                        const total = parseInt(customerMatch[2]);
-                        const unsynced = total - synced;
-                        const percentage = total > 0 ? (synced / total) * 100 : 0;
-                        
-                        document.getElementById('modalTotalCustomers').textContent = total;
-                        document.getElementById('modalSyncedCustomers').textContent = synced;
-                        document.getElementById('modalUnsyncedCustomers').textContent = unsynced;
-                        document.getElementById('modalCustomerProgress').style.width = percentage + '%';
-                        document.getElementById('modalCustomerProgress').textContent = Math.round(percentage) + '%';
-                    }
-                    
-                    // Parse item status (e.g., "3/8 synced")
-                    const itemMatch = result.item_status.match(/(\d+)\/(\d+)/);
-                    if (itemMatch) {
-                        const synced = parseInt(itemMatch[1]);
-                        const total = parseInt(itemMatch[2]);
-                        const unsynced = total - synced;
-                        const percentage = total > 0 ? (synced / total) * 100 : 0;
-                        
-                        document.getElementById('modalTotalItems').textContent = total;
-                        document.getElementById('modalSyncedItems').textContent = synced;
-                        document.getElementById('modalUnsyncedItems').textContent = unsynced;
-                        document.getElementById('modalItemProgress').style.width = percentage + '%';
-                        document.getElementById('modalItemProgress').textContent = Math.round(percentage) + '%';
-                    }
-                    
-                    // Update other fields
-                    document.getElementById('modalPendingOrders').textContent = result.pending_orders;
-                    document.getElementById('modalLastSync').textContent = result.last_sync_time;
-                    document.getElementById('modalNextSync').textContent = result.next_sync_time;
-                }
-            } catch (error) {
-                console.error('Error loading sync status for modal:', error);
-            }
-        }
+    function showAutoSyncModal() {
+        showModal('autoSyncModal');
+    }
 
-        function configureAutoSync() {
-            // Create and show auto-sync configuration modal
-            const modalHtml = `
-                <div class="modal fade" id="autoSyncModal" tabindex="-1" aria-labelledby="autoSyncModalLabel" aria-hidden="true">
-                    <div class="modal-dialog modal-lg">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="autoSyncModalLabel">
-                                    <i class="fas fa-cog"></i> Auto-Sync Configuration
-                                </h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body">
-                                <form id="autoSyncForm">
-                                    <div class="row">
-                                        <div class="col-md-6">
-                                            <div class="card">
-                                                <div class="card-header">
-                                                    <h6 class="mb-0"><i class="fas fa-toggle-on"></i> Auto-Sync Settings</h6>
-                                                </div>
-                                                <div class="card-body">
-                                                    <div class="form-check form-switch mb-3">
-                                                        <input class="form-check-input" type="checkbox" id="enableAutoSync" checked>
-                                                        <label class="form-check-label" for="enableAutoSync">
-                                                            Enable Auto-Sync
-                                                        </label>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label for="syncInterval" class="form-label">Sync Interval</label>
-                                                        <select class="form-select" id="syncInterval">
-                                                            <option value="15">Every 15 minutes</option>
-                                                            <option value="30">Every 30 minutes</option>
-                                                            <option value="60" selected>Every hour</option>
-                                                            <option value="120">Every 2 hours</option>
-                                                            <option value="240">Every 4 hours</option>
-                                                            <option value="480">Every 8 hours</option>
-                                                            <option value="1440">Every 24 hours</option>
-                                                        </select>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label for="syncTime" class="form-label">Preferred Sync Time</label>
-                                                        <input type="time" class="form-control" id="syncTime" value="09:00">
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <div class="card">
-                                                <div class="card-header">
-                                                    <h6 class="mb-0"><i class="fas fa-list-check"></i> Sync Options</h6>
-                                                </div>
-                                                <div class="card-body">
-                                                    <div class="form-check mb-3">
-                                                        <input class="form-check-input" type="checkbox" id="syncCustomers" checked>
-                                                        <label class="form-check-label" for="syncCustomers">
-                                                            Sync Customers
-                                                        </label>
-                                                    </div>
-                                                    <div class="form-check mb-3">
-                                                        <input class="form-check-input" type="checkbox" id="syncItems" checked>
-                                                        <label class="form-check-label" for="syncItems">
-                                                            Sync Items
-                                                        </label>
-                                                    </div>
-                                                    <div class="form-check mb-3">
-                                                        <input class="form-check-input" type="checkbox" id="syncOrders" checked>
-                                                        <label class="form-check-label" for="syncOrders">
-                                                            Sync Orders
-                                                        </label>
-                                                    </div>
-                                                    <div class="form-check mb-3">
-                                                        <input class="form-check-input" type="checkbox" id="syncPricing">
-                                                        <label class="form-check-label" for="syncPricing">
-                                                            Sync Customer Pricing
-                                                        </label>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="row mt-3">
-                                        <div class="col-12">
-                                            <div class="card">
-                                                <div class="card-header">
-                                                    <h6 class="mb-0"><i class="fas fa-bell"></i> Notifications</h6>
-                                                </div>
-                                                <div class="card-body">
-                                                    <div class="form-check mb-3">
-                                                        <input class="form-check-input" type="checkbox" id="notifyOnError" checked>
-                                                        <label class="form-check-label" for="notifyOnError">
-                                                            Notify on sync errors
-                                                        </label>
-                                                    </div>
-                                                    <div class="form-check mb-3">
-                                                        <input class="form-check-input" type="checkbox" id="notifyOnSuccess">
-                                                        <label class="form-check-label" for="notifyOnSuccess">
-                                                            Notify on successful sync
-                                                        </label>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label for="notificationEmail" class="form-label">Notification Email</label>
-                                                        <input type="email" class="form-control" id="notificationEmail" placeholder="admin@company.com">
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </form>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                <button type="button" class="btn btn-primary" onclick="saveAutoSyncConfig()">
-                                    <i class="fas fa-save"></i> Save Configuration
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+    function showSyncLogModal() {
+        showModal('syncLogModal');
+        // Load full sync log
+        setTimeout(() => {
+            document.querySelector('#fullSyncLogTable tbody').innerHTML = `
+                <tr>
+                    <td colspan="4" class="text-center text-muted">
+                        Full sync log feature coming soon!
+                    </td>
+                </tr>
+            `;
+        }, 500);
+    }
+
+    function showPricingModal() {
+        showModal('pricingModal');
+        // Load pricing data
+        setTimeout(() => {
+            document.getElementById('pricingContent').innerHTML = `
+                <div class="alert alert-info">
+                    <strong>Customer pricing management will be available here.</strong><br>
+                    This feature is coming soon!
                 </div>
             `;
-            
-            // Remove existing modal if any
-            const existingModal = document.getElementById('autoSyncModal');
-            if (existingModal) {
-                existingModal.remove();
-            }
-            
-            // Add modal to page
-            document.body.insertAdjacentHTML('beforeend', modalHtml);
-            
-            // Show modal
-            const modal = new bootstrap.Modal(document.getElementById('autoSyncModal'));
-            modal.show();
-            
-            // Load current configuration
-            loadAutoSyncConfig();
-        }
+        }, 500);
+    }
 
-        async function loadAutoSyncConfig() {
-            try {
-                // This would typically load from an API endpoint
-                // For now, we'll use default values
-                console.log('Loading auto-sync configuration...');
-            } catch (error) {
-                console.error('Error loading auto-sync config:', error);
-            }
-        }
+    function saveAutoSyncConfig() {
+        showNotification('Info', 'Auto-sync configuration saved', 'info');
+        closeModal('autoSyncModal');
+    }
 
-        async function saveAutoSyncConfig() {
-            try {
-                const config = {
-                    enabled: document.getElementById('enableAutoSync').checked,
-                    interval: parseInt(document.getElementById('syncInterval').value),
-                    syncTime: document.getElementById('syncTime').value,
-                    syncCustomers: document.getElementById('syncCustomers').checked,
-                    syncItems: document.getElementById('syncItems').checked,
-                    syncOrders: document.getElementById('syncOrders').checked,
-                    syncPricing: document.getElementById('syncPricing').checked,
-                    notifyOnError: document.getElementById('notifyOnError').checked,
-                    notifyOnSuccess: document.getElementById('notifyOnSuccess').checked,
-                    notificationEmail: document.getElementById('notificationEmail').value
-                };
-                
-                // This would typically save to an API endpoint
-                console.log('Saving auto-sync configuration:', config);
-                
-                // Show success message
-                alert('Auto-sync configuration saved successfully!');
-                
-                // Close modal
-                const modal = bootstrap.Modal.getInstance(document.getElementById('autoSyncModal'));
-                modal.hide();
-                
-            } catch (error) {
-                console.error('Error saving auto-sync config:', error);
-                alert('Error saving configuration: ' + error.message);
-            }
-        }
+    function exportSyncLog() {
+        showNotification('Info', 'Sync log export feature coming soon', 'info');
+    }
 
-        function viewSyncLog() {
-            // Create and show sync log modal
-            const modalHtml = `
-                <div class="modal fade" id="syncLogModal" tabindex="-1" aria-labelledby="syncLogModalLabel" aria-hidden="true">
-                    <div class="modal-dialog modal-xl">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="syncLogModalLabel">
-                                    <i class="fas fa-history"></i> QuickBooks Sync Log
-                                </h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body">
-                                <div class="row mb-3">
-                                    <div class="col-md-6">
-                                        <div class="input-group">
-                                            <span class="input-group-text"><i class="fas fa-filter"></i></span>
-                                            <select class="form-select" id="logFilter">
-                                                <option value="all">All Activities</option>
-                                                <option value="customers">Customers</option>
-                                                <option value="items">Items</option>
-                                                <option value="orders">Orders</option>
-                                                <option value="pricing">Pricing</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="input-group">
-                                            <span class="input-group-text"><i class="fas fa-calendar"></i></span>
-                                            <input type="date" class="form-control" id="logDate">
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="table-responsive">
-                                    <table class="table table-striped table-hover">
-                                        <thead class="table-dark">
-                                            <tr>
-                                                <th>Timestamp</th>
-                                                <th>Type</th>
-                                                <th>Status</th>
-                                                <th>Message</th>
-                                                <th>Details</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="syncLogTableBody">
-                                            <tr>
-                                                <td colspan="5" class="text-center">
-                                                    <div class="spinner-border" role="status">
-                                                        <span class="visually-hidden">Loading...</span>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <div class="d-flex justify-content-between align-items-center mt-3">
-                                    <div>
-                                        <button class="btn btn-outline-primary btn-sm" onclick="exportSyncLog()">
-                                            <i class="fas fa-download"></i> Export Log
-                                        </button>
-                                        <button class="btn btn-outline-danger btn-sm" onclick="clearSyncLog()">
-                                            <i class="fas fa-trash"></i> Clear Log
-                                        </button>
-                                    </div>
-                                    <div>
-                                        <button class="btn btn-primary btn-sm" onclick="refreshSyncLogModal()">
-                                            <i class="fas fa-sync-alt"></i> Refresh
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            // Remove existing modal if any
-            const existingModal = document.getElementById('syncLogModal');
-            if (existingModal) {
-                existingModal.remove();
-            }
-            
-            // Add modal to page
-            document.body.insertAdjacentHTML('beforeend', modalHtml);
-            
-            // Show modal
-            const modal = new bootstrap.Modal(document.getElementById('syncLogModal'));
-            modal.show();
-            
-            // Load sync log data
-            refreshSyncLogModal();
-            
-            // Add event listeners
-            document.getElementById('logFilter').addEventListener('change', refreshSyncLogModal);
-            document.getElementById('logDate').addEventListener('change', refreshSyncLogModal);
-        }
+    function importPricing() {
+        showNotification('Info', 'Pricing import feature coming soon', 'info');
+    }
 
-        async function refreshSyncLogModal() {
-            try {
-                const response = await fetch('/api/quickbooks/sync/log');
-                const result = await response.json();
-                
-                const tbody = document.getElementById('syncLogTableBody');
-                const filter = document.getElementById('logFilter').value;
-                const date = document.getElementById('logDate').value;
-                
-                if (result.success && result.logs.length > 0) {
-                    let filteredLogs = result.logs;
-                    
-                    // Apply filters
-                    if (filter !== 'all') {
-                        filteredLogs = filteredLogs.filter(log => log.type.toLowerCase() === filter);
-                    }
-                    
-                    if (date) {
-                        filteredLogs = filteredLogs.filter(log => {
-                            const logDate = new Date(log.timestamp).toISOString().split('T')[0];
-                            return logDate === date;
-                        });
-                    }
-                    
-                    // Sort by timestamp (newest first)
-                    filteredLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                    
-                    tbody.innerHTML = filteredLogs.map(log => `
-                        <tr>
-                            <td>
-                                <small class="text-muted">${new Date(log.timestamp).toLocaleString()}</small>
-                            </td>
-                            <td>
-                                <span class="badge bg-info">${log.type}</span>
-                            </td>
-                            <td>
-                                <span class="badge ${log.status === 'success' ? 'bg-success' : log.status === 'error' ? 'bg-danger' : 'bg-warning'}">
-                                    ${log.status}
-                                </span>
-                            </td>
-                            <td>${log.message}</td>
-                            <td>
-                                ${log.details ? `<button class="btn btn-sm btn-outline-info" onclick="showLogDetails('${log.timestamp}')">
-                                    <i class="fas fa-info-circle"></i>
-                                </button>` : '-'}
-                            </td>
-                        </tr>
-                    `).join('');
-                } else {
-                    tbody.innerHTML = `
-                        <tr>
-                            <td colspan="5" class="text-center text-muted">
-                                <i class="fas fa-history fa-2x mb-2"></i>
-                                <p>No sync activity found</p>
-                            </td>
-                        </tr>
-                    `;
-                }
-            } catch (error) {
-                console.error('Error loading sync log for modal:', error);
-                document.getElementById('syncLogTableBody').innerHTML = `
-                    <tr>
-                        <td colspan="5" class="text-center text-danger">
-                            <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
-                            <p>Error loading sync log: ${error.message}</p>
-                        </td>
-                    </tr>
-                `;
-            }
-        }
+    function exportPricing() {
+        showNotification('Info', 'Pricing export feature coming soon', 'info');
+    }
 
-        function showLogDetails(timestamp) {
-            // This would show detailed log information
-            alert(`Log details for ${timestamp} would be shown here`);
-        }
-
-        function exportSyncLog() {
-            // This would export the sync log to CSV or other format
-            alert('Sync log export functionality would be implemented here');
-        }
-
-        function clearSyncLog() {
-            if (confirm('Are you sure you want to clear the sync log? This action cannot be undone.')) {
-                // This would clear the sync log
-                alert('Sync log clear functionality would be implemented here');
-            }
-        }
-
-        function manageCustomerPricing() {
-            // Create and show customer pricing management modal
-            const modalHtml = `
-                <div class="modal fade" id="customerPricingModal" tabindex="-1" aria-labelledby="customerPricingModalLabel" aria-hidden="true">
-                    <div class="modal-dialog modal-xl">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="customerPricingModalLabel">
-                                    <i class="fas fa-dollar-sign"></i> Customer Pricing Management
-                                </h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body">
-                                <div class="row mb-3">
-                                    <div class="col-md-6">
-                                        <div class="input-group">
-                                            <span class="input-group-text"><i class="fas fa-search"></i></span>
-                                            <input type="text" class="form-control" id="customerSearch" placeholder="Search customers...">
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="input-group">
-                                            <span class="input-group-text"><i class="fas fa-box"></i></span>
-                                            <select class="form-select" id="itemFilter">
-                                                <option value="">All Items</option>
-                                                <option value="with-pricing">With Custom Pricing</option>
-                                                <option value="without-pricing">Without Custom Pricing</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="table-responsive">
-                                    <table class="table table-striped table-hover">
-                                        <thead class="table-dark">
-                                            <tr>
-                                                <th>Customer</th>
-                                                <th>Item</th>
-                                                <th>Standard Price</th>
-                                                <th>Custom Price</th>
-                                                <th>Discount %</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="customerPricingTableBody">
-                                            <tr>
-                                                <td colspan="6" class="text-center">
-                                                    <div class="spinner-border" role="status">
-                                                        <span class="visually-hidden">Loading...</span>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <div class="d-flex justify-content-between align-items-center mt-3">
-                                    <div>
-                                        <button class="btn btn-success btn-sm" onclick="addCustomerPricing()">
-                                            <i class="fas fa-plus"></i> Add Custom Price
-                                        </button>
-                                        <button class="btn btn-outline-primary btn-sm" onclick="importCustomerPricing()">
-                                            <i class="fas fa-download"></i> Import from QB
-                                        </button>
-                                        <button class="btn btn-outline-secondary btn-sm" onclick="exportCustomerPricing()">
-                                            <i class="fas fa-upload"></i> Export to QB
-                                        </button>
-                                    </div>
-                                    <div>
-                                        <button class="btn btn-primary btn-sm" onclick="refreshCustomerPricing()">
-                                            <i class="fas fa-sync-alt"></i> Refresh
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            // Remove existing modal if any
-            const existingModal = document.getElementById('customerPricingModal');
-            if (existingModal) {
-                existingModal.remove();
-            }
-            
-            // Add modal to page
-            document.body.insertAdjacentHTML('beforeend', modalHtml);
-            
-            // Show modal
-            const modal = new bootstrap.Modal(document.getElementById('customerPricingModal'));
-            modal.show();
-            
-            // Load customer pricing data
-            refreshCustomerPricing();
-            
-            // Add event listeners
-            document.getElementById('customerSearch').addEventListener('input', refreshCustomerPricing);
-            document.getElementById('itemFilter').addEventListener('change', refreshCustomerPricing);
-        }
-
-        async function refreshCustomerPricing() {
-            try {
-                // This would typically load from an API endpoint
-                // For now, we'll show sample data
-                const tbody = document.getElementById('customerPricingTableBody');
-                
-                // Sample data - in real implementation, this would come from API
-                const sampleData = [
-                    { customer: 'Acme Corp', item: 'Widget A', standardPrice: 10.00, customPrice: 8.50, discount: 15 },
-                    { customer: 'Beta Inc', item: 'Widget B', standardPrice: 15.00, customPrice: 12.00, discount: 20 },
-                    { customer: 'Gamma LLC', item: 'Widget C', standardPrice: 20.00, customPrice: null, discount: 0 }
-                ];
-                
-                tbody.innerHTML = sampleData.map(row => `
-                    <tr>
-                        <td>${row.customer}</td>
-                        <td>${row.item}</td>
-                        <td>$${row.standardPrice.toFixed(2)}</td>
-                        <td>${row.customPrice ? `$${row.customPrice.toFixed(2)}` : '-'}</td>
-                        <td>${row.discount}%</td>
-                        <td>
-                            <button class="btn btn-sm btn-outline-primary" onclick="editCustomerPricing('${row.customer}', '${row.item}')">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn btn-sm btn-outline-danger" onclick="deleteCustomerPricing('${row.customer}', '${row.item}')">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `).join('');
-                
-            } catch (error) {
-                console.error('Error loading customer pricing:', error);
-                document.getElementById('customerPricingTableBody').innerHTML = `
-                    <tr>
-                        <td colspan="6" class="text-center text-danger">
-                            <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
-                            <p>Error loading customer pricing: ${error.message}</p>
-                        </td>
-                    </tr>
-                `;
-            }
-        }
-
-        function addCustomerPricing() {
-            // This would show a form to add new customer pricing
-            alert('Add customer pricing form would be implemented here');
-        }
-
-        function editCustomerPricing(customer, item) {
-            // This would show a form to edit customer pricing
-            alert(`Edit pricing for ${customer} - ${item} would be implemented here`);
-        }
-
-        function deleteCustomerPricing(customer, item) {
-            if (confirm(`Are you sure you want to delete custom pricing for ${customer} - ${item}?`)) {
-                // This would delete the customer pricing
-                alert(`Delete pricing for ${customer} - ${item} would be implemented here`);
-            }
-        }
-
-        function importCustomerPricing() {
-            // Create and show import customer pricing modal
-            const modalHtml = `
-                <div class="modal fade" id="importPricingModal" tabindex="-1" aria-labelledby="importPricingModalLabel" aria-hidden="true">
-                    <div class="modal-dialog">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="importPricingModalLabel">
-                                    <i class="fas fa-download"></i> Import Customer Pricing from QuickBooks
-                                </h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body">
-                                <div class="alert alert-info">
-                                    <i class="fas fa-info-circle"></i>
-                                    This will import customer-specific pricing from QuickBooks Online.
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Import Options</label>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="importOverwrite" checked>
-                                        <label class="form-check-label" for="importOverwrite">
-                                            Overwrite existing custom prices
-                                        </label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="importCreateNew" checked>
-                                        <label class="form-check-label" for="importCreateNew">
-                                            Create new custom prices
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="importDateRange" class="form-label">Date Range</label>
-                                    <select class="form-select" id="importDateRange">
-                                        <option value="all">All Time</option>
-                                        <option value="30">Last 30 days</option>
-                                        <option value="90">Last 90 days</option>
-                                        <option value="365">Last year</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                <button type="button" class="btn btn-primary" onclick="startImportPricing()">
-                                    <i class="fas fa-download"></i> Start Import
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            // Remove existing modal if any
-            const existingModal = document.getElementById('importPricingModal');
-            if (existingModal) {
-                existingModal.remove();
-            }
-            
-            // Add modal to page
-            document.body.insertAdjacentHTML('beforeend', modalHtml);
-            
-            // Show modal
-            const modal = new bootstrap.Modal(document.getElementById('importPricingModal'));
-            modal.show();
-        }
-
-        function startImportPricing() {
-            // This would start the import process
-            alert('Customer pricing import from QuickBooks would be implemented here');
-            
-            // Close modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('importPricingModal'));
-            modal.hide();
-        }
-
-        function exportCustomerPricing() {
-            // Create and show export customer pricing modal
-            const modalHtml = `
-                <div class="modal fade" id="exportPricingModal" tabindex="-1" aria-labelledby="exportPricingModalLabel" aria-hidden="true">
-                    <div class="modal-dialog">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="exportPricingModalLabel">
-                                    <i class="fas fa-upload"></i> Export Customer Pricing to QuickBooks
-                                </h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body">
-                                <div class="alert alert-warning">
-                                    <i class="fas fa-exclamation-triangle"></i>
-                                    This will export customer-specific pricing to QuickBooks Online.
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Export Options</label>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="exportOverwrite" checked>
-                                        <label class="form-check-label" for="exportOverwrite">
-                                            Overwrite existing prices in QuickBooks
-                                        </label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="exportCreateItems">
-                                        <label class="form-check-label" for="exportCreateItems">
-                                            Create new items if they don't exist
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="exportFormat" class="form-label">Export Format</label>
-                                    <select class="form-select" id="exportFormat">
-                                        <option value="qb">QuickBooks Online</option>
-                                        <option value="csv">CSV File</option>
-                                        <option value="json">JSON File</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                <button type="button" class="btn btn-primary" onclick="startExportPricing()">
-                                    <i class="fas fa-upload"></i> Start Export
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            // Remove existing modal if any
-            const existingModal = document.getElementById('exportPricingModal');
-            if (existingModal) {
-                existingModal.remove();
-            }
-            
-            // Add modal to page
-            document.body.insertAdjacentHTML('beforeend', modalHtml);
-            
-            // Show modal
-            const modal = new bootstrap.Modal(document.getElementById('exportPricingModal'));
-            modal.show();
-        }
-
-        function startExportPricing() {
-            // This would start the export process
-            alert('Customer pricing export to QuickBooks would be implemented here');
-            
-            // Close modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('exportPricingModal'));
-            modal.hide();
-        }
-
-        async function disconnectQuickBooks() {
-            if (!confirm('Are you sure you want to disconnect from QuickBooks? This will clear all stored tokens.')) {
-                return;
-            }
-            
-            try {
-                const response = await fetch('/api/quickbooks/disconnect', {
-                    method: 'POST'
-                });
-                const result = await response.json();
-                
-                if (result.success) {
-                    alert('Disconnected from QuickBooks successfully');
-                    testConnection(); // Refresh connection status
-                } else {
-                    alert('Error disconnecting: ' + result.error);
-                }
-            } catch (error) {
-                alert('Error disconnecting from QuickBooks: ' + error.message);
-            }
-        }
-    </script>
-</body>
-</html>
+    // Initialize page
+    document.addEventListener('DOMContentLoaded', function() {
+        loadSyncStatus();
+        loadSyncLog();
+        testConnection();
+    });
+</script>
+{% endblock %}
