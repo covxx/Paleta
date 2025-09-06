@@ -79,7 +79,10 @@ init_database() {
     sudo -u "$APP_USER" -H bash -c "cd '$APP_DIR' && mkdir -p instance"
     
     # Run database initialization
-    if [ -f "$APP_DIR/init_database.py" ]; then
+    if [ -f "$APP_DIR/init_database_simple.py" ]; then
+        print_status "Using simple database initialization script..."
+        sudo -u "$APP_USER" -H bash -c "cd '$APP_DIR' && source venv/bin/activate && python init_database_simple.py"
+    elif [ -f "$APP_DIR/init_database.py" ]; then
         print_status "Using dedicated database initialization script..."
         sudo -u "$APP_USER" -H bash -c "cd '$APP_DIR' && source venv/bin/activate && python init_database.py"
     else

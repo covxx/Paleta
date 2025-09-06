@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Database initialization script for QuickBooks Label Printer
-This script initializes the database without importing the full app
+Simple database initialization script for QuickBooks Label Printer
+This script creates the database tables without trying to create initial data
 """
 
 import os
@@ -12,8 +12,8 @@ from pathlib import Path
 current_dir = Path(__file__).parent
 sys.path.insert(0, str(current_dir))
 
-def init_database():
-    """Initialize the database with all required tables"""
+def init_database_simple():
+    """Initialize the database with all required tables (simple version)"""
     try:
         # Import Flask and SQLAlchemy
         from flask import Flask
@@ -29,8 +29,7 @@ def init_database():
         # Initialize SQLAlchemy
         db = SQLAlchemy(app)
         
-        # Import all models from the main app
-        print("Importing database models...")
+        print("Defining database models...")
         
         # Define all the models here to avoid importing the full app
         class Item(db.Model):
@@ -146,55 +145,23 @@ def init_database():
             db.create_all()
             print("Database tables created successfully!")
             
-            # Create some initial data
-            print("Creating initial data...")
-            
-            # Create a default printer if none exists
-            try:
-                printer_count = db.session.execute(db.text("SELECT COUNT(*) FROM printer")).scalar()
-                if printer_count == 0:
-                    default_printer = Printer(
-                        name="Default Printer",
-                        ip_address="192.168.1.100",
-                        port=9100,
-                        is_active=True
-                    )
-                    db.session.add(default_printer)
-                    print("Created default printer")
-            except Exception as e:
-                print(f"Warning: Could not check/create default printer: {e}")
-            
-            # Create initial sync status records
-            try:
-                sync_types = ['customers', 'items', 'orders', 'pricing']
-                for sync_type in sync_types:
-                    existing = db.session.execute(
-                        db.text("SELECT COUNT(*) FROM sync_status WHERE sync_type = :sync_type"),
-                        {"sync_type": sync_type}
-                    ).scalar()
-                    
-                    if existing == 0:
-                        sync_status = SyncStatus(
-                            sync_type=sync_type,
-                            is_enabled=True,
-                            sync_interval_minutes=60
-                        )
-                        db.session.add(sync_status)
-            except Exception as e:
-                print(f"Warning: Could not create sync status records: {e}")
-            
-            db.session.commit()
-            print("Initial data created successfully!")
+            # Verify tables were created
+            print("Verifying database tables...")
+            result = db.session.execute(db.text("SELECT name FROM sqlite_master WHERE type='table'"))
+            tables = [row[0] for row in result.fetchall()]
+            print(f"Tables created: {', '.join(tables)}")
             
         return True
         
     except Exception as e:
         print(f"Error initializing database: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 if __name__ == "__main__":
-    print("Initializing QuickBooks Label Printer database...")
-    success = init_database()
+    print("Initializing QuickBooks Label Printer database (simple version)...")
+    success = init_database_simple()
     if success:
         print("Database initialization completed successfully!")
         sys.exit(0)

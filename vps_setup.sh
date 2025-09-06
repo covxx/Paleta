@@ -163,7 +163,7 @@ setup_database() {
     sudo -u "$APP_USER" -H bash -c "cd '$APP_DIR' && mkdir -p instance"
     
     # Initialize database using dedicated script
-    sudo -u "$APP_USER" -H bash -c "cd '$APP_DIR' && source venv/bin/activate && python init_database.py"
+    sudo -u "$APP_USER" -H bash -c "cd '$APP_DIR' && source venv/bin/activate && python init_database_simple.py"
     
     print_success "Database setup complete"
 }
