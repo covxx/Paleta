@@ -640,33 +640,30 @@
                 if (data.success) {
                     statusElement.innerHTML = '<i class="fas fa-check-circle"></i> Connected';
                     statusElement.className = 'sync-status connected';
-                    detailsElement.innerHTML = `
-                        <div class="alert alert-success">
-                            <strong>Connection Successful!</strong><br>
-                            Company: ${data.company_name || 'Unknown'}<br>
-                            Last Sync: ${data.last_sync || 'Never'}
-                        </div>
-                    `;
+                    detailsElement.innerHTML = 
+                        '<div class="alert alert-success">' +
+                            '<strong>Connection Successful!</strong><br>' +
+                            'Company: ' + (data.company_name || 'Unknown') + '<br>' +
+                            'Last Sync: ' + (data.last_sync || 'Never') +
+                        '</div>';
                 } else {
                     statusElement.innerHTML = '<i class="fas fa-times-circle"></i> Disconnected';
                     statusElement.className = 'sync-status disconnected';
-                    detailsElement.innerHTML = `
-                        <div class="alert alert-danger">
-                            <strong>Connection Failed!</strong><br>
-                            ${data.error || 'Unknown error occurred'}
-                        </div>
-                    `;
+                    detailsElement.innerHTML = 
+                        '<div class="alert alert-danger">' +
+                            '<strong>Connection Failed!</strong><br>' +
+                            (data.error || 'Unknown error occurred') +
+                        '</div>';
                 }
             })
             .catch(error => {
                 statusElement.innerHTML = '<i class="fas fa-times-circle"></i> Error';
                 statusElement.className = 'sync-status disconnected';
-                detailsElement.innerHTML = `
-                    <div class="alert alert-danger">
-                        <strong>Connection Error!</strong><br>
-                        ${error.message}
-                    </div>
-                `;
+                detailsElement.innerHTML = 
+                    '<div class="alert alert-danger">' +
+                        '<strong>Connection Error!</strong><br>' +
+                        error.message +
+                    '</div>';
             });
     }
 
@@ -791,14 +788,14 @@
             .then(data => {
                 if (data.success && data.logs) {
                     const tbody = document.querySelector('#syncLogTable tbody');
-                    tbody.innerHTML = data.logs.slice(0, 5).map(log => `
-                        <tr>
-                            <td>${new Date(log.timestamp).toLocaleString()}</td>
-                            <td>${log.action}</td>
-                            <td><span class="badge badge-${log.status === 'success' ? 'success' : 'danger'}">${log.status}</span></td>
-                            <td>${log.details || '-'}</td>
-                        </tr>
-                    `).join('');
+                    tbody.innerHTML = data.logs.slice(0, 5).map(log => 
+                        '<tr>' +
+                            '<td>' + new Date(log.timestamp).toLocaleString() + '</td>' +
+                            '<td>' + log.action + '</td>' +
+                            '<td><span class="badge badge-' + (log.status === 'success' ? 'success' : 'danger') + '">' + log.status + '</span></td>' +
+                            '<td>' + (log.details || '-') + '</td>' +
+                        '</tr>'
+                    ).join('');
                 }
             })
             .catch(error => {
@@ -811,12 +808,11 @@
         showModal('syncStatusModal');
         // Load detailed sync status
         setTimeout(() => {
-            document.getElementById('syncStatusContent').innerHTML = `
-                <div class="alert alert-info">
-                    <strong>Detailed sync status will be loaded here.</strong><br>
-                    This feature is coming soon!
-                </div>
-            `;
+            document.getElementById('syncStatusContent').innerHTML = 
+                '<div class="alert alert-info">' +
+                    '<strong>Detailed sync status will be loaded here.</strong><br>' +
+                    'This feature is coming soon!' +
+                '</div>';
         }, 500);
     }
 
@@ -828,13 +824,12 @@
         showModal('syncLogModal');
         // Load full sync log
         setTimeout(() => {
-            document.querySelector('#fullSyncLogTable tbody').innerHTML = `
-                <tr>
-                    <td colspan="4" class="text-center text-muted">
-                        Full sync log feature coming soon!
-                    </td>
-                </tr>
-            `;
+            document.querySelector('#fullSyncLogTable tbody').innerHTML = 
+                '<tr>' +
+                    '<td colspan="4" class="text-center text-muted">' +
+                        'Full sync log feature coming soon!' +
+                    '</td>' +
+                '</tr>';
         }, 500);
     }
 
@@ -842,12 +837,11 @@
         showModal('pricingModal');
         // Load pricing data
         setTimeout(() => {
-            document.getElementById('pricingContent').innerHTML = `
-                <div class="alert alert-info">
-                    <strong>Customer pricing management will be available here.</strong><br>
-                    This feature is coming soon!
-                </div>
-            `;
+            document.getElementById('pricingContent').innerHTML = 
+                '<div class="alert alert-info">' +
+                    '<strong>Customer pricing management will be available here.</strong><br>' +
+                    'This feature is coming soon!' +
+                '</div>';
         }, 500);
     }
 

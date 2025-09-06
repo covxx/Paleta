@@ -340,26 +340,25 @@
 
             customersToShow.forEach(customer => {
                 const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td><strong>${customer.name}</strong></td>
-                    <td>${customer.email || 'N/A'}</td>
-                    <td>${customer.phone || 'N/A'}</td>
-                    <td>${customer.payment_terms || 'N/A'}</td>
-                    <td>${customer.quickbooks_id || 'N/A'}</td>
-                    <td>
-                        <span class="badge bg-${customer.is_active ? 'success' : 'secondary'}">
-                            ${customer.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                    </td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary" onclick="editCustomer(${customer.id})">
-                            <i class="fas fa-edit"></i> Edit
-                        </button>
-                        <button class="btn btn-sm btn-outline-info" onclick="viewCustomer(${customer.id})">
-                            <i class="fas fa-eye"></i> View
-                        </button>
-                    </td>
-                `;
+                row.innerHTML = 
+                    '<td><strong>' + customer.name + '</strong></td>' +
+                    '<td>' + (customer.email || 'N/A') + '</td>' +
+                    '<td>' + (customer.phone || 'N/A') + '</td>' +
+                    '<td>' + (customer.payment_terms || 'N/A') + '</td>' +
+                    '<td>' + (customer.quickbooks_id || 'N/A') + '</td>' +
+                    '<td>' +
+                        '<span class="badge bg-' + (customer.is_active ? 'success' : 'secondary') + '">' +
+                            (customer.is_active ? 'Active' : 'Inactive') +
+                        '</span>' +
+                    '</td>' +
+                    '<td>' +
+                        '<button class="btn btn-sm btn-outline-primary" onclick="editCustomer(' + customer.id + ')">' +
+                            '<i class="fas fa-edit"></i> Edit' +
+                        '</button>' +
+                        '<button class="btn btn-sm btn-outline-info" onclick="viewCustomer(' + customer.id + ')">' +
+                            '<i class="fas fa-eye"></i> View' +
+                        '</button>' +
+                    '</td>';
                 tbody.appendChild(row);
             });
         }
@@ -446,7 +445,7 @@
             if (!customer) return;
 
             // Create a simple view modal (you could enhance this)
-            alert(`Customer: ${customer.name}\nEmail: ${customer.email || 'N/A'}\nPhone: ${customer.phone || 'N/A'}\nPayment Terms: ${customer.payment_terms || 'N/A'}`);
+            alert('Customer: ' + customer.name + '\nEmail: ' + (customer.email || 'N/A') + '\nPhone: ' + (customer.phone || 'N/A') + '\nPayment Terms: ' + (customer.payment_terms || 'N/A'));
         }
 
         function copyBillingToShipping() {
@@ -496,7 +495,7 @@
 
             try {
                 const customerId = document.getElementById('customerId').value;
-                const url = customerId ? `/api/customers/${customerId}` : '/api/customers';
+                const url = customerId ? '/api/customers/' + customerId : '/api/customers';
                 const method = customerId ? 'PUT' : 'POST';
 
                 const response = await fetch(url, {

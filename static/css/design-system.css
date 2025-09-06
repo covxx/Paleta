@@ -261,6 +261,66 @@ a:hover {
     padding: var(--space-6);
 }
 
+/* Page Header */
+.page-header {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: var(--text-inverse);
+    padding: var(--space-3) 0;
+    margin-bottom: var(--space-4);
+}
+
+.page-header h1 {
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-bold);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.page-header p {
+    font-size: var(--font-size-base);
+    margin: var(--space-2) 0 0 0;
+    opacity: 0.9;
+}
+
+/* Header Navigation */
+.header-nav {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+}
+
+.header-nav-link {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    border-radius: var(--radius);
+    transition: all var(--transition-fast);
+    font-weight: var(--font-weight-medium);
+    font-size: var(--font-size-base);
+}
+
+.header-nav-link:hover {
+    color: var(--text-inverse);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.header-nav-link.active {
+    color: var(--text-inverse);
+    background: rgba(255, 255, 255, 0.2);
+    font-weight: var(--font-weight-semibold);
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
 /* Button Components */
 .btn {
     display: inline-flex;
@@ -760,6 +820,18 @@ a:hover {
 .pb-8 { padding-bottom: var(--space-8); }
 
 /* Responsive Design */
+@media (max-width: 1200px) {
+    .container {
+        max-width: 100%;
+        padding: 0 var(--space-4);
+    }
+    
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: var(--space-4);
+    }
+}
+
 @media (max-width: 768px) {
     .container {
         padding: 0 var(--space-3);
@@ -782,6 +854,16 @@ a:hover {
         gap: var(--space-1);
     }
     
+    .header-nav {
+        gap: var(--space-2);
+        flex-wrap: wrap;
+    }
+    
+    .header-nav-link {
+        padding: var(--space-2) var(--space-3);
+        font-size: var(--font-size-sm);
+    }
+    
     .btn {
         width: 100%;
         justify-content: center;
@@ -790,6 +872,56 @@ a:hover {
     .modal-dialog {
         width: 95%;
         margin: var(--space-4);
+    }
+    
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: var(--space-3);
+    }
+    
+    .stat-card {
+        padding: var(--space-4);
+    }
+    
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+        font-size: var(--font-size-xl);
+    }
+    
+    .stat-value {
+        font-size: var(--font-size-2xl);
+    }
+    
+    .page-header {
+        padding: var(--space-8) 0;
+    }
+    
+    .page-header h1 {
+        font-size: var(--font-size-3xl);
+    }
+    
+    .content-section {
+        margin-bottom: var(--space-6);
+    }
+    
+    .section-header h3 {
+        font-size: var(--font-size-xl);
+    }
+    
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .table {
+        min-width: 600px;
+    }
+    
+    .table th,
+    .table td {
+        padding: var(--space-3);
+        font-size: var(--font-size-sm);
     }
 }
 
@@ -806,6 +938,67 @@ a:hover {
     
     .btn {
         padding: var(--space-2) var(--space-4);
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: var(--space-2);
+    }
+    
+    .stat-card {
+        padding: var(--space-3);
+    }
+    
+    .stat-icon {
+        width: 40px;
+        height: 40px;
+        font-size: var(--font-size-lg);
+    }
+    
+    .stat-value {
+        font-size: var(--font-size-xl);
+    }
+    
+    .stat-label {
+        font-size: var(--font-size-xs);
+    }
+    
+    .page-header {
+        padding: var(--space-6) 0;
+    }
+    
+    .page-header h1 {
+        font-size: var(--font-size-2xl);
+    }
+    
+    .page-header p {
+        font-size: var(--font-size-base);
+    }
+    
+    .quick-actions-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: var(--space-3);
+    }
+    
+    .quick-action-btn {
+        padding: var(--space-4);
+        text-align: center;
+    }
+    
+    .quick-action-btn i {
+        font-size: var(--font-size-lg);
+        margin-bottom: var(--space-2);
+    }
+    
+    .quick-action-btn div {
+        font-size: var(--font-size-sm);
+        font-weight: var(--font-weight-semibold);
+    }
+    
+    .quick-action-btn small {
+        font-size: var(--font-size-xs);
+        display: block;
+        margin-top: var(--space-1);
     }
 }
 

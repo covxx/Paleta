@@ -19,6 +19,108 @@
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
     
     <style>
+        /* Navigation Bar */
+        .navbar {
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+            padding: var(--space-2) 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        
+        .navbar-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 var(--space-4);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .navbar-brand {
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-bold);
+            color: var(--text-primary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+        
+        .navbar-brand i {
+            color: var(--primary-color);
+        }
+        
+        .navbar-nav {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+        
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: var(--space-1);
+            padding: var(--space-2) var(--space-3);
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-radius: var(--radius);
+            transition: all var(--transition-fast);
+            font-weight: var(--font-weight-medium);
+            font-size: var(--font-size-sm);
+        }
+        
+        .nav-link:hover {
+            color: var(--primary-color);
+            background: rgba(102, 126, 234, 0.1);
+        }
+        
+        .nav-link.active {
+            color: var(--primary-color);
+            background: rgba(102, 126, 234, 0.15);
+            font-weight: var(--font-weight-semibold);
+        }
+        
+        .navbar-actions {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+        }
+        
+        .version-badge {
+            background: var(--primary-color);
+            color: var(--text-inverse);
+            padding: var(--space-1) var(--space-3);
+            border-radius: var(--radius-full);
+            font-size: var(--font-size-xs);
+            font-weight: var(--font-weight-medium);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+        
+        .version-badge:hover {
+            background: var(--primary-dark);
+            transform: scale(1.05);
+        }
+        
+        .theme-toggle {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: var(--font-size-lg);
+            cursor: pointer;
+            padding: var(--space-2);
+            border-radius: var(--radius);
+            transition: all var(--transition-fast);
+        }
+        
+        .theme-toggle:hover {
+            color: var(--primary-color);
+            background: rgba(102, 126, 234, 0.1);
+        }
+        
         /* Page-specific overrides and enhancements */
         .page-header {
             background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
@@ -126,6 +228,50 @@
             padding: var(--space-6);
         }
         
+        .quick-actions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--space-4);
+        }
+        
+        .quick-action-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: var(--space-6);
+            text-align: center;
+            text-decoration: none;
+            border-radius: var(--radius-lg);
+            transition: all var(--transition-normal);
+            min-height: 120px;
+            justify-content: center;
+        }
+        
+        .quick-action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+            text-decoration: none;
+        }
+        
+        .quick-action-btn i {
+            font-size: var(--font-size-2xl);
+            margin-bottom: var(--space-3);
+            color: var(--text-inverse);
+        }
+        
+        .quick-action-btn div {
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-inverse);
+            margin-bottom: var(--space-2);
+        }
+        
+        .quick-action-btn small {
+            font-size: var(--font-size-sm);
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.3;
+        }
+        
         .action-bar {
             display: flex;
             align-items: center;
@@ -209,13 +355,26 @@
         
         /* Responsive adjustments */
         @media (max-width: 768px) {
+            .navbar-container {
+                padding: 0 var(--space-3);
+            }
+            
+            .navbar-brand {
+                font-size: var(--font-size-base);
+            }
+            
+            .nav-link {
+                padding: var(--space-2);
+                font-size: var(--font-size-xs);
+            }
+            
             .page-header {
-                padding: var(--space-8) 0;
+                padding: var(--space-4) 0;
                 text-align: center;
             }
             
             .page-header h1 {
-                font-size: var(--font-size-3xl);
+                font-size: var(--font-size-xl);
             }
             
             .main-content {
@@ -225,6 +384,24 @@
             .stats-grid {
                 grid-template-columns: 1fr;
                 gap: var(--space-4);
+            }
+            
+            .quick-actions-grid {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: var(--space-3);
+            }
+            
+            .quick-action-btn {
+                padding: var(--space-4);
+                min-height: 100px;
+            }
+            
+            .quick-action-btn i {
+                font-size: var(--font-size-xl);
+            }
+            
+            .quick-action-btn div {
+                font-size: var(--font-size-base);
             }
             
             .action-bar {
@@ -240,30 +417,69 @@
                 justify-content: center;
             }
         }
+        
+        @media (max-width: 480px) {
+            .quick-actions-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: var(--space-2);
+            }
+            
+            .quick-action-btn {
+                padding: var(--space-3);
+                min-height: 80px;
+            }
+            
+            .quick-action-btn i {
+                font-size: var(--font-size-lg);
+                margin-bottom: var(--space-2);
+            }
+            
+            .quick-action-btn div {
+                font-size: var(--font-size-sm);
+            }
+            
+            .quick-action-btn small {
+                font-size: var(--font-size-xs);
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: var(--space-2);
+            }
+            
+            .stat-card {
+                padding: var(--space-3);
+            }
+            
+            .stat-icon {
+                width: 40px;
+                height: 40px;
+                font-size: var(--font-size-lg);
+            }
+            
+            .stat-value {
+                font-size: var(--font-size-xl);
+            }
+            
+            .stat-label {
+                font-size: var(--font-size-xs);
+            }
+        }
     </style>
 </head>
 <body>
     <!-- Header Navigation -->
-    <header class="navbar">
+    <header class="navbar" style="display: none;">
         <div class="container-fluid">
             <!-- Brand -->
             <a class="navbar-brand d-flex align-items-center" href="/">
-                <i class="fas fa-warehouse text-primary me-2"></i>
-                <div class="d-flex flex-column">
-                    <span class="fw-bold">QuickBooks Label Printer</span>
-                    <small class="text-muted" style="font-size: 0.7rem; line-height: 1;">
-                        v{{ version_info.display_version if version_info else '1.0.0' }}
-                    </small>
-                </div>
+                <i class="fas fa-print text-primary me-2"></i>
+                <span class="fw-bold">QuickBooks Label Printer</span>
             </a>
 
-            <!-- Mobile toggle -->
-            <button class="btn btn-outline-secondary d-md-none" type="button" onclick="toggleSidebar()">
-                <i class="fas fa-bars"></i>
-            </button>
 
             <!-- Navigation -->
-            <nav class="navbar-nav d-none d-md-flex">
+            <nav class="navbar-nav">
                 <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}" href="/">
                     <i class="fas fa-home"></i> Dashboard
                 </a>
@@ -307,72 +523,19 @@
                 <button class="btn btn-outline-secondary btn-sm" onclick="toggleTheme()" id="themeToggle">
                     <i class="fas fa-moon" id="themeIcon"></i>
                 </button>
-                <div class="nav-link dropdown">
-                    <a href="#" class="dropdown-toggle" onclick="toggleDropdown(event)">
-                        <i class="fas fa-info-circle"></i>
-                        <span class="badge badge-primary">{{ version_info.display_version if version_info else '1.0.0' }}</span>
+                {% if not session.admin_logged_in %}
+                    <a href="/admin/login" class="btn btn-primary btn-sm">
+                        <i class="fas fa-sign-in-alt"></i> Admin Login
                     </a>
-                    <div class="dropdown-menu">
-                        <div class="dropdown-header">Version Information</div>
-                        <div class="dropdown-item-text">
-                            <small class="text-muted d-block">Version:</small>
-                            <strong>{{ version_info.display_version if version_info else '1.0.0' }}</strong>
-                        </div>
-                        {% if version_info and version_info.commit_hash %}
-                        <div class="dropdown-item-text">
-                            <small class="text-muted d-block">Commit:</small>
-                            <code class="small">{{ version_info.commit_hash }}</code>
-                        </div>
-                        {% endif %}
-                        <div class="dropdown-divider"></div>
-                        <a class="dropdown-item" href="/changelog" target="_blank">
-                            <i class="fas fa-history me-2"></i>Changelog
-                        </a>
-                    </div>
-                </div>
+                {% else %}
+                    <a href="/admin/logout" class="btn btn-outline-danger btn-sm">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </a>
+                {% endif %}
             </div>
         </div>
     </header>
 
-    <!-- Mobile Sidebar -->
-    <div class="sidebar d-md-none" id="mobileSidebar" style="display: none;">
-        <div class="container-fluid">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h5>Navigation</h5>
-                <button class="btn btn-outline-secondary btn-sm" onclick="toggleSidebar()">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <nav class="navbar-nav flex-column">
-                <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}" href="/">
-                    <i class="fas fa-home"></i> Dashboard
-                </a>
-                <a class="nav-link {% if 'receiving' in request.endpoint %}active{% endif %}" href="/receiving">
-                    <i class="fas fa-truck"></i> Receiving
-                </a>
-                <a class="nav-link {% if 'order' in request.endpoint %}active{% endif %}" href="/orders">
-                    <i class="fas fa-shopping-cart"></i> Orders
-                </a>
-                <a class="nav-link {% if 'customer' in request.endpoint %}active{% endif %}" href="/customers">
-                    <i class="fas fa-users"></i> Customers
-                </a>
-                {% if session.admin_logged_in %}
-                <a class="nav-link {% if 'quickbooks' in request.endpoint %}active{% endif %}" href="/quickbooks-admin">
-                    <i class="fab fa-quickbooks"></i> QB Admin
-                </a>
-                <a class="nav-link {% if 'updates' in request.endpoint %}active{% endif %}" href="/admin/updates">
-                    <i class="fas fa-download"></i> Updates
-                </a>
-                <a class="nav-link {% if 'label' in request.endpoint %}active{% endif %}" href="/label-designer">
-                    <i class="fas fa-tags"></i> Label Designer
-                </a>
-                {% endif %}
-                <a class="nav-link {% if 'admin' in request.endpoint %}active{% endif %}" href="/admin">
-                    <i class="fas fa-cog"></i> Admin
-                </a>
-            </nav>
-        </div>
-    </div>
 
     <!-- Notification Container -->
     <div class="notification-container" id="notificationContainer"></div>
@@ -408,7 +571,7 @@
             localStorage.setItem('theme', newTheme);
             updateThemeIcon(newTheme);
             
-            showNotification('Theme Changed', `Switched to ${newTheme} mode`, 'info');
+            showNotification('Theme Changed', 'Switched to ' + newTheme + ' mode', 'info');
         }
 
         function updateThemeIcon(theme) {
@@ -418,13 +581,6 @@
             }
         }
 
-        // Mobile Sidebar
-        function toggleSidebar() {
-            const sidebar = document.getElementById('mobileSidebar');
-            if (sidebar) {
-                sidebar.style.display = sidebar.style.display === 'none' ? 'block' : 'none';
-            }
-        }
 
         // Dropdown Management
         function toggleDropdown(event) {
@@ -456,16 +612,15 @@
             if (!container) return;
             
             const notification = document.createElement('div');
-            notification.className = `alert alert-${type} notification`;
-            notification.innerHTML = `
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <strong>${title}</strong>
-                        <p class="mb-0 mt-1">${message}</p>
-                    </div>
-                    <button type="button" class="btn-close" onclick="closeNotification(this)"></button>
-                </div>
-            `;
+            notification.className = 'alert alert-' + type + ' notification';
+            notification.innerHTML = 
+                '<div class="d-flex justify-content-between align-items-start">' +
+                    '<div>' +
+                        '<strong>' + title + '</strong>' +
+                        '<p class="mb-0 mt-1">' + message + '</p>' +
+                    '</div>' +
+                    '<button type="button" class="btn-close" onclick="closeNotification(this)"></button>' +
+                '</div>';
             
             container.appendChild(notification);
             

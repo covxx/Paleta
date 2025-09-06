@@ -14,6 +14,9 @@ from reportlab.lib.units import inch
 from reportlab.lib import colors
 from io import BytesIO
 import uuid
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), 'configs'))
 import config
 import socket
 import time
@@ -668,7 +671,6 @@ class SyncStatus(db.Model):
     last_error = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-    item = db.relationship('Item', backref='order_items')
 
 class LotAllocation(db.Model):
     """Tracks which lots are allocated to specific order items"""
@@ -696,7 +698,7 @@ def admin_required(f):
 # Routes
 @app.route('/')
 def index():
-    return render_template('index_new.html')
+    return render_template('index.html')
 
 @app.route('/orders')
 @admin_required
@@ -726,7 +728,7 @@ def customers():
 @admin_required
 def quickbooks_import():
     """QuickBooks import page (legacy)"""
-    return render_template('quickbooks_import.html')
+    return render_template('quickbooks_admin.html')
 
 @app.route('/quickbooks-admin')
 @admin_required
@@ -930,16 +932,16 @@ def reset_admin_password(user_id):
 @app.route('/admin')
 @admin_required
 def admin():
-    return render_template('admin_new.html')
+    return render_template('admin.html')
 
 @app.route('/label-designer')
 @admin_required
 def label_designer():
-    return render_template('label_designer_new.html')
+    return render_template('label_designer.html')
 
 @app.route('/receiving')
 def receiving():
-    return render_template('receiving_new.html')
+    return render_template('receiving.html')
 
 @app.route('/api/items', methods=['GET'])
 def get_items():

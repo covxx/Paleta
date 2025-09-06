@@ -293,7 +293,7 @@
                 items.forEach(item => {
                     const option = document.createElement('option');
                     option.value = item.id;
-                    option.textContent = `${item.name} (${item.item_code})`;
+                    option.textContent = item.name + ' (' + item.item_code + ')';
                     option.dataset.unitCost = item.unit_cost;
                     itemSelect.appendChild(option);
                 });
@@ -310,20 +310,18 @@
                 document.getElementById('customerDetails').style.display = 'block';
                 
                 // Display billing address
-                document.getElementById('billingAddress').innerHTML = `
-                    <p><strong>${customer.bill_to_name || customer.name}</strong></p>
-                    <p>${customer.bill_to_address1 || ''}</p>
-                    ${customer.bill_to_address2 ? `<p>${customer.bill_to_address2}</p>` : ''}
-                    <p>${customer.bill_to_city || ''}, ${customer.bill_to_state || ''} ${customer.bill_to_zip || ''}</p>
-                `;
+                document.getElementById('billingAddress').innerHTML = 
+                    '<p><strong>' + (customer.bill_to_name || customer.name) + '</strong></p>' +
+                    '<p>' + (customer.bill_to_address1 || '') + '</p>' +
+                    (customer.bill_to_address2 ? '<p>' + customer.bill_to_address2 + '</p>' : '') +
+                    '<p>' + (customer.bill_to_city || '') + ', ' + (customer.bill_to_state || '') + ' ' + (customer.bill_to_zip || '') + '</p>';
                 
                 // Display shipping address
-                document.getElementById('shippingAddress').innerHTML = `
-                    <p><strong>${customer.ship_to_name || customer.name}</strong></p>
-                    <p>${customer.ship_to_address1 || ''}</p>
-                    ${customer.ship_to_address2 ? `<p>${customer.ship_to_address2}</p>` : ''}
-                    <p>${customer.ship_to_city || ''}, ${customer.ship_to_state || ''} ${customer.ship_to_zip || ''}</p>
-                `;
+                document.getElementById('shippingAddress').innerHTML = 
+                    '<p><strong>' + (customer.ship_to_name || customer.name) + '</strong></p>' +
+                    '<p>' + (customer.ship_to_address1 || '') + '</p>' +
+                    (customer.ship_to_address2 ? '<p>' + customer.ship_to_address2 + '</p>' : '') +
+                    '<p>' + (customer.ship_to_city || '') + ', ' + (customer.ship_to_state || '') + ' ' + (customer.ship_to_zip || '') + '</p>';
             } else {
                 document.getElementById('customerDetails').style.display = 'none';
             }
@@ -382,24 +380,23 @@
                 const isQBSynced = itemData && itemData.quickbooks_id;
                 
                 const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${item.item_name}</td>
-                    <td>${item.quantity_ordered}</td>
-                    <td>$${item.unit_price.toFixed(2)}</td>
-                    <td>$${item.total_price.toFixed(2)}</td>
-                    <td>${item.notes || ''}</td>
-                    <td>
-                        ${isQBSynced ? 
+                row.innerHTML = 
+                    '<td>' + item.item_name + '</td>' +
+                    '<td>' + item.quantity_ordered + '</td>' +
+                    '<td>$' + item.unit_price.toFixed(2) + '</td>' +
+                    '<td>$' + item.total_price.toFixed(2) + '</td>' +
+                    '<td>' + (item.notes || '') + '</td>' +
+                    '<td>' +
+                        (isQBSynced ? 
                             '<i class="fab fa-quickbooks text-success" title="Synced to QuickBooks"></i>' : 
                             '<i class="fas fa-exclamation-triangle text-warning" title="Not synced to QuickBooks"></i>'
-                        }
-                    </td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-danger" onclick="removeOrderItem(${index})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                `;
+                        ) +
+                    '</td>' +
+                    '<td>' +
+                        '<button class="btn btn-sm btn-outline-danger" onclick="removeOrderItem(' + index + ')">' +
+                            '<i class="fas fa-trash"></i>' +
+                        '</button>' +
+                    '</td>';
                 tbody.appendChild(row);
             });
             
@@ -419,9 +416,9 @@
             const taxAmount = subtotal * taxRate;
             const total = subtotal + taxAmount;
             
-            document.getElementById('subtotal').textContent = `$${subtotal.toFixed(2)}`;
-            document.getElementById('taxAmount').textContent = `$${taxAmount.toFixed(2)}`;
-            document.getElementById('totalAmount').textContent = `$${total.toFixed(2)}`;
+            document.getElementById('subtotal').textContent = '$' + subtotal.toFixed(2);
+            document.getElementById('taxAmount').textContent = '$' + taxAmount.toFixed(2);
+            document.getElementById('totalAmount').textContent = '$' + total.toFixed(2);
         }
 
         async function createOrder(event) {
@@ -456,7 +453,7 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    alert(`Order created successfully! Order Number: ${result.order_number}`);
+                    alert('Order created successfully! Order Number: ' + result.order_number);
                     window.location.href = '/orders';
                 } else {
                     alert('Error creating order: ' + result.error);
@@ -527,7 +524,7 @@
                     return itemData ? itemData.name : 'Unknown Item';
                 }).join(', ');
                 
-                warningText.textContent = `Items not synced to QuickBooks: ${itemNames}. These items cannot be synced to QuickBooks.`;
+                warningText.textContent = 'Items not synced to QuickBooks: ' + itemNames + '. These items cannot be synced to QuickBooks.';
                 warning.style.display = 'block';
             } else {
                 warning.style.display = 'none';

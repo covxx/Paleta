@@ -5,8 +5,39 @@
 {% block content %}
 <div class="page-header">
     <div class="container">
-        <h1><i class="fas fa-tachometer-alt"></i> Dashboard</h1>
-        <p>QuickBooks Label Printer - Inventory Management System</p>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h1><i class="fas fa-tachometer-alt"></i> Dashboard</h1>
+            <div class="version-info">
+                <small class="text-white-50">v{{ version_info.display_version if version_info else '1.2.0' }}</small>
+            </div>
+        </div>
+        <div class="d-flex justify-content-between align-items-center">
+            <nav class="header-nav">
+                <a class="header-nav-link active" href="/">
+                    <i class="fas fa-home"></i> Dashboard
+                </a>
+                <a class="header-nav-link" href="/receiving">
+                    <i class="fas fa-truck"></i> Receiving
+                </a>
+                <a class="header-nav-link" href="/orders">
+                    <i class="fas fa-shopping-cart"></i> Orders
+                </a>
+            </nav>
+            <div class="header-actions">
+                <button class="btn btn-outline-light me-2" onclick="toggleTheme()" id="themeToggle">
+                    <i class="fas fa-moon" id="themeIcon"></i>
+                </button>
+                {% if not session.admin_logged_in %}
+                    <a href="/admin/login" class="btn btn-light">
+                        <i class="fas fa-sign-in-alt"></i> Login
+                    </a>
+                {% else %}
+                    <a href="/admin/logout" class="btn btn-outline-light">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </a>
+                {% endif %}
+            </div>
+        </div>
     </div>
 </div>
 
@@ -49,35 +80,27 @@
             <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
         </div>
         <div class="section-body">
-            <div class="row">
-                <div class="col-3">
-                    <a href="/receiving" class="btn btn-primary btn-lg w-100">
-                        <i class="fas fa-truck"></i>
-                        <div>Receiving</div>
-                        <small>Receive new inventory</small>
-                    </a>
-                </div>
-                <div class="col-3">
-                    <a href="/orders/new" class="btn btn-success btn-lg w-100">
-                        <i class="fas fa-shopping-cart"></i>
-                        <div>New Order</div>
-                        <small>Create new order</small>
-                    </a>
-                </div>
-                <div class="col-3">
-                    <a href="/label-designer" class="btn btn-warning btn-lg w-100">
-                        <i class="fas fa-tags"></i>
-                        <div>Label Designer</div>
-                        <small>Design labels</small>
-                    </a>
-                </div>
-                <div class="col-3">
-                    <a href="/admin" class="btn btn-info btn-lg w-100">
-                        <i class="fas fa-cog"></i>
-                        <div>Admin Panel</div>
-                        <small>System management</small>
-                    </a>
-                </div>
+            <div class="quick-actions-grid">
+                <a href="/receiving" class="quick-action-btn btn btn-primary">
+                    <i class="fas fa-truck"></i>
+                    <div>Receiving</div>
+                    <small>Receive new inventory</small>
+                </a>
+                <a href="/orders/new" class="quick-action-btn btn btn-success">
+                    <i class="fas fa-shopping-cart"></i>
+                    <div>New Order</div>
+                    <small>Create new order</small>
+                </a>
+                <a href="/label-designer" class="quick-action-btn btn btn-warning">
+                    <i class="fas fa-tags"></i>
+                    <div>Label Designer</div>
+                    <small>Design labels</small>
+                </a>
+                <a href="/admin" class="quick-action-btn btn btn-info">
+                    <i class="fas fa-cog"></i>
+                    <div>Admin Panel</div>
+                    <small>System management</small>
+                </a>
             </div>
         </div>
     </div>
@@ -186,29 +209,28 @@
         // Load recent activity (placeholder)
         setTimeout(() => {
             const tbody = document.getElementById('recentActivity');
-            tbody.innerHTML = `
-                <tr>
-                    <td>Just now</td>
-                    <td>Item received</td>
-                    <td>Sample Item #123</td>
-                    <td>Admin</td>
-                    <td><span class="badge badge-success">Success</span></td>
-                </tr>
-                <tr>
-                    <td>5 min ago</td>
-                    <td>Order created</td>
-                    <td>Order #456</td>
-                    <td>User</td>
-                    <td><span class="badge badge-info">Pending</span></td>
-                </tr>
-                <tr>
-                    <td>1 hour ago</td>
-                    <td>Label printed</td>
-                    <td>LOT-20250105-001</td>
-                    <td>System</td>
-                    <td><span class="badge badge-success">Success</span></td>
-                </tr>
-            `;
+            tbody.innerHTML = 
+                '<tr>' +
+                    '<td>Just now</td>' +
+                    '<td>Item received</td>' +
+                    '<td>Sample Item #123</td>' +
+                    '<td>Admin</td>' +
+                    '<td><span class="badge badge-success">Success</span></td>' +
+                '</tr>' +
+                '<tr>' +
+                    '<td>5 min ago</td>' +
+                    '<td>Order created</td>' +
+                    '<td>Order #456</td>' +
+                    '<td>User</td>' +
+                    '<td><span class="badge badge-info">Pending</span></td>' +
+                '</tr>' +
+                '<tr>' +
+                    '<td>1 hour ago</td>' +
+                    '<td>Label printed</td>' +
+                    '<td>LOT-20250105-001</td>' +
+                    '<td>System</td>' +
+                    '<td><span class="badge badge-success">Success</span></td>' +
+                '</tr>';
         }, 1000);
     }
 

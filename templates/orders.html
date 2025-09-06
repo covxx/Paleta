@@ -210,30 +210,29 @@
 
             ordersToShow.forEach(order => {
                 const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td><strong>${order.order_number}</strong></td>
-                    <td>${order.customer_name || 'Unknown'}</td>
-                    <td>${formatDate(order.order_date)}</td>
-                    <td>${formatDate(order.requested_delivery_date)}</td>
-                    <td><span class="badge bg-${getStatusColor(order.status)}">${order.status}</span></td>
-                    <td>$${order.total_amount.toFixed(2)}</td>
-                    <td>
-                        ${order.quickbooks_synced ? 
+                row.innerHTML = 
+                    '<td><strong>' + order.order_number + '</strong></td>' +
+                    '<td>' + (order.customer_name || 'Unknown') + '</td>' +
+                    '<td>' + formatDate(order.order_date) + '</td>' +
+                    '<td>' + formatDate(order.requested_delivery_date) + '</td>' +
+                    '<td><span class="badge bg-' + getStatusColor(order.status) + '">' + order.status + '</span></td>' +
+                    '<td>$' + order.total_amount.toFixed(2) + '</td>' +
+                    '<td>' +
+                        (order.quickbooks_synced ? 
                             '<i class="fas fa-check text-success" title="Synced to QuickBooks"></i>' : 
                             '<i class="fas fa-times text-muted" title="Not synced"></i>'
-                        }
-                    </td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary" onclick="showOrderDetails(${order.id})">
-                            <i class="fas fa-eye"></i> View
-                        </button>
-                        ${order.status === 'pending' || order.status === 'in_progress' ? 
-                            `<button class="btn btn-sm btn-success" onclick="fillOrder(${order.id})">
-                                <i class="fas fa-boxes"></i> Fill
-                            </button>` : ''
-                        }
-                    </td>
-                `;
+                        ) +
+                    '</td>' +
+                    '<td>' +
+                        '<button class="btn btn-sm btn-outline-primary" onclick="showOrderDetails(' + order.id + ')">' +
+                            '<i class="fas fa-eye"></i> View' +
+                        '</button>' +
+                        (order.status === 'pending' || order.status === 'in_progress' ? 
+                            '<button class="btn btn-sm btn-success" onclick="fillOrder(' + order.id + ')">' +
+                                '<i class="fas fa-boxes"></i> Fill' +
+                            '</button>' : ''
+                        ) +
+                    '</td>';
                 tbody.appendChild(row);
             });
         }
@@ -298,54 +297,53 @@
                 const modal = new bootstrap.Modal(document.getElementById('orderDetailsModal'));
                 const content = document.getElementById('orderDetailsContent');
                 
-                content.innerHTML = `
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h6>Order Information</h6>
-                            <p><strong>Order Number:</strong> ${order.order_number}</p>
-                            <p><strong>Customer:</strong> ${order.customer_name}</p>
-                            <p><strong>Order Date:</strong> ${formatDate(order.order_date)}</p>
-                            <p><strong>Delivery Date:</strong> ${formatDate(order.requested_delivery_date)}</p>
-                            <p><strong>Status:</strong> <span class="badge bg-${getStatusColor(order.status)}">${order.status}</span></p>
-                        </div>
-                        <div class="col-md-6">
-                            <h6>Financial Information</h6>
-                            <p><strong>Subtotal:</strong> $${order.subtotal.toFixed(2)}</p>
-                            <p><strong>Tax:</strong> $${order.tax_amount.toFixed(2)}</p>
-                            <p><strong>Total:</strong> $${order.total_amount.toFixed(2)}</p>
-                            <p><strong>QuickBooks:</strong> ${order.quickbooks_synced ? 'Synced' : 'Not Synced'}</p>
-                        </div>
-                    </div>
-                    <hr>
-                    <h6>Order Items</h6>
-                    <div class="table-responsive">
-                        <table class="table table-sm">
-                            <thead>
-                                <tr>
-                                    <th>Item</th>
-                                    <th>Ordered</th>
-                                    <th>Filled</th>
-                                    <th>Unit Price</th>
-                                    <th>Total</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${order.order_items.map(item => `
-                                    <tr>
-                                        <td>${item.item_name}</td>
-                                        <td>${item.quantity_ordered}</td>
-                                        <td>${item.quantity_filled}</td>
-                                        <td>$${item.unit_price.toFixed(2)}</td>
-                                        <td>$${item.total_price.toFixed(2)}</td>
-                                        <td><span class="badge bg-${getStatusColor(item.status)}">${item.status}</span></td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                    ${order.notes ? `<hr><h6>Notes</h6><p>${order.notes}</p>` : ''}
-                `;
+                content.innerHTML = 
+                    '<div class="row">' +
+                        '<div class="col-md-6">' +
+                            '<h6>Order Information</h6>' +
+                            '<p><strong>Order Number:</strong> ' + order.order_number + '</p>' +
+                            '<p><strong>Customer:</strong> ' + order.customer_name + '</p>' +
+                            '<p><strong>Order Date:</strong> ' + formatDate(order.order_date) + '</p>' +
+                            '<p><strong>Delivery Date:</strong> ' + formatDate(order.requested_delivery_date) + '</p>' +
+                            '<p><strong>Status:</strong> <span class="badge bg-' + getStatusColor(order.status) + '">' + order.status + '</span></p>' +
+                        '</div>' +
+                        '<div class="col-md-6">' +
+                            '<h6>Financial Information</h6>' +
+                            '<p><strong>Subtotal:</strong> $' + order.subtotal.toFixed(2) + '</p>' +
+                            '<p><strong>Tax:</strong> $' + order.tax_amount.toFixed(2) + '</p>' +
+                            '<p><strong>Total:</strong> $' + order.total_amount.toFixed(2) + '</p>' +
+                            '<p><strong>QuickBooks:</strong> ' + (order.quickbooks_synced ? 'Synced' : 'Not Synced') + '</p>' +
+                        '</div>' +
+                    '</div>' +
+                    '<hr>' +
+                    '<h6>Order Items</h6>' +
+                    '<div class="table-responsive">' +
+                        '<table class="table table-sm">' +
+                            '<thead>' +
+                                '<tr>' +
+                                    '<th>Item</th>' +
+                                    '<th>Ordered</th>' +
+                                    '<th>Filled</th>' +
+                                    '<th>Unit Price</th>' +
+                                    '<th>Total</th>' +
+                                    '<th>Status</th>' +
+                                '</tr>' +
+                            '</thead>' +
+                            '<tbody>' +
+                                order.order_items.map(item => 
+                                    '<tr>' +
+                                        '<td>' + item.item_name + '</td>' +
+                                        '<td>' + item.quantity_ordered + '</td>' +
+                                        '<td>' + item.quantity_filled + '</td>' +
+                                        '<td>$' + item.unit_price.toFixed(2) + '</td>' +
+                                        '<td>$' + item.total_price.toFixed(2) + '</td>' +
+                                        '<td><span class="badge bg-' + getStatusColor(item.status) + '">' + item.status + '</span></td>' +
+                                    '</tr>'
+                                ).join('') +
+                            '</tbody>' +
+                        '</table>' +
+                    '</div>' +
+                    (order.notes ? '<hr><h6>Notes</h6><p>' + order.notes + '</p>' : '');
 
                 // Show/hide action buttons based on order status
                 const fillBtn = document.getElementById('fillOrderBtn');
@@ -372,9 +370,9 @@
 
         function fillOrder(orderId) {
             if (orderId) {
-                window.location.href = `/orders/${orderId}/fill`;
+                window.location.href = '/orders/' + orderId + '/fill';
             } else if (currentOrderId) {
-                window.location.href = `/orders/${currentOrderId}/fill`;
+                window.location.href = '/orders/' + currentOrderId + '/fill';
             }
         }
 
@@ -382,7 +380,7 @@
             if (!currentOrderId) return;
 
             try {
-                const response = await fetch(`/api/orders/${currentOrderId}/sync-quickbooks`, {
+                const response = await fetch('/api/orders/' + currentOrderId + '/sync-quickbooks', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
