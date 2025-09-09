@@ -645,6 +645,9 @@
         // Load tab data
         loadTabData(tabName);
     }
+    
+    // Make showTab globally available
+    window.showTab = showTab;
 
     function loadTabData(tabName) {
         switch(tabName) {
@@ -671,20 +674,38 @@
 
     // Dashboard Data Loading
     function loadDashboardData() {
-        Promise.all([
-            fetch('/api/items').then(r => r.json()),
-            fetch('/api/lots').then(r => r.json()),
-            fetch('/api/vendors').then(r => r.json()),
-            fetch('/api/printers').then(r => r.json())
-        ]).then(([items, lots, vendors, printers]) => {
-            document.getElementById('totalItems').textContent = items.length;
-            document.getElementById('totalLots').textContent = lots.length;
-            document.getElementById('totalVendors').textContent = vendors.length;
-            document.getElementById('totalPrinters').textContent = printers.length;
-        }).catch(error => {
-            console.error('Error loading dashboard data:', error);
-            showNotification('Error', 'Failed to load dashboard data', 'error');
-        });
+        try {
+            Promise.all([
+                fetch('/api/items').then(r => r.json()).catch(() => []),
+                fetch('/api/lots').then(r => r.json()).catch(() => []),
+                fetch('/api/vendors').then(r => r.json()).catch(() => []),
+                fetch('/api/printers').then(r => r.json()).catch(() => [])
+            ]).then(([items, lots, vendors, printers]) => {
+                const totalItemsEl = document.getElementById('totalItems');
+                const totalLotsEl = document.getElementById('totalLots');
+                const totalVendorsEl = document.getElementById('totalVendors');
+                const totalPrintersEl = document.getElementById('totalPrinters');
+                
+                if (totalItemsEl) totalItemsEl.textContent = items.length || 0;
+                if (totalLotsEl) totalLotsEl.textContent = lots.length || 0;
+                if (totalVendorsEl) totalVendorsEl.textContent = vendors.length || 0;
+                if (totalPrintersEl) totalPrintersEl.textContent = printers.length || 0;
+            }).catch(error => {
+                console.error('Error loading dashboard data:', error);
+                // Set default values
+                const totalItemsEl = document.getElementById('totalItems');
+                const totalLotsEl = document.getElementById('totalLots');
+                const totalVendorsEl = document.getElementById('totalVendors');
+                const totalPrintersEl = document.getElementById('totalPrinters');
+                
+                if (totalItemsEl) totalItemsEl.textContent = '0';
+                if (totalLotsEl) totalLotsEl.textContent = '0';
+                if (totalVendorsEl) totalVendorsEl.textContent = '0';
+                if (totalPrintersEl) totalPrintersEl.textContent = '0';
+            });
+        } catch (error) {
+            console.error('Error in loadDashboardData:', error);
+        }
     }
 
     // Data Loading Functions
@@ -966,10 +987,13 @@
     // Initialize dashboard on page load
     document.addEventListener('DOMContentLoaded', function() {
         console.log('Admin page loaded');
-        loadDashboardData();
+        console.log('showTab function available:', typeof showTab);
         
         // Test tab switching
         console.log('Available tabs:', document.querySelectorAll('.tab-content').length);
+        
+        // Load dashboard data
+        loadDashboardData();
     });
 </script>
 {% endblock %}
