@@ -3185,28 +3185,6 @@ def get_available_lots_for_order():
         return jsonify({'error': str(e)}), 500
 
 # QuickBooks Integration Endpoints
-@app.route('/api/quickbooks/connect', methods=['GET'])
-@admin_required
-def quickbooks_connect():
-    """Initiate QuickBooks OAuth connection"""
-    try:
-        # Generate state parameter for security
-        state = secrets.token_urlsafe(32)
-        session['qb_state'] = state
-        
-        # Build authorization URL
-        auth_url = (
-            f"https://appcenter.intuit.com/connect/oauth2?"
-            f"client_id={QB_CLIENT_ID}&"
-            f"scope={QB_SCOPE}&"
-            f"redirect_uri={QB_REDIRECT_URI}&"
-            f"response_type=code&"
-            f"state={state}"
-        )
-        
-        return jsonify({'auth_url': auth_url})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
 
 @app.route('/qb/callback')
 @admin_required

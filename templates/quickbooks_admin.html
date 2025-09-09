@@ -681,7 +681,19 @@
     }
 
     function connectToQuickBooks() {
-        window.location.href = '/api/quickbooks/connect';
+        fetch('/api/quickbooks/connect')
+            .then(response => response.json())
+            .then(data => {
+                if (data.auth_url) {
+                    window.location.href = data.auth_url;
+                } else {
+                    showNotification('Error', 'Failed to get QuickBooks auth URL', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error connecting to QuickBooks:', error);
+                showNotification('Error', 'Failed to connect to QuickBooks', 'error');
+            });
     }
 
     function disconnectQuickBooks() {
