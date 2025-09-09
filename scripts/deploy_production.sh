@@ -204,12 +204,32 @@ create_systemd_service() {
     print_success "Systemd service created and enabled"
 }
 
-# Function to setup Nginx
+# Function to setup Nginx (HTTP only, before SSL)
 setup_nginx() {
-    print_status "Setting up Nginx..."
+    print_status "Setting up Nginx (HTTP only for SSL challenge)..."
     
-    # Copy nginx configuration
-    cp "$APP_DIR/configs/nginx.conf" /etc/nginx/sites-available/$NGINX_SITE
+    # Create temporary HTTP-only configuration
+    tee /etc/nginx/sites-available/$NGINX_SITE > /dev/null <<EOF
+# Temporary HTTP configuration for SSL certificate generation
+server {
+    listen 80;
+    server_name $DOMAIN www.$DOMAIN;
+    
+    # Let's Encrypt challenge
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+    
+    # Temporary location for the application
+    location / {
+        proxy_pass http://127.0.0.1:5002;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+}
+EOF
     
     # Enable site
     ln -sf /etc/nginx/sites-available/$NGINX_SITE /etc/nginx/sites-enabled/
@@ -220,7 +240,7 @@ setup_nginx() {
     # Test Nginx configuration
     nginx -t
     
-    print_success "Nginx configuration complete"
+    print_success "Nginx HTTP configuration complete"
 }
 
 # Function to setup firewall
@@ -330,15 +350,229 @@ start_services() {
 setup_ssl() {
     print_status "Setting up SSL certificate..."
     
-    # Run SSL setup script
-    if [ -f "$APP_DIR/scripts/setup_ssl_production.sh" ]; then
-        chmod +x "$APP_DIR/scripts/setup_ssl_production.sh"
-        "$APP_DIR/scripts/setup_ssl_production.sh" -d "$DOMAIN" -e "$EMAIL"
-        print_success "SSL certificate setup complete"
+    # Create web root directory for Let's Encrypt
+    mkdir -p /var/www/html
+    
+    # Obtain SSL certificate using certbot
+    certbot certonly \
+        --webroot \
+        --webroot-path=/var/www/html \
+        --email $EMAIL \
+        --agree-tos \
+        --no-eff-email \
+        --domains $DOMAIN,www.$DOMAIN \
+        --non-interactive
+    
+    if [[ $? -eq 0 ]]; then
+        print_success "SSL certificate obtained successfully"
+        
+        # Update Nginx configuration with SSL
+        update_nginx_ssl_config
+        
+        # Reload Nginx
+        systemctl reload nginx
+        print_success "Nginx updated with SSL configuration"
+        
+        # Setup automatic renewal
+        setup_ssl_renewal
     else
-        print_warning "SSL setup script not found, skipping SSL configuration"
-        print_status "You can run SSL setup manually later with:"
-        print_status "sudo $APP_DIR/scripts/setup_ssl_production.sh -d $DOMAIN -e $EMAIL"
+        print_error "Failed to obtain SSL certificate"
+        print_warning "Continuing without SSL - you can set it up manually later"
+    fi
+}
+
+# Function to setup SSL automatic renewal
+setup_ssl_renewal() {
+    print_status "Setting up automatic SSL certificate renewal..."
+    
+    # Test renewal
+    certbot renew --dry-run
+    
+    if [[ $? -eq 0 ]]; then
+        print_success "SSL certificate renewal test successful"
+    else
+        print_warning "SSL certificate renewal test failed"
+    fi
+    
+    # Add to crontab if not already present
+    if ! crontab -l 2>/dev/null | grep -q "certbot renew"; then
+        (crontab -l 2>/dev/null; echo "0 12 * * * /usr/bin/certbot renew --quiet") | crontab -
+        print_success "Automatic renewal added to crontab"
+    else
+        print_status "Automatic renewal already configured"
+    fi
+}
+
+# Function to update Nginx configuration with SSL
+update_nginx_ssl_config() {
+    print_status "Updating Nginx configuration with SSL..."
+    
+    # Create production configuration with SSL
+    tee /etc/nginx/sites-available/$NGINX_SITE > /dev/null <<EOF
+# Rate limiting zones
+limit_req_zone \$binary_remote_addr zone=api:10m rate=10r/s;
+limit_req_zone \$binary_remote_addr zone=uploads:10m rate=2r/s;
+
+# HTTP server - redirect to HTTPS
+server {
+    listen 80;
+    server_name $DOMAIN www.$DOMAIN;
+    
+    # Let's Encrypt challenge
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+    
+    # Redirect all other traffic to HTTPS
+    location / {
+        return 301 https://\$server_name\$request_uri;
+    }
+}
+
+# HTTPS server
+server {
+    listen 443 ssl http2;
+    server_name $DOMAIN www.$DOMAIN;
+    
+    # SSL configuration
+    ssl_certificate /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+    
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "no-referrer-when-downgrade" always;
+    add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    
+    # Gzip compression
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_proxied any;
+    gzip_comp_level 6;
+    gzip_types
+        text/plain
+        text/css
+        text/xml
+        text/javascript
+        application/json
+        application/javascript
+        application/xml+rss
+        application/atom+xml
+        image/svg+xml;
+
+    # Client settings
+    client_max_body_size 16M;
+    client_body_timeout 60s;
+    client_header_timeout 60s;
+    
+    # Static files
+    location /static/ {
+        alias $APP_DIR/static/;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+    
+    # Upload files
+    location /uploads/ {
+        alias $APP_DIR/uploads/;
+        expires 1d;
+        add_header Cache-Control "public";
+    }
+    
+    # API endpoints with rate limiting
+    location /api/ {
+        limit_req zone=api burst=20 nodelay;
+        
+        proxy_pass http://127.0.0.1:5002;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        
+        # Timeouts
+        proxy_connect_timeout 30s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        
+        # Buffer settings
+        proxy_buffering on;
+        proxy_buffer_size 4k;
+        proxy_buffers 8 4k;
+    }
+    
+    # Upload endpoints with stricter rate limiting
+    location /upload {
+        limit_req zone=uploads burst=5 nodelay;
+        
+        proxy_pass http://127.0.0.1:5002;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        
+        # Longer timeouts for file uploads
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 120s;
+        proxy_read_timeout 120s;
+        
+        # Disable buffering for uploads
+        proxy_request_buffering off;
+    }
+    
+    # Main application
+    location / {
+        proxy_pass http://127.0.0.1:5002;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        
+        # Timeouts
+        proxy_connect_timeout 30s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        
+        # Buffer settings
+        proxy_buffering on;
+        proxy_buffer_size 4k;
+        proxy_buffers 8 4k;
+    }
+    
+    # Health check endpoint
+    location /health {
+        access_log off;
+        proxy_pass http://127.0.0.1:5002;
+        proxy_set_header Host \$host;
+    }
+    
+    # Deny access to sensitive files
+    location ~ /\. {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+    
+    location ~ \.(py|pyc|pyo|pyd|log|sql|db)$ {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+}
+EOF
+
+    # Test Nginx configuration
+    nginx -t
+    
+    if [[ $? -eq 0 ]]; then
+        print_success "Nginx SSL configuration updated successfully"
+    else
+        print_error "Nginx SSL configuration test failed"
+        exit 1
     fi
 }
 
