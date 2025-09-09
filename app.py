@@ -3808,6 +3808,88 @@ def get_sync_status():
         print(f"Error in get_sync_status: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/quickbooks/synced-items', methods=['GET'])
+@admin_required
+def get_synced_items():
+    """Get items that have been synced from QuickBooks"""
+    try:
+        # Get items that have QuickBooks ID (indicating they were synced from QB)
+        items = Item.query.filter(Item.quickbooks_id.isnot(None)).order_by(Item.created_at.desc()).all()
+        
+        items_data = []
+        for item in items:
+            items_data.append({
+                'id': item.id,
+                'name': item.name,
+                'item_code': item.item_code,
+                'gtin': item.gtin,
+                'category': item.category,
+                'quickbooks_id': item.quickbooks_id,
+                'created_at': item.created_at.isoformat(),
+                'lot_count': len(item.lots)
+            })
+        
+        return jsonify({
+            'success': True,
+            'items': items_data,
+            'total_count': len(items_data)
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/quickbooks/sync/statistics', methods=['GET'])
+@admin_required
+def get_sync_statistics():
+    """Get detailed sync statistics"""
+    try:
+        # Get total counts
+        total_items = Item.query.count()
+        synced_items = Item.query.filter(Item.quickbooks_id.isnot(None)).count()
+        total_customers = Customer.query.count()
+        synced_customers = Customer.query.filter(Customer.quickbooks_id.isnot(None)).count()
+        
+        # Get recent sync activity (last 7 days)
+        from datetime import datetime, timedelta
+        week_ago = datetime.now() - timedelta(days=7)
+        recent_logs = SyncLog.query.filter(SyncLog.timestamp >= week_ago).all()
+        
+        # Calculate sync statistics
+        sync_stats = {
+            'items': {
+                'total': total_items,
+                'synced': synced_items,
+                'percentage': round((synced_items / total_items * 100) if total_items > 0 else 0, 1)
+            },
+            'customers': {
+                'total': total_customers,
+                'synced': synced_customers,
+                'percentage': round((synced_customers / total_customers * 100) if total_customers > 0 else 0, 1)
+            },
+            'recent_activity': {
+                'total_syncs': len(recent_logs),
+                'successful_syncs': len([log for log in recent_logs if log.status == 'success']),
+                'failed_syncs': len([log for log in recent_logs if log.status == 'error'])
+            }
+        }
+        
+        # Get last sync times
+        last_item_sync = SyncLog.query.filter_by(sync_type='items', status='success').order_by(SyncLog.timestamp.desc()).first()
+        last_customer_sync = SyncLog.query.filter_by(sync_type='customers', status='success').order_by(SyncLog.timestamp.desc()).first()
+        
+        sync_stats['last_sync'] = {
+            'items': last_item_sync.timestamp.isoformat() if last_item_sync else None,
+            'customers': last_customer_sync.timestamp.isoformat() if last_customer_sync else None
+        }
+        
+        return jsonify({
+            'success': True,
+            'statistics': sync_stats
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/quickbooks/sync/log', methods=['GET'])
 @admin_required
 def get_sync_log():
