@@ -1,10 +1,10 @@
 {
-  "manual_version": "1.2.0",
-  "timestamp": "2025-09-05T13:47:35.791624",
+  "manual_version": "0.5.0",
+  "timestamp": "2025-09-09T15:30:00.000000",
   "commit_hash": "7b3b4e3",
   "branch": "master",
   "commit_date": "2025-09-05 12:15:37 -0400",
   "has_uncommitted": true,
   "source": "git",
-  "display_version": "1.2.0 (7b3b4e3) [modified]"
+  "display_version": "0.5.0 (7b3b4e3) [modified]"
 }
