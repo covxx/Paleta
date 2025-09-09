@@ -130,7 +130,7 @@
             <h1><i class="fas fa-shield-alt"></i> Admin Login</h1>
             <p>Access the administrative panel</p>
             <div class="version-info mt-2">
-                <small class="text-muted">v{{ version_info.display_version if version_info else '0.5.0' }}</small>
+                <small class="text-muted">{{ version_info.display_version_with_build if version_info else 'v0.5.0' }}</small>
             </div>
         </div>
         
