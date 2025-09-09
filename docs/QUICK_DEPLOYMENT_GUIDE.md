@@ -13,7 +13,7 @@ Quick reference guide for deploying the QuickBooks Label Printer to your VPS wit
 ### **Deploy Everything**
 ```bash
 # Download and run the complete deployment script
-curl -fsSL https://raw.githubusercontent.com/covxx/Paleta/main/scripts/deploy_production.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/covxx/Paleta/refs/heads/master/scripts/deploy_production.sh | sudo bash
 ```
 
 ### **Manual Deployment**
