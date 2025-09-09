@@ -650,6 +650,7 @@
     window.showTab = showTab;
 
     function loadTabData(tabName) {
+        console.log('Loading data for tab:', tabName);
         switch(tabName) {
             case 'dashboard':
                 loadDashboardData();
@@ -669,193 +670,68 @@
             case 'active-users':
                 loadActiveUsers();
                 break;
+            case 'analytics':
+                // Analytics tab doesn't need data loading
+                break;
+            default:
+                console.log('No data loading needed for tab:', tabName);
         }
     }
 
     // Dashboard Data Loading
     function loadDashboardData() {
-        try {
-            Promise.all([
-                fetch('/api/items').then(r => r.json()).catch(() => []),
-                fetch('/api/lots').then(r => r.json()).catch(() => []),
-                fetch('/api/vendors').then(r => r.json()).catch(() => []),
-                fetch('/api/printers').then(r => r.json()).catch(() => [])
-            ]).then(([items, lots, vendors, printers]) => {
-                const totalItemsEl = document.getElementById('totalItems');
-                const totalLotsEl = document.getElementById('totalLots');
-                const totalVendorsEl = document.getElementById('totalVendors');
-                const totalPrintersEl = document.getElementById('totalPrinters');
-                
-                if (totalItemsEl) totalItemsEl.textContent = items.length || 0;
-                if (totalLotsEl) totalLotsEl.textContent = lots.length || 0;
-                if (totalVendorsEl) totalVendorsEl.textContent = vendors.length || 0;
-                if (totalPrintersEl) totalPrintersEl.textContent = printers.length || 0;
-            }).catch(error => {
-                console.error('Error loading dashboard data:', error);
-                // Set default values
-                const totalItemsEl = document.getElementById('totalItems');
-                const totalLotsEl = document.getElementById('totalLots');
-                const totalVendorsEl = document.getElementById('totalVendors');
-                const totalPrintersEl = document.getElementById('totalPrinters');
-                
-                if (totalItemsEl) totalItemsEl.textContent = '0';
-                if (totalLotsEl) totalLotsEl.textContent = '0';
-                if (totalVendorsEl) totalVendorsEl.textContent = '0';
-                if (totalPrintersEl) totalPrintersEl.textContent = '0';
-            });
-        } catch (error) {
-            console.error('Error in loadDashboardData:', error);
-        }
+        console.log('Loading dashboard data...');
+        // Set placeholder values for now
+        const totalItemsEl = document.getElementById('totalItems');
+        const totalLotsEl = document.getElementById('totalLots');
+        const totalVendorsEl = document.getElementById('totalVendors');
+        const totalPrintersEl = document.getElementById('totalPrinters');
+        
+        if (totalItemsEl) totalItemsEl.textContent = '0';
+        if (totalLotsEl) totalLotsEl.textContent = '0';
+        if (totalVendorsEl) totalVendorsEl.textContent = '0';
+        if (totalPrintersEl) totalPrintersEl.textContent = '0';
     }
 
     // Data Loading Functions
     function loadItems() {
-        fetch('/api/items')
-            .then(response => response.json())
-            .then(items => {
-                const tbody = document.querySelector('#itemsTable tbody');
-                tbody.innerHTML = items.map(item => 
-                    '<tr>' +
-                        '<td>' + item.id + '</td>' +
-                        '<td>' + item.name + '</td>' +
-                        '<td>' + (item.sku || '-') + '</td>' +
-                        '<td>' + (item.description || '-') + '</td>' +
-                        '<td>$' + (item.price || '0.00') + '</td>' +
-                        '<td>' +
-                            '<div class="btn-group">' +
-                                '<button class="btn btn-sm btn-outline-primary" onclick="editItem(' + item.id + ')">' +
-                                    '<i class="fas fa-edit"></i>' +
-                                '</button>' +
-                                '<button class="btn btn-sm btn-outline-danger" onclick="deleteItem(' + item.id + ')">' +
-                                    '<i class="fas fa-trash"></i>' +
-                                '</button>' +
-                            '</div>' +
-                        '</td>' +
-                    '</tr>'
-                ).join('');
-            })
-            .catch(error => {
-                console.error('Error loading items:', error);
-                showNotification('Error', 'Failed to load items', 'error');
-            });
+        console.log('Loading items data...');
+        const tbody = document.querySelector('#itemsTable tbody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Items management coming soon...</td></tr>';
+        }
     }
 
     function loadLots() {
-        fetch('/api/lots')
-            .then(response => response.json())
-            .then(lots => {
-                const tbody = document.querySelector('#lotsTable tbody');
-                tbody.innerHTML = lots.map(lot => 
-                    '<tr>' +
-                        '<td>' + lot.lot_code + '</td>' +
-                        '<td>' + (lot.item_name || '-') + '</td>' +
-                        '<td>' + (lot.quantity || 0) + '</td>' +
-                        '<td>' + (lot.expiry_date || '-') + '</td>' +
-                        '<td><span class="badge badge-' + (lot.status === 'active' ? 'success' : 'warning') + '">' + (lot.status || 'unknown') + '</span></td>' +
-                        '<td>' +
-                            '<div class="btn-group">' +
-                                '<button class="btn btn-sm btn-outline-primary" onclick="editLot(\'' + lot.lot_code + '\')">' +
-                                    '<i class="fas fa-edit"></i>' +
-                                '</button>' +
-                                '<button class="btn btn-sm btn-outline-danger" onclick="deleteLot(\'' + lot.lot_code + '\')">' +
-                                    '<i class="fas fa-trash"></i>' +
-                                '</button>' +
-                            '</div>' +
-                        '</td>' +
-                    '</tr>'
-                ).join('');
-            })
-            .catch(error => {
-                console.error('Error loading lots:', error);
-                showNotification('Error', 'Failed to load lots', 'error');
-            });
+        console.log('Loading lots data...');
+        const tbody = document.querySelector('#lotsTable tbody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">LOT management coming soon...</td></tr>';
+        }
     }
 
     function loadVendors() {
-        fetch('/api/vendors')
-            .then(response => response.json())
-            .then(vendors => {
-                const tbody = document.querySelector('#vendorsTable tbody');
-                tbody.innerHTML = vendors.map(vendor => 
-                    '<tr>' +
-                        '<td>' + vendor.id + '</td>' +
-                        '<td>' + vendor.name + '</td>' +
-                        '<td>' + (vendor.contact_name || '-') + '</td>' +
-                        '<td>' + (vendor.email || '-') + '</td>' +
-                        '<td>' + (vendor.phone || '-') + '</td>' +
-                        '<td>' +
-                            '<div class="btn-group">' +
-                                '<button class="btn btn-sm btn-outline-primary" onclick="editVendor(' + vendor.id + ')">' +
-                                    '<i class="fas fa-edit"></i>' +
-                                '</button>' +
-                                '<button class="btn btn-sm btn-outline-danger" onclick="deleteVendor(' + vendor.id + ')">' +
-                                    '<i class="fas fa-trash"></i>' +
-                                '</button>' +
-                            '</div>' +
-                        '</td>' +
-                    '</tr>'
-                ).join('');
-            })
-            .catch(error => {
-                console.error('Error loading vendors:', error);
-                showNotification('Error', 'Failed to load vendors', 'error');
-            });
+        console.log('Loading vendors data...');
+        const tbody = document.querySelector('#vendorsTable tbody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Vendor management coming soon...</td></tr>';
+        }
     }
 
     function loadPrinters() {
-        fetch('/api/printers')
-            .then(response => response.json())
-            .then(printers => {
-                const tbody = document.querySelector('#printersTable tbody');
-                tbody.innerHTML = printers.map(printer => 
-                    '<tr>' +
-                        '<td>' + printer.id + '</td>' +
-                        '<td>' + printer.name + '</td>' +
-                        '<td>' + printer.ip_address + '</td>' +
-                        '<td>' + printer.port + '</td>' +
-                        '<td><span class="badge badge-' + (printer.is_active ? 'success' : 'danger') + '">' + (printer.is_active ? 'Active' : 'Inactive') + '</span></td>' +
-                        '<td>' +
-                            '<div class="btn-group">' +
-                                '<button class="btn btn-sm btn-outline-primary" onclick="editPrinter(' + printer.id + ')">' +
-                                    '<i class="fas fa-edit"></i>' +
-                                '</button>' +
-                                '<button class="btn btn-sm btn-outline-danger" onclick="deletePrinter(' + printer.id + ')">' +
-                                    '<i class="fas fa-trash"></i>' +
-                                '</button>' +
-                            '</div>' +
-                        '</td>' +
-                    '</tr>'
-                ).join('');
-            })
-            .catch(error => {
-                console.error('Error loading printers:', error);
-                showNotification('Error', 'Failed to load printers', 'error');
-            });
+        console.log('Loading printers data...');
+        const tbody = document.querySelector('#printersTable tbody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Printer management coming soon...</td></tr>';
+        }
     }
 
     function loadActiveUsers() {
-        fetch('/api/active-users')
-            .then(response => response.json())
-            .then(users => {
-                const tbody = document.querySelector('#activeUsersTable tbody');
-                tbody.innerHTML = users.map(user => 
-                    '<tr>' +
-                        '<td>' + (user.user_id || '-') + '</td>' +
-                        '<td>' + user.ip_address + '</td>' +
-                        '<td>' + new Date(user.last_activity).toLocaleString() + '</td>' +
-                        '<td>' + (user.session_duration || '-') + '</td>' +
-                        '<td>' +
-                            '<button class="btn btn-sm btn-outline-danger" onclick="disconnectUser(\'' + user.ip_address + '\')">' +
-                                '<i class="fas fa-user-times"></i> Disconnect' +
-                            '</button>' +
-                        '</td>' +
-                    '</tr>'
-                ).join('');
-            })
-            .catch(error => {
-                console.error('Error loading active users:', error);
-                showNotification('Error', 'Failed to load active users', 'error');
-            });
+        console.log('Loading active users data...');
+        const tbody = document.querySelector('#activeUsersTable tbody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Active users monitoring coming soon...</td></tr>';
+        }
     }
 
     // Action Functions
