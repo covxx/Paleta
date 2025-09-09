@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Production startup script for Label Printer Application
+# Production startup script for ProduceFlow Application
 # Optimized for Ubuntu VPS with 4 cores
 
 set -e
@@ -34,7 +34,7 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
-print_status "Starting Label Printer production environment..."
+print_status "Starting ProduceFlow production environment..."
 
 # Check if services are running
 check_service() {
@@ -74,7 +74,7 @@ systemctl status nginx --no-pager -l | head -10
 echo ""
 systemctl status redis-server --no-pager -l | head -10
 
-print_status "🎉 Label Printer is running in production mode!"
+print_status "🎉 ProduceFlow is running in production mode!"
 print_status "Application URL: http://your-server-ip"
 print_status "Logs: /var/log/label-printer/"
 print_status "Use 'sudo systemctl restart label-printer' to restart the application"

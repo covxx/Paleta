@@ -1,10 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Label Designer - ZPL Printing</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+{% extends "base.html" %}
+
+{% block title %}Label Designer - ProduceFlow{% endblock %}
+
+{% block extra_css %}
     <style>
         * {
             margin: 0;
@@ -275,9 +273,10 @@
             100% { transform: rotate(360deg); }
         }
     </style>
-</head>
-<body>
-    <div class="designer-container">
+{% endblock %}
+
+{% block content %}
+<div class="designer-container">
         <div class="designer-header">
             <h1><i class="fas fa-code"></i> ZPL Label Printing</h1>
             <p>Generate and send ZPL code directly to network printers</p>
@@ -615,5 +614,5 @@
             loadPrinterData();
         });
     </script>
-</body>
-</html>
+</div>
+{% endblock %}

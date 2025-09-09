@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Receiving - QuickBooks Label Printer{% endblock %}
+{% block title %}Receiving - ProduceFlow{% endblock %}
 
 {% block content %}
 <div class="page-header">
@@ -401,6 +401,48 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        
+        /* Enhanced form field spacing */
+        .form-row-spaced {
+            gap: var(--space-6);
+        }
+        
+        .form-row-spaced .col-md-6 {
+            padding-left: var(--space-3);
+            padding-right: var(--space-3);
+        }
+        
+        .form-row-spaced .col-md-6:first-child {
+            padding-right: var(--space-4);
+        }
+        
+        .form-row-spaced .col-md-6:last-child {
+            padding-left: var(--space-4);
+        }
+        
+        /* Enhanced form field styling */
+        .form-field-enhanced {
+            margin-bottom: var(--space-4);
+        }
+        
+        .form-field-enhanced .form-label {
+            margin-bottom: var(--space-3);
+            font-weight: var(--font-weight-semibold);
+        }
+        
+        .form-field-enhanced .form-control,
+        .form-field-enhanced .form-select {
+            padding: var(--space-3) var(--space-4);
+            border-radius: var(--radius);
+            border: 2px solid var(--border-color);
+            transition: var(--transition-fast);
+        }
+        
+        .form-field-enhanced .form-control:focus,
+        .form-field-enhanced .form-select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
+        }
         .autocomplete-suggestion:last-child {
             border-bottom: none;
         }
@@ -431,9 +473,9 @@
                     
                     <form id="receivingForm">
                         <!-- Vendor Selection -->
-                        <div class="row mb-4">
+                        <div class="row mb-4 form-row-spaced">
                             <div class="col-md-6">
-                                <div class="mb-3">
+                                <div class="form-field-enhanced">
                                     <label for="vendor" class="form-label">Vendor *</label>
                                     <select class="form-select" id="vendor" name="vendor_id" required>
                                         <option value="">Select a vendor...</option>
@@ -441,7 +483,7 @@
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <div class="mb-3">
+                                <div class="form-field-enhanced">
                                     <label for="receivingDate" class="form-label">Receiving Date</label>
                                     <input type="date" class="form-control" id="receivingDate" name="receiving_date">
                                 </div>

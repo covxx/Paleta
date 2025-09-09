@@ -1,16 +1,16 @@
 [Unit]
-Description=QuickBooks Label Printer
+Description=ProduceFlow
 After=network.target
 
 [Service]
 Type=notify
-User=labelprinter
-Group=labelprinter
-WorkingDirectory=/opt/label-printer
-Environment=PATH=/opt/label-printer/venv/bin
+User=produceflow
+Group=produceflow
+WorkingDirectory=/opt/produceflow
+Environment=PATH=/opt/produceflow/venv/bin
 Environment=FLASK_ENV=production
 Environment=FLASK_APP=app.py
-ExecStart=/opt/label-printer/venv/bin/gunicorn --config gunicorn.conf.py app:app
+ExecStart=/opt/produceflow/venv/bin/gunicorn --config gunicorn.conf.py app:app
 ExecReload=/bin/kill -s HUP $MAINPID
 Restart=always
 RestartSec=10
@@ -20,7 +20,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/opt/label-printer
+ReadWritePaths=/opt/produceflow
 
 # Resource limits
 LimitNOFILE=65536

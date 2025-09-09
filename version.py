@@ -1,11 +1,11 @@
-# Version management for Label Printer Application
+# Version management for ProduceFlow Application
 import os
 import subprocess
 import json
 from datetime import datetime
 
 # Manual version - update this when you make significant changes
-MANUAL_VERSION = "1.2.0"
+MANUAL_VERSION = "0.5.0"
 
 # Version file path
 VERSION_FILE = "version_info.json"

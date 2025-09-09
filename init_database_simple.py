@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Simple database initialization script for QuickBooks Label Printer
+Simple database initialization script for ProduceFlow
 This script creates the database tables without trying to create initial data
 """
 
@@ -160,7 +160,7 @@ def init_database_simple():
         return False
 
 if __name__ == "__main__":
-    print("Initializing QuickBooks Label Printer database (simple version)...")
+    print("Initializing ProduceFlow database (simple version)...")
     success = init_database_simple()
     if success:
         print("Database initialization completed successfully!")

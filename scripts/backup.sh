@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Database backup script for Label Printer Application
+# Database backup script for ProduceFlow Application
 # Optimized for Ubuntu VPS deployment
 
 set -e
@@ -88,7 +88,7 @@ print_status "Remaining backups: $REMAINING_BACKUPS"
 # Create backup index
 print_status "Updating backup index..."
 cat > "$BACKUP_DIR/backup_index.txt" << EOF
-# Label Printer Database Backups
+# ProduceFlow Database Backups
 # Generated: $(date)
 # Retention: $RETENTION_DAYS days
 

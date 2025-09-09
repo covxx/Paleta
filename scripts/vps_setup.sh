@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# QuickBooks Label Printer - VPS Setup Script
+# ProduceFlow - VPS Setup Script
 # This script sets up the application on an Ubuntu VPS with 4 cores
 
 set -e  # Exit on any error
@@ -13,12 +13,13 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-APP_NAME="label-printer"
-APP_USER="labelprinter"
+APP_NAME="produceflow"
+APP_USER="produceflow"
 APP_DIR="/opt/$APP_NAME"
 GIT_REPO="https://github.com/covxx/Paleta.git"  # Update with your repo
-SERVICE_NAME="label-printer"
-NGINX_SITE="label-printer"
+SERVICE_NAME="produceflow"
+NGINX_SITE="produceflow"
+DOMAIN_NAME=""
 
 # SSL Configuration removed - use setup_ssl.sh script instead
 
@@ -215,11 +216,35 @@ EOF
 setup_nginx() {
     print_status "Setting up Nginx..."
     
+    # Determine server_name based on domain configuration
+    if [[ -n "$DOMAIN_NAME" ]]; then
+        SERVER_NAME="$DOMAIN_NAME www.$DOMAIN_NAME"
+        print_status "Configuring Nginx for domain: $DOMAIN_NAME"
+    else
+        SERVER_NAME="_"
+        print_status "Configuring Nginx to accept any domain"
+    fi
+    
     # Create Nginx configuration
     sudo tee /etc/nginx/sites-available/$NGINX_SITE > /dev/null <<EOF
+upstream produceflow_backend {
+    # Load balancing across Gunicorn workers
+    server 127.0.0.1:8000 max_fails=3 fail_timeout=30s;
+    
+    # Load balancing method
+    least_conn;
+    
+    # Keep connections alive
+    keepalive 32;
+}
+
+# Rate limiting zones
+limit_req_zone \$binary_remote_addr zone=api:10m rate=10r/s;
+limit_req_zone \$binary_remote_addr zone=uploads:10m rate=2r/s;
+
 server {
     listen 80;
-    server_name _;  # Replace with your domain name
+    server_name $SERVER_NAME;
     
     # Security headers
     add_header X-Frame-Options "SAMEORIGIN" always;
@@ -238,23 +263,83 @@ server {
     # Client max body size
     client_max_body_size 16M;
     
-    # Proxy to Flask app
-    location / {
-        proxy_pass http://127.0.0.1:5002;
+    # API endpoints with rate limiting
+    location /api/ {
+        limit_req zone=api burst=20 nodelay;
+        
+        proxy_pass http://produceflow_backend;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
         
-        # WebSocket support (if needed)
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        
         # Timeouts
-        proxy_connect_timeout 60s;
+        proxy_connect_timeout 30s;
         proxy_send_timeout 60s;
         proxy_read_timeout 60s;
+        
+        # Buffer settings
+        proxy_buffering on;
+        proxy_buffer_size 4k;
+        proxy_buffers 8 4k;
+    }
+    
+    # Upload endpoints with stricter rate limiting
+    location /upload {
+        limit_req zone=uploads burst=5 nodelay;
+        
+        proxy_pass http://produceflow_backend;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        
+        # Longer timeouts for file uploads
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 120s;
+        proxy_read_timeout 120s;
+        
+        # Disable buffering for uploads
+        proxy_request_buffering off;
+    }
+    
+    # Main application
+    location / {
+        proxy_pass http://produceflow_backend;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        
+        # Timeouts
+        proxy_connect_timeout 30s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        
+        # Buffer settings
+        proxy_buffering on;
+        proxy_buffer_size 4k;
+        proxy_buffers 8 4k;
+    }
+    
+    # Health check endpoint
+    location /health {
+        access_log off;
+        proxy_pass http://produceflow_backend;
+        proxy_set_header Host \$host;
+    }
+    
+    # Deny access to sensitive files
+    location ~ /\. {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+    
+    location ~ \.(py|pyc|pyo|pyd|log|sql|db)$ {
+        deny all;
+        access_log off;
+        log_not_found off;
     }
     
     # Static files
@@ -402,7 +487,7 @@ display_final_info() {
     print_success "Setup completed successfully!"
     echo
     echo "=========================================="
-    echo "QuickBooks Label Printer - VPS Setup Complete"
+    echo "ProduceFlow - VPS Setup Complete"
     echo "=========================================="
     echo
     echo "Application Details:"
@@ -413,11 +498,29 @@ display_final_info() {
     echo "  - Application Server: Flask (Gunicorn recommended for production)"
     echo
     echo "Access Information:"
-    echo "  - Web Interface: http://$(curl -s ifconfig.me)"
+    if [[ -n "$DOMAIN_NAME" ]]; then
+        echo "  - Web Interface: http://$DOMAIN_NAME"
+        echo "  - Alternative: http://$(curl -s ifconfig.me)"
+    else
+        echo "  - Web Interface: http://$(curl -s ifconfig.me)"
+    fi
     echo "  - Admin Login: /admin/login"
     echo
+    echo "Domain Configuration:"
+    if [[ -n "$DOMAIN_NAME" ]]; then
+        echo "  - Domain: $DOMAIN_NAME"
+        echo "  - Make sure DNS is pointing to: $(curl -s ifconfig.me)"
+    else
+        echo "  - No domain configured"
+        echo "  - Access via IP address only"
+    fi
+    echo
     echo "SSL Setup:"
-    echo "  To set up SSL later, run: sudo ./setup_ssl.sh -d yourdomain.com -e admin@yourdomain.com"
+    if [[ -n "$DOMAIN_NAME" ]]; then
+        echo "  To set up SSL, run: sudo ./setup_ssl.sh -d $DOMAIN_NAME -e admin@$DOMAIN_NAME"
+    else
+        echo "  To set up SSL later, run: sudo ./setup_ssl.sh -d yourdomain.com -e admin@yourdomain.com"
+    fi
     echo
     echo "Service Management:"
     echo "  - Start: sudo systemctl start $SERVICE_NAME"
@@ -435,8 +538,12 @@ display_final_info() {
     echo "  - Manual: $APP_DIR/backup.sh"
     echo "  - Scheduled: Daily at 2 AM"
     echo
-    echo "SSL Setup (if you have a domain):"
-    echo "  sudo certbot --nginx -d yourdomain.com"
+    echo "SSL Setup:"
+    if [[ -n "$DOMAIN_NAME" ]]; then
+        echo "  sudo $APP_DIR/scripts/setup_ssl.sh -d $DOMAIN_NAME -e admin@$DOMAIN_NAME"
+    else
+        echo "  sudo $APP_DIR/scripts/setup_ssl.sh -d yourdomain.com -e admin@yourdomain.com"
+    fi
     echo
     echo "Monitoring:"
     echo "  - System: htop"
@@ -448,7 +555,7 @@ display_final_info() {
 
 # Function to show help
 show_help() {
-    echo "QuickBooks Label Printer - VPS Setup Script"
+    echo "ProduceFlow - VPS Setup Script"
     echo
     echo "Usage: sudo $0 [OPTIONS]"
     echo
@@ -480,18 +587,148 @@ parse_arguments() {
     done
 }
 
+# Function to configure domain interactively
+configure_domain() {
+    echo
+    print_status "🌐 Domain Configuration"
+    print_status "======================="
+    echo
+    print_status "To access ProduceFlow via a domain name, you need to:"
+    print_status "1. Point your domain's DNS A record to this server's IP address"
+    print_status "2. Provide the domain name below"
+    echo
+    print_status "Current server IP: $(curl -s ifconfig.me)"
+    echo
+    
+    while true; do
+        read -p "Enter your domain name (e.g., mydomain.com) or press Enter to skip: " DOMAIN_NAME
+        
+        if [[ -z "$DOMAIN_NAME" ]]; then
+            print_status "No domain configured. You can access the application via IP address."
+            break
+        fi
+        
+        # Validate domain name format
+        if [[ "$DOMAIN_NAME" =~ ^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9]\.[a-zA-Z]{2,}$ ]]; then
+            print_status "Domain configured: $DOMAIN_NAME"
+            print_status "Make sure your DNS A record points to: $(curl -s ifconfig.me)"
+            echo
+            read -p "Is this correct? (y/n): " confirm
+            if [[ "$confirm" =~ ^[Yy]$ ]]; then
+                break
+            else
+                DOMAIN_NAME=""
+                echo
+            fi
+        else
+            print_error "Invalid domain name format. Please try again."
+            echo
+        fi
+    done
+    echo
+}
+
+# Function to configure additional options
+configure_additional_options() {
+    echo
+    print_status "🔧 Additional Configuration"
+    print_status "==========================="
+    echo
+    print_status "Would you like to configure additional options?"
+    echo
+    print_status "1. SSL Certificate (Let's Encrypt)"
+    print_status "2. Email notifications"
+    print_status "3. Backup configuration"
+    print_status "4. Skip additional configuration"
+    echo
+    
+    while true; do
+        read -p "Enter your choice (1-4): " choice
+        case $choice in
+            1)
+                print_status "SSL configuration will be available after installation."
+                print_status "Run: sudo ./scripts/setup_ssl.sh -d $DOMAIN_NAME -e admin@$DOMAIN_NAME"
+                break
+                ;;
+            2)
+                print_status "Email notifications can be configured in the admin panel after installation."
+                break
+                ;;
+            3)
+                print_status "Backup configuration will be set up automatically."
+                break
+                ;;
+            4)
+                print_status "Skipping additional configuration."
+                break
+                ;;
+            *)
+                print_error "Invalid choice. Please enter 1-4."
+                ;;
+        esac
+    done
+    echo
+}
+
+# Function to show installation summary
+show_installation_summary() {
+    echo
+    print_status "📋 Installation Summary"
+    print_status "======================="
+    echo
+    print_status "Application: ProduceFlow"
+    print_status "Installation Directory: $APP_DIR"
+    print_status "Service User: $APP_USER"
+    print_status "Service Name: $SERVICE_NAME"
+    if [[ -n "$DOMAIN_NAME" ]]; then
+        print_status "Domain: $DOMAIN_NAME"
+        print_status "Access URL: http://$DOMAIN_NAME"
+    else
+        print_status "Domain: Not configured"
+        print_status "Access URL: http://$(curl -s ifconfig.me)"
+    fi
+    echo
+    print_status "The installation will now begin..."
+    echo
+    read -p "Press Enter to continue or Ctrl+C to cancel: " confirm
+    echo
+}
+
+# Function to update nginx configuration with domain
+update_nginx_domain() {
+    if [[ -n "$DOMAIN_NAME" ]]; then
+        print_status "Updating Nginx configuration for domain: $DOMAIN_NAME"
+        
+        # Update nginx configuration
+        sudo sed -i "s/server_name _;/server_name $DOMAIN_NAME www.$DOMAIN_NAME;/g" /etc/nginx/sites-available/$NGINX_SITE
+        
+        # Test nginx configuration
+        if sudo nginx -t; then
+            print_success "Nginx configuration updated successfully"
+            sudo systemctl reload nginx
+        else
+            print_error "Nginx configuration test failed"
+            exit 1
+        fi
+    fi
+}
+
 # Main execution
 main() {
     # Parse command line arguments
     parse_arguments "$@"
     
-    print_status "Starting QuickBooks Label Printer VPS Setup..."
+    print_status "Starting ProduceFlow VPS Setup..."
     echo
     
-    # SSL setup removed - use setup_ssl.sh script instead
-    print_status "SSL setup is not included in this script."
-    print_status "To set up SSL later, run: sudo ./setup_ssl.sh -d yourdomain.com -e admin@yourdomain.com"
-    echo
+    # Configure domain
+    configure_domain
+    
+    # Configure additional options
+    configure_additional_options
+    
+    # Show installation summary
+    show_installation_summary
     
     # Pre-flight checks
     check_root

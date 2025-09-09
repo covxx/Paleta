@@ -1,4 +1,4 @@
-# Production Configuration for QuickBooks Label Printer
+# Production Configuration for ProduceFlow
 # This configuration is optimized for VPS deployment
 
 import os

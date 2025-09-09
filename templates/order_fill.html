@@ -214,39 +214,40 @@
 
         function displayOrderInfo() {
             const orderInfo = document.getElementById('orderInfo');
-            orderInfo.innerHTML = 
-                '<div class="row">' +
-                    '<div class="col-md-3">' +
-                        '<strong>Order Number:</strong><br>' +
-                        order.order_number +
-                    '</div>' +
-                    '<div class="col-md-3">' +
-                        '<strong>Customer:</strong><br>' +
-                        order.customer_name +
-                    '</div>' +
-                    '<div class="col-md-3">' +
-                        '<strong>Order Date:</strong><br>' +
-                        formatDate(order.order_date) +
-                    '</div>' +
-                    '<div class="col-md-3">' +
-                        '<strong>Delivery Date:</strong><br>' +
-                        formatDate(order.requested_delivery_date) +
-                    '</div>' +
-                '</div>' +
-                '<div class="row mt-2">' +
-                    '<div class="col-md-3">' +
-                        '<strong>Status:</strong><br>' +
-                        '<span class="badge bg-' + getStatusColor(order.status) + '">' + order.status + '</span>' +
-                    '</div>' +
-                    '<div class="col-md-3">' +
-                        '<strong>Total Amount:</strong><br>' +
-                        '$' + order.total_amount.toFixed(2) +
-                    '</div>' +
-                    '<div class="col-md-6">' +
-                        '<strong>Notes:</strong><br>' +
-                        (order.notes || 'None') +
-                    '</div>' +
-                '</div>';
+            orderInfo.innerHTML = `
+                <div class="row">
+                    <div class="col-md-3">
+                        <strong>Order Number:</strong><br>
+                        ${order.order_number}
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Customer:</strong><br>
+                        ${order.customer_name}
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Order Date:</strong><br>
+                        ${formatDate(order.order_date)}
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Delivery Date:</strong><br>
+                        ${formatDate(order.requested_delivery_date)}
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-md-3">
+                        <strong>Status:</strong><br>
+                        <span class="badge bg-${getStatusColor(order.status)}">${order.status}</span>
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Total Amount:</strong><br>
+                        $${order.total_amount.toFixed(2)}
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Notes:</strong><br>
+                        ${order.notes || 'None'}
+                    </div>
+                </div>
+            `;
         }
 
         function displayOrderItems() {
@@ -256,20 +257,21 @@
             order.order_items.forEach(item => {
                 const remaining = item.quantity_ordered - item.quantity_filled;
                 const row = document.createElement('tr');
-                row.innerHTML = 
-                    '<td>' + item.item_name + '</td>' +
-                    '<td>' + item.quantity_ordered + '</td>' +
-                    '<td>' + item.quantity_filled + '</td>' +
-                    '<td>' + remaining + '</td>' +
-                    '<td><span class="badge bg-' + getStatusColor(item.status) + '">' + item.status + '</span></td>' +
-                    '<td>' +
-                        (remaining > 0 ? 
-                            '<button class="btn btn-sm btn-primary" onclick="fillOrderItem(' + item.id + ')">' +
-                                '<i class="fas fa-boxes"></i> Fill' +
-                            '</button>' : 
+                row.innerHTML = `
+                    <td>${item.item_name}</td>
+                    <td>${item.quantity_ordered}</td>
+                    <td>${item.quantity_filled}</td>
+                    <td>${remaining}</td>
+                    <td><span class="badge bg-${getStatusColor(item.status)}">${item.status}</span></td>
+                    <td>
+                        ${remaining > 0 ? 
+                            `<button class="btn btn-sm btn-primary" onclick="fillOrderItem(${item.id})">
+                                <i class="fas fa-boxes"></i> Fill
+                            </button>` : 
                             '<span class="text-muted">Complete</span>'
-                        ) +
-                    '</td>';
+                        }
+                    </td>
+                `;
                 tbody.appendChild(row);
             });
         }
@@ -298,7 +300,7 @@
                 currentOrderItem = order.order_items.find(item => item.id === orderItemId);
                 
                 // Load available lots for this item
-                const response = await fetch('/api/orders/' + orderId + '/lots-available?order_item_id=' + orderItemId);
+                const response = await fetch(`/api/orders/${orderId}/lots-available?order_item_id=${orderItemId}`);
                 availableLots = await response.json();
                 
                 if (availableLots.length === 0) {
@@ -334,18 +336,19 @@
             availableLots.forEach(lot => {
                 const lotDiv = document.createElement('div');
                 lotDiv.className = 'card mb-2';
-                lotDiv.innerHTML = 
-                    '<div class="card-body p-2">' +
-                        '<div class="d-flex justify-content-between align-items-center">' +
-                            '<div>' +
-                                '<strong>' + lot.lot_code + '</strong><br>' +
-                                '<small class="text-muted">Available: ' + lot.quantity + ' ' + lot.unit_type + '</small>' +
-                            '</div>' +
-                            '<button class="btn btn-sm btn-outline-primary" onclick="addLotAllocation(' + lot.id + ', \'' + lot.lot_code + '\', ' + lot.quantity + ')">' +
-                                '<i class="fas fa-plus"></i> Add' +
-                            '</button>' +
-                        '</div>' +
-                    '</div>';
+                lotDiv.innerHTML = `
+                    <div class="card-body p-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>${lot.lot_code}</strong><br>
+                                <small class="text-muted">Available: ${lot.quantity} ${lot.unit_type}</small>
+                            </div>
+                            <button class="btn btn-sm btn-outline-primary" onclick="addLotAllocation(${lot.id}, '${lot.lot_code}', ${lot.quantity})">
+                                <i class="fas fa-plus"></i> Add
+                            </button>
+                        </div>
+                    </div>
+                `;
                 availableLotsDiv.appendChild(lotDiv);
             });
             
@@ -378,23 +381,24 @@
             
             lotAllocations.forEach((allocation, index) => {
                 const row = document.createElement('tr');
-                row.innerHTML = 
-                    '<td>' + allocation.lot_code + '</td>' +
-                    '<td>' + allocation.available_quantity + '</td>' +
-                    '<td>' +
-                        '<input type="number" class="form-control form-control-sm" ' +
-                               'value="' + allocation.allocated_quantity + '" ' +
-                               'min="0" ' +
-                               'max="' + allocation.available_quantity + '"' +
-                               'step="0.01"' +
-                               'onchange="updateAllocationQuantity(' + index + ', this.value)">' +
-                    '</td>' +
-                    '<td>' + formatDate(availableLots.find(lot => lot.id === allocation.lot_id)?.expiry_date) + '</td>' +
-                    '<td>' +
-                        '<button class="btn btn-sm btn-outline-danger" onclick="removeLotAllocation(' + index + ')">' +
-                            '<i class="fas fa-trash"></i>' +
-                        '</button>' +
-                    '</td>';
+                row.innerHTML = `
+                    <td>${allocation.lot_code}</td>
+                    <td>${allocation.available_quantity}</td>
+                    <td>
+                        <input type="number" class="form-control form-control-sm" 
+                               value="${allocation.allocated_quantity}" 
+                               min="0" 
+                               max="${allocation.available_quantity}"
+                               step="0.01"
+                               onchange="updateAllocationQuantity(${index}, this.value)">
+                    </td>
+                    <td>${formatDate(availableLots.find(lot => lot.id === allocation.lot_id)?.expiry_date)}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-danger" onclick="removeLotAllocation(${index})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
                 tbody.appendChild(row);
             });
             
@@ -408,7 +412,7 @@
             if (newQuantity > allocation.available_quantity) {
                 alert('Allocated quantity cannot exceed available quantity');
                 allocation.allocated_quantity = allocation.available_quantity;
-                document.querySelector('#lotAllocationsTable tbody tr:nth-child(' + (index + 1) + ') input').value = allocation.available_quantity;
+                document.querySelector(`#lotAllocationsTable tbody tr:nth-child(${index + 1}) input`).value = allocation.available_quantity;
             } else {
                 allocation.allocated_quantity = newQuantity;
             }
@@ -462,7 +466,7 @@
                     }))
                 };
                 
-                const response = await fetch('/api/orders/' + orderId + '/fill', {
+                const response = await fetch(`/api/orders/${orderId}/fill`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'

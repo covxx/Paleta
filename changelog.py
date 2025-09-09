@@ -1,4 +1,4 @@
-# Changelog management for Label Printer Application
+# Changelog management for ProduceFlow Application
 import json
 import os
 from datetime import datetime
@@ -9,6 +9,85 @@ CHANGELOG_FILE = "changelog.json"
 
 # Default changelog structure
 DEFAULT_CHANGELOG = {
+    "0.5.0": {
+        "date": "2025-09-08",
+        "type": "minor",
+        "title": "ProduceFlow - Unified Design & Interactive VPS Setup",
+        "description": "Complete UI/UX overhaul with unified design system and interactive VPS deployment",
+        "changes": [
+            {
+                "type": "feature",
+                "title": "Interactive VPS Setup",
+                "description": "Fully interactive VPS deployment script with domain configuration and SSL setup"
+            },
+            {
+                "type": "feature",
+                "title": "Unified Design System",
+                "description": "Complete UI/UX overhaul with responsive design, dark mode, and consistent styling"
+            },
+            {
+                "type": "feature",
+                "title": "Enhanced Order Management",
+                "description": "Improved order interface with customer avatars, status indicators, and contact info"
+            },
+            {
+                "type": "feature",
+                "title": "Domain Configuration",
+                "description": "Interactive domain setup with validation, DNS guidance, and Nginx configuration"
+            },
+            {
+                "type": "improvement",
+                "title": "Application Rebranding",
+                "description": "Renamed from 'QuickBooks Label Printer' to 'ProduceFlow' throughout the application"
+            },
+            {
+                "type": "improvement",
+                "title": "Responsive Navigation",
+                "description": "Streamlined navigation with mobile-optimized design and consistent header"
+            },
+            {
+                "type": "improvement",
+                "title": "Template System Overhaul",
+                "description": "All templates updated to use unified base template and design system"
+            },
+            {
+                "type": "security",
+                "title": "Production Security",
+                "description": "Enhanced security headers, rate limiting, and production-ready configurations"
+            }
+        ],
+        "issues": [
+            {
+                "id": "UI-001",
+                "title": "Implement unified design system",
+                "status": "completed",
+                "priority": "high"
+            },
+            {
+                "id": "VPS-001",
+                "title": "Create interactive VPS setup",
+                "status": "completed",
+                "priority": "high"
+            },
+            {
+                "id": "DOMAIN-001",
+                "title": "Add domain configuration",
+                "status": "completed",
+                "priority": "medium"
+            },
+            {
+                "id": "BRAND-001",
+                "title": "Rebrand to ProduceFlow",
+                "status": "completed",
+                "priority": "medium"
+            }
+        ],
+        "breaking_changes": [],
+        "deprecations": [
+            "Old template files (_new.html variants) removed during cleanup"
+        ],
+        "contributors": ["Development Team"]
+    },
     "1.2.0": {
         "date": "2025-09-05",
         "type": "minor",

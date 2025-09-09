@@ -81,3 +81,4 @@ label-printer/
 - Add new tests to `/tests/`
 - Add new configurations to `/configs/`
 - Follow the established naming conventions
+

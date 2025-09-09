@@ -3901,7 +3901,7 @@ if __name__ == '__main__':
     try:
         from qb_scheduler import start_qb_scheduler
         start_qb_scheduler(app)
-        print("QuickBooks auto-sync scheduler started")
+        print("ProduceFlow auto-sync scheduler started")
     except Exception as e:
         print(f"Failed to start QB scheduler: {e}")
     

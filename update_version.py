@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Version Management Script for Label Printer Application
+Version Management Script for ProduceFlow Application
 Usage: python update_version.py [new_version]
 """
 
@@ -89,7 +89,7 @@ def get_git_status():
 
 def main():
     """Main function"""
-    print("🏷️  Label Printer Version Manager")
+    print("🏷️  ProduceFlow Version Manager")
     print("=" * 50)
     
     # Show current version info

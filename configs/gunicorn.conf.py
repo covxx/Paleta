@@ -1,4 +1,4 @@
-# Gunicorn Configuration for QuickBooks Label Printer
+# Gunicorn Configuration for ProduceFlow
 # Production-ready configuration for VPS deployment
 
 import multiprocessing
@@ -57,15 +57,15 @@ raw_env = [
 # Hooks
 def on_starting(server):
     """Called just before the master process is initialized."""
-    server.log.info("Starting QuickBooks Label Printer server...")
+    server.log.info("Starting ProduceFlow server...")
 
 def on_reload(server):
     """Called to recycle workers during a reload via SIGHUP."""
-    server.log.info("Reloading QuickBooks Label Printer server...")
+    server.log.info("Reloading ProduceFlow server...")
 
 def when_ready(server):
     """Called just after the server is started."""
-    server.log.info("QuickBooks Label Printer server is ready. PID: %s", os.getpid())
+    server.log.info("ProduceFlow server is ready. PID: %s", os.getpid())
 
 def worker_int(worker):
     """Called just after a worker exited on SIGINT or SIGQUIT."""
@@ -110,7 +110,7 @@ def max_requests_jitter_handler(server, worker):
 # Error handling
 def on_exit(server):
     """Called just before exiting."""
-    server.log.info("Shutting down QuickBooks Label Printer server...")
+    server.log.info("Shutting down ProduceFlow server...")
 
 # Custom error pages
 def error_handler(worker, req, environ, exc_info):
@@ -187,7 +187,7 @@ env = {
 # Worker lifecycle
 def on_starting(server):
     """Called just before the master process is initialized."""
-    server.log.info("Starting QuickBooks Label Printer server...")
+    server.log.info("Starting ProduceFlow server...")
     # Create necessary directories
     os.makedirs("/opt/label-printer/logs", exist_ok=True)
     os.makedirs("/opt/label-printer/uploads", exist_ok=True)
@@ -195,7 +195,7 @@ def on_starting(server):
 
 def when_ready(server):
     """Called just after the server is started."""
-    server.log.info("QuickBooks Label Printer server is ready. PID: %s", os.getpid())
+    server.log.info("ProduceFlow server is ready. PID: %s", os.getpid())
     server.log.info("Server listening on %s", server.address)
 
 def worker_int(worker):
@@ -236,7 +236,7 @@ def child_exit(server, worker):
 
 def on_exit(server):
     """Called just before exiting."""
-    server.log.info("Shutting down QuickBooks Label Printer server...")
+    server.log.info("Shutting down ProduceFlow server...")
 
 # Custom error handling
 def error_handler(worker, req, environ, exc_info):

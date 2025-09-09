@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Ubuntu VPS Deployment Script for Label Printer Application
+# Ubuntu VPS Deployment Script for ProduceFlow Application
 # Optimized for 4-core system
 
 set -e  # Exit on any error
 
-echo "🚀 Starting Label Printer deployment on Ubuntu VPS..."
+echo "🚀 Starting ProduceFlow deployment on Ubuntu VPS..."
 
 # Colors for output
 RED='\033[0;31m'

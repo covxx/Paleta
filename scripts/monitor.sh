@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Monitoring and maintenance script for Label Printer Application
+# Monitoring and maintenance script for ProduceFlow Application
 # Optimized for Ubuntu VPS with 4 cores
 
 # Colors for output
@@ -34,7 +34,7 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
-print_header "Label Printer System Monitor"
+print_header "ProduceFlow System Monitor"
 
 # System resource usage
 print_header "System Resources"
