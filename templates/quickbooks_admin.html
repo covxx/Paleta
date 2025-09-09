@@ -31,6 +31,12 @@
         margin-bottom: 0;
     }
     
+    .qb-header .version-info {
+        position: absolute;
+        top: var(--space-8);
+        right: var(--space-8);
+    }
+    
     .qb-actions {
         display: flex;
         gap: var(--space-3);
@@ -303,8 +309,15 @@
 <div class="container">
     <!-- QuickBooks Admin Header -->
     <div class="qb-header">
-        <h1><i class="fab fa-quickbooks"></i> QuickBooks Admin</h1>
-        <p>Manage QuickBooks integration, sync data, and configure settings</p>
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <h1><i class="fab fa-quickbooks"></i> QuickBooks Admin</h1>
+                <p>Manage QuickBooks integration, sync data, and configure settings</p>
+            </div>
+            <div class="version-info">
+                <small class="text-white-50">v{{ version_info.display_version if version_info else '0.5.0' }}</small>
+            </div>
+        </div>
         
         <div class="qb-actions">
             <button class="btn btn-outline-light" onclick="testConnection()">
