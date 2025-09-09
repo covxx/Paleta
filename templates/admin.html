@@ -614,22 +614,24 @@
 
 {% block extra_js %}
 <script>
-    // Tab Management
+    // Simple Tab Management
     function showTab(tabName, clickedElement) {
         console.log('Switching to tab:', tabName);
         
         // Hide all tab contents
-        document.querySelectorAll('.tab-content').forEach(tab => {
-            tab.classList.remove('active');
-        });
+        var tabs = document.querySelectorAll('.tab-content');
+        for (var i = 0; i < tabs.length; i++) {
+            tabs[i].classList.remove('active');
+        }
         
         // Remove active class from all nav items
-        document.querySelectorAll('.header-nav-link').forEach(item => {
-            item.classList.remove('active');
-        });
+        var navItems = document.querySelectorAll('.header-nav-link');
+        for (var i = 0; i < navItems.length; i++) {
+            navItems[i].classList.remove('active');
+        }
         
         // Show selected tab
-        const targetTab = document.getElementById(tabName);
+        var targetTab = document.getElementById(tabName);
         if (targetTab) {
             targetTab.classList.add('active');
             console.log('Tab activated:', tabName);
@@ -641,235 +643,16 @@
         if (clickedElement) {
             clickedElement.classList.add('active');
         }
-        
-        // Load tab data
-        loadTabData(tabName);
     }
     
     // Make showTab globally available
     window.showTab = showTab;
 
-    function loadTabData(tabName) {
-        console.log('Loading data for tab:', tabName);
-        switch(tabName) {
-            case 'dashboard':
-                loadDashboardData();
-                break;
-            case 'items':
-                loadItems();
-                break;
-            case 'lots':
-                loadLots();
-                break;
-            case 'vendors':
-                loadVendors();
-                break;
-            case 'printers':
-                loadPrinters();
-                break;
-            case 'active-users':
-                loadActiveUsers();
-                break;
-            case 'analytics':
-                // Analytics tab doesn't need data loading
-                break;
-            default:
-                console.log('No data loading needed for tab:', tabName);
-        }
-    }
-
-    // Dashboard Data Loading
-    function loadDashboardData() {
-        console.log('Loading dashboard data...');
-        // Set placeholder values for now
-        const totalItemsEl = document.getElementById('totalItems');
-        const totalLotsEl = document.getElementById('totalLots');
-        const totalVendorsEl = document.getElementById('totalVendors');
-        const totalPrintersEl = document.getElementById('totalPrinters');
-        
-        if (totalItemsEl) totalItemsEl.textContent = '0';
-        if (totalLotsEl) totalLotsEl.textContent = '0';
-        if (totalVendorsEl) totalVendorsEl.textContent = '0';
-        if (totalPrintersEl) totalPrintersEl.textContent = '0';
-    }
-
-    // Data Loading Functions
-    function loadItems() {
-        console.log('Loading items data...');
-        const tbody = document.querySelector('#itemsTable tbody');
-        if (tbody) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Items management coming soon...</td></tr>';
-        }
-    }
-
-    function loadLots() {
-        console.log('Loading lots data...');
-        const tbody = document.querySelector('#lotsTable tbody');
-        if (tbody) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">LOT management coming soon...</td></tr>';
-        }
-    }
-
-    function loadVendors() {
-        console.log('Loading vendors data...');
-        const tbody = document.querySelector('#vendorsTable tbody');
-        if (tbody) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Vendor management coming soon...</td></tr>';
-        }
-    }
-
-    function loadPrinters() {
-        console.log('Loading printers data...');
-        const tbody = document.querySelector('#printersTable tbody');
-        if (tbody) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Printer management coming soon...</td></tr>';
-        }
-    }
-
-    function loadActiveUsers() {
-        console.log('Loading active users data...');
-        const tbody = document.querySelector('#activeUsersTable tbody');
-        if (tbody) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Active users monitoring coming soon...</td></tr>';
-        }
-    }
-
-    // Action Functions
-    function addItem() {
-        showNotification('Info', 'Add item functionality coming soon', 'info');
-    }
-
-    function editItem(id) {
-        showNotification('Info', 'Edit item ' + id + ' functionality coming soon', 'info');
-    }
-
-    function deleteItem(id) {
-        if (confirm('Are you sure you want to delete this item?')) {
-            showNotification('Info', 'Delete item ' + id + ' functionality coming soon', 'info');
-        }
-    }
-
-    function addLot() {
-        showNotification('Info', 'Create LOT functionality coming soon', 'info');
-    }
-
-    function editLot(lotCode) {
-        showNotification('Info', 'Edit LOT ' + lotCode + ' functionality coming soon', 'info');
-    }
-
-    function deleteLot(lotCode) {
-        if (confirm('Are you sure you want to delete this LOT?')) {
-            showNotification('Info', 'Delete LOT ' + lotCode + ' functionality coming soon', 'info');
-        }
-    }
-
-    function addVendor() {
-        showNotification('Info', 'Add vendor functionality coming soon', 'info');
-    }
-
-    function editVendor(id) {
-        showNotification('Info', 'Edit vendor ' + id + ' functionality coming soon', 'info');
-    }
-
-    function deleteVendor(id) {
-        if (confirm('Are you sure you want to delete this vendor?')) {
-            showNotification('Info', 'Delete vendor ' + id + ' functionality coming soon', 'info');
-        }
-    }
-
-    function addPrinter() {
-        showNotification('Info', 'Add printer functionality coming soon', 'info');
-    }
-
-    function editPrinter(id) {
-        showNotification('Info', 'Edit printer ' + id + ' functionality coming soon', 'info');
-    }
-
-    function deletePrinter(id) {
-        if (confirm('Are you sure you want to delete this printer?')) {
-            showNotification('Info', 'Delete printer ' + id + ' functionality coming soon', 'info');
-        }
-    }
-
-    function disconnectUser(ipAddress) {
-        if (confirm('Are you sure you want to disconnect this user?')) {
-            showNotification('Info', 'Disconnect user ' + ipAddress + ' functionality coming soon', 'info');
-        }
-    }
-
-    // Refresh Functions
-    function refreshItems() {
-        loadItems();
-        showNotification('Success', 'Items refreshed', 'success');
-    }
-
-    function refreshLots() {
-        loadLots();
-        showNotification('Success', 'LOTs refreshed', 'success');
-    }
-
-    function refreshVendors() {
-        loadVendors();
-        showNotification('Success', 'Vendors refreshed', 'success');
-    }
-
-    function refreshPrinters() {
-        loadPrinters();
-        showNotification('Success', 'Printers refreshed', 'success');
-    }
-
-    function refreshActiveUsers() {
-        loadActiveUsers();
-        showNotification('Success', 'Active users refreshed', 'success');
-    }
-
-    // Search Functions
-    document.getElementById('itemSearch')?.addEventListener('input', function(e) {
-        const searchTerm = e.target.value.toLowerCase();
-        const rows = document.querySelectorAll('#itemsTable tbody tr');
-        rows.forEach(row => {
-            const text = row.textContent.toLowerCase();
-            row.style.display = text.includes(searchTerm) ? '' : 'none';
-        });
-    });
-
-    document.getElementById('lotSearch')?.addEventListener('input', function(e) {
-        const searchTerm = e.target.value.toLowerCase();
-        const rows = document.querySelectorAll('#lotsTable tbody tr');
-        rows.forEach(row => {
-            const text = row.textContent.toLowerCase();
-            row.style.display = text.includes(searchTerm) ? '' : 'none';
-        });
-    });
-
-    document.getElementById('vendorSearch')?.addEventListener('input', function(e) {
-        const searchTerm = e.target.value.toLowerCase();
-        const rows = document.querySelectorAll('#vendorsTable tbody tr');
-        rows.forEach(row => {
-            const text = row.textContent.toLowerCase();
-            row.style.display = text.includes(searchTerm) ? '' : 'none';
-        });
-    });
-
-    document.getElementById('printerSearch')?.addEventListener('input', function(e) {
-        const searchTerm = e.target.value.toLowerCase();
-        const rows = document.querySelectorAll('#printersTable tbody tr');
-        rows.forEach(row => {
-            const text = row.textContent.toLowerCase();
-            row.style.display = text.includes(searchTerm) ? '' : 'none';
-        });
-    });
-
-    // Initialize dashboard on page load
+    // Initialize on page load
     document.addEventListener('DOMContentLoaded', function() {
         console.log('Admin page loaded');
         console.log('showTab function available:', typeof showTab);
-        
-        // Test tab switching
         console.log('Available tabs:', document.querySelectorAll('.tab-content').length);
-        
-        // Load dashboard data
-        loadDashboardData();
     });
 </script>
 {% endblock %}
