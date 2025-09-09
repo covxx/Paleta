@@ -34,6 +34,9 @@
                 <a href="/admin/analytics" class="header-nav-link">
                     <i class="fas fa-chart-bar"></i> Analytics
                 </a>
+                <a href="/quickbooks-admin" class="header-nav-link">
+                    <i class="fab fa-quickbooks"></i> QuickBooks
+                </a>
             </nav>
             <div class="header-actions">
                 <button class="btn btn-outline-light me-2" onclick="toggleTheme()" id="themeToggle">
@@ -63,27 +66,24 @@
                     </button>
                 </div>
                 <div class="card-body">
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle"></i>
-                        <strong>LOT Management</strong> - This feature is coming soon. You'll be able to manage your LOTs here.
-                    </div>
-                    
                     <div class="table-responsive">
-                        <table class="table table-striped">
+                        <table class="table table-striped" id="lotsTable">
                             <thead>
                                 <tr>
                                     <th>LOT Code</th>
                                     <th>Item</th>
                                     <th>Quantity</th>
+                                    <th>Unit</th>
                                     <th>Expiry Date</th>
+                                    <th>Vendor</th>
                                     <th>Status</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td colspan="6" class="text-center text-muted">
-                                        No LOTs found. Create your first LOT to get started.
+                                    <td colspan="8" class="text-center text-muted">
+                                        <i class="fas fa-spinner fa-spin"></i> Loading LOTs...
                                     </td>
                                 </tr>
                             </tbody>
@@ -94,4 +94,78 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadLots();
+});
+
+function loadLots() {
+    fetch('/api/lots')
+        .then(response => response.json())
+        .then(data => {
+            const tbody = document.querySelector('#lotsTable tbody');
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No LOTs found. Create your first LOT to get started.</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = data.map(lot => `
+                <tr>
+                    <td><strong>${lot.lot_code}</strong></td>
+                    <td>${lot.item_name || 'Unknown Item'}</td>
+                    <td>${lot.quantity || 0}</td>
+                    <td>${lot.unit_type || 'cases'}</td>
+                    <td>${lot.expiry_date ? new Date(lot.expiry_date).toLocaleDateString() : 'N/A'}</td>
+                    <td>${lot.vendor_name || 'N/A'}</td>
+                    <td><span class="badge bg-${getStatusColor(lot.status)}">${lot.status || 'active'}</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="editLot('${lot.lot_code}')">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-success" onclick="printLot('${lot.lot_code}')">
+                            <i class="fas fa-print"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteLot('${lot.lot_code}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        })
+        .catch(error => {
+            console.error('Error loading LOTs:', error);
+            const tbody = document.querySelector('#lotsTable tbody');
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger">Error loading LOTs. Please try again.</td></tr>';
+        });
+}
+
+function getStatusColor(status) {
+    switch(status) {
+        case 'active': return 'success';
+        case 'expired': return 'danger';
+        case 'consumed': return 'secondary';
+        default: return 'primary';
+    }
+}
+
+function editLot(lotCode) {
+    // TODO: Implement edit functionality
+    alert('Edit functionality coming soon for LOT: ' + lotCode);
+}
+
+function printLot(lotCode) {
+    // TODO: Implement print functionality
+    alert('Print functionality coming soon for LOT: ' + lotCode);
+}
+
+function deleteLot(lotCode) {
+    if (confirm('Are you sure you want to delete this LOT?')) {
+        // TODO: Implement delete functionality
+        alert('Delete functionality coming soon for LOT: ' + lotCode);
+    }
+}
+</script>
 {% endblock %}

@@ -34,6 +34,9 @@
                 <a href="/admin/analytics" class="header-nav-link">
                     <i class="fas fa-chart-bar"></i> Analytics
                 </a>
+                <a href="/quickbooks-admin" class="header-nav-link">
+                    <i class="fab fa-quickbooks"></i> QuickBooks
+                </a>
             </nav>
             <div class="header-actions">
                 <button class="btn btn-outline-light me-2" onclick="toggleTheme()" id="themeToggle">
@@ -63,16 +66,12 @@
                     </button>
                 </div>
                 <div class="card-body">
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle"></i>
-                        <strong>User Management</strong> - This feature is coming soon. You'll be able to monitor active users here.
-                    </div>
-                    
                     <div class="table-responsive">
-                        <table class="table table-striped">
+                        <table class="table table-striped" id="usersTable">
                             <thead>
                                 <tr>
                                     <th>User ID</th>
+                                    <th>Email</th>
                                     <th>IP Address</th>
                                     <th>Last Activity</th>
                                     <th>Session Duration</th>
@@ -81,8 +80,8 @@
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td colspan="5" class="text-center text-muted">
-                                        No active users found.
+                                    <td colspan="6" class="text-center text-muted">
+                                        <i class="fas fa-spinner fa-spin"></i> Loading active users...
                                     </td>
                                 </tr>
                             </tbody>
@@ -93,4 +92,68 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadActiveUsers();
+    
+    // Auto-refresh every 30 seconds
+    setInterval(loadActiveUsers, 30000);
+});
+
+function loadActiveUsers() {
+    fetch('/api/active-users')
+        .then(response => response.json())
+        .then(data => {
+            const tbody = document.querySelector('#usersTable tbody');
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No active users found.</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = data.map(user => `
+                <tr>
+                    <td>${user.user_id}</td>
+                    <td>${user.email || 'N/A'}</td>
+                    <td>${user.ip_address}</td>
+                    <td>${new Date(user.last_activity * 1000).toLocaleString()}</td>
+                    <td>${formatDuration(user.session_duration)}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-warning" onclick="kickUser('${user.user_id}')">
+                            <i class="fas fa-user-times"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        })
+        .catch(error => {
+            console.error('Error loading active users:', error);
+            const tbody = document.querySelector('#usersTable tbody');
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error loading active users. Please try again.</td></tr>';
+        });
+}
+
+function formatDuration(seconds) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    
+    if (hours > 0) {
+        return `${hours}h ${minutes}m ${secs}s`;
+    } else if (minutes > 0) {
+        return `${minutes}m ${secs}s`;
+    } else {
+        return `${secs}s`;
+    }
+}
+
+function kickUser(userId) {
+    if (confirm('Are you sure you want to kick this user?')) {
+        // TODO: Implement kick functionality
+        alert('Kick functionality coming soon for user ID: ' + userId);
+    }
+}
+</script>
 {% endblock %}

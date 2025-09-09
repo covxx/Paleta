@@ -34,6 +34,9 @@
                 <a href="/admin/analytics" class="header-nav-link">
                     <i class="fas fa-chart-bar"></i> Analytics
                 </a>
+                <a href="/quickbooks-admin" class="header-nav-link">
+                    <i class="fab fa-quickbooks"></i> QuickBooks
+                </a>
             </nav>
             <div class="header-actions">
                 <button class="btn btn-outline-light me-2" onclick="toggleTheme()" id="themeToggle">
@@ -63,27 +66,24 @@
                     </button>
                 </div>
                 <div class="card-body">
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle"></i>
-                        <strong>Items Management</strong> - This feature is coming soon. You'll be able to manage your inventory items here.
-                    </div>
-                    
                     <div class="table-responsive">
-                        <table class="table table-striped">
+                        <table class="table table-striped" id="itemsTable">
                             <thead>
                                 <tr>
                                     <th>ID</th>
                                     <th>Name</th>
-                                    <th>SKU</th>
-                                    <th>Description</th>
-                                    <th>Price</th>
+                                    <th>Item Code</th>
+                                    <th>GTIN</th>
+                                    <th>Category</th>
+                                    <th>LOTs</th>
+                                    <th>Created</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td colspan="6" class="text-center text-muted">
-                                        No items found. Add your first item to get started.
+                                    <td colspan="8" class="text-center text-muted">
+                                        <i class="fas fa-spinner fa-spin"></i> Loading items...
                                     </td>
                                 </tr>
                             </tbody>
@@ -94,4 +94,61 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadItems();
+});
+
+function loadItems() {
+    fetch('/api/items')
+        .then(response => response.json())
+        .then(data => {
+            const tbody = document.querySelector('#itemsTable tbody');
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No items found. Add your first item to get started.</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = data.map(item => `
+                <tr>
+                    <td>${item.id}</td>
+                    <td>${item.name || 'N/A'}</td>
+                    <td>${item.item_code || 'N/A'}</td>
+                    <td>${item.gtin || 'N/A'}</td>
+                    <td>${item.category || 'N/A'}</td>
+                    <td><span class="badge bg-primary">${item.lot_count || 0}</span></td>
+                    <td>${new Date(item.created_at).toLocaleDateString()}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="editItem(${item.id})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteItem(${item.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        })
+        .catch(error => {
+            console.error('Error loading items:', error);
+            const tbody = document.querySelector('#itemsTable tbody');
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger">Error loading items. Please try again.</td></tr>';
+        });
+}
+
+function editItem(itemId) {
+    // TODO: Implement edit functionality
+    alert('Edit functionality coming soon for item ID: ' + itemId);
+}
+
+function deleteItem(itemId) {
+    if (confirm('Are you sure you want to delete this item?')) {
+        // TODO: Implement delete functionality
+        alert('Delete functionality coming soon for item ID: ' + itemId);
+    }
+}
+</script>
 {% endblock %}

@@ -34,6 +34,9 @@
                 <a href="/admin/analytics" class="header-nav-link">
                     <i class="fas fa-chart-bar"></i> Analytics
                 </a>
+                <a href="/quickbooks-admin" class="header-nav-link">
+                    <i class="fab fa-quickbooks"></i> QuickBooks
+                </a>
             </nav>
             <div class="header-actions">
                 <button class="btn btn-outline-light me-2" onclick="toggleTheme()" id="themeToggle">
@@ -63,27 +66,24 @@
                     </button>
                 </div>
                 <div class="card-body">
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle"></i>
-                        <strong>Printer Management</strong> - This feature is coming soon. You'll be able to manage your printers here.
-                    </div>
-                    
                     <div class="table-responsive">
-                        <table class="table table-striped">
+                        <table class="table table-striped" id="printersTable">
                             <thead>
                                 <tr>
                                     <th>ID</th>
                                     <th>Name</th>
                                     <th>IP Address</th>
                                     <th>Port</th>
+                                    <th>Type</th>
                                     <th>Status</th>
+                                    <th>Last Seen</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td colspan="6" class="text-center text-muted">
-                                        No printers found. Add your first printer to get started.
+                                    <td colspan="8" class="text-center text-muted">
+                                        <i class="fas fa-spinner fa-spin"></i> Loading printers...
                                     </td>
                                 </tr>
                             </tbody>
@@ -94,4 +94,78 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadPrinters();
+});
+
+function loadPrinters() {
+    fetch('/api/printers')
+        .then(response => response.json())
+        .then(data => {
+            const tbody = document.querySelector('#printersTable tbody');
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No printers found. Add your first printer to get started.</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = data.map(printer => `
+                <tr>
+                    <td>${printer.id}</td>
+                    <td><strong>${printer.name}</strong></td>
+                    <td>${printer.ip_address}</td>
+                    <td>${printer.port}</td>
+                    <td>${printer.printer_type || 'zebra'}</td>
+                    <td><span class="badge bg-${getStatusColor(printer.status)}">${printer.status || 'offline'}</span></td>
+                    <td>${printer.last_seen ? new Date(printer.last_seen).toLocaleString() : 'Never'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-success" onclick="testPrinter(${printer.id})">
+                            <i class="fas fa-wifi"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-primary" onclick="editPrinter(${printer.id})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deletePrinter(${printer.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        })
+        .catch(error => {
+            console.error('Error loading printers:', error);
+            const tbody = document.querySelector('#printersTable tbody');
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger">Error loading printers. Please try again.</td></tr>';
+        });
+}
+
+function getStatusColor(status) {
+    switch(status) {
+        case 'online': return 'success';
+        case 'offline': return 'danger';
+        case 'error': return 'warning';
+        default: return 'secondary';
+    }
+}
+
+function testPrinter(printerId) {
+    // TODO: Implement test functionality
+    alert('Test functionality coming soon for printer ID: ' + printerId);
+}
+
+function editPrinter(printerId) {
+    // TODO: Implement edit functionality
+    alert('Edit functionality coming soon for printer ID: ' + printerId);
+}
+
+function deletePrinter(printerId) {
+    if (confirm('Are you sure you want to delete this printer?')) {
+        // TODO: Implement delete functionality
+        alert('Delete functionality coming soon for printer ID: ' + printerId);
+    }
+}
+</script>
 {% endblock %}

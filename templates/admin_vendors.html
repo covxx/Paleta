@@ -34,6 +34,9 @@
                 <a href="/admin/analytics" class="header-nav-link">
                     <i class="fas fa-chart-bar"></i> Analytics
                 </a>
+                <a href="/quickbooks-admin" class="header-nav-link">
+                    <i class="fab fa-quickbooks"></i> QuickBooks
+                </a>
             </nav>
             <div class="header-actions">
                 <button class="btn btn-outline-light me-2" onclick="toggleTheme()" id="themeToggle">
@@ -63,27 +66,23 @@
                     </button>
                 </div>
                 <div class="card-body">
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle"></i>
-                        <strong>Vendor Management</strong> - This feature is coming soon. You'll be able to manage your vendors here.
-                    </div>
-                    
                     <div class="table-responsive">
-                        <table class="table table-striped">
+                        <table class="table table-striped" id="vendorsTable">
                             <thead>
                                 <tr>
                                     <th>ID</th>
                                     <th>Name</th>
-                                    <th>Contact</th>
+                                    <th>Contact Person</th>
                                     <th>Email</th>
                                     <th>Phone</th>
+                                    <th>Created</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td colspan="6" class="text-center text-muted">
-                                        No vendors found. Add your first vendor to get started.
+                                    <td colspan="7" class="text-center text-muted">
+                                        <i class="fas fa-spinner fa-spin"></i> Loading vendors...
                                     </td>
                                 </tr>
                             </tbody>
@@ -94,4 +93,60 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadVendors();
+});
+
+function loadVendors() {
+    fetch('/api/vendors')
+        .then(response => response.json())
+        .then(data => {
+            const tbody = document.querySelector('#vendorsTable tbody');
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No vendors found. Add your first vendor to get started.</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = data.map(vendor => `
+                <tr>
+                    <td>${vendor.id}</td>
+                    <td><strong>${vendor.name}</strong></td>
+                    <td>${vendor.contact_person || 'N/A'}</td>
+                    <td>${vendor.email || 'N/A'}</td>
+                    <td>${vendor.phone || 'N/A'}</td>
+                    <td>${new Date(vendor.created_at).toLocaleDateString()}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="editVendor(${vendor.id})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteVendor(${vendor.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        })
+        .catch(error => {
+            console.error('Error loading vendors:', error);
+            const tbody = document.querySelector('#vendorsTable tbody');
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">Error loading vendors. Please try again.</td></tr>';
+        });
+}
+
+function editVendor(vendorId) {
+    // TODO: Implement edit functionality
+    alert('Edit functionality coming soon for vendor ID: ' + vendorId);
+}
+
+function deleteVendor(vendorId) {
+    if (confirm('Are you sure you want to delete this vendor?')) {
+        // TODO: Implement delete functionality
+        alert('Delete functionality coming soon for vendor ID: ' + vendorId);
+    }
+}
+</script>
 {% endblock %}
