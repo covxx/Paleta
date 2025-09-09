@@ -932,7 +932,37 @@ def reset_admin_password(user_id):
 @app.route('/admin')
 @admin_required
 def admin():
-    return render_template('admin.html')
+    return render_template('admin_dashboard.html')
+
+@app.route('/admin/items')
+@admin_required
+def admin_items():
+    return render_template('admin_items.html')
+
+@app.route('/admin/lots')
+@admin_required
+def admin_lots():
+    return render_template('admin_lots.html')
+
+@app.route('/admin/vendors')
+@admin_required
+def admin_vendors():
+    return render_template('admin_vendors.html')
+
+@app.route('/admin/printers')
+@admin_required
+def admin_printers():
+    return render_template('admin_printers.html')
+
+@app.route('/admin/users')
+@admin_required
+def admin_users():
+    return render_template('admin_users.html')
+
+@app.route('/admin/analytics')
+@admin_required
+def admin_analytics():
+    return render_template('admin_analytics.html')
 
 @app.route('/label-designer')
 @admin_required

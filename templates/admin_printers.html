@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Printer Management - ProduceFlow{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h1><i class="fas fa-print"></i> Printer Management</h1>
+            <div class="version-info">
+                <small class="text-white-50">v0.5.0</small>
+            </div>
+        </div>
+        <div class="d-flex justify-content-between align-items-center">
+            <nav class="header-nav">
+                <a href="/admin" class="header-nav-link">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a>
+                <a href="/admin/items" class="header-nav-link">
+                    <i class="fas fa-boxes"></i> Items
+                </a>
+                <a href="/admin/lots" class="header-nav-link">
+                    <i class="fas fa-tags"></i> LOTs
+                </a>
+                <a href="/admin/vendors" class="header-nav-link">
+                    <i class="fas fa-truck"></i> Vendors
+                </a>
+                <a href="/admin/printers" class="header-nav-link active">
+                    <i class="fas fa-print"></i> Printers
+                </a>
+                <a href="/admin/users" class="header-nav-link">
+                    <i class="fas fa-user-check"></i> Users
+                </a>
+                <a href="/admin/analytics" class="header-nav-link">
+                    <i class="fas fa-chart-bar"></i> Analytics
+                </a>
+            </nav>
+            <div class="header-actions">
+                <button class="btn btn-outline-light me-2" onclick="toggleTheme()" id="themeToggle">
+                    <i class="fas fa-moon" id="themeIcon"></i>
+                </button>
+                <div class="admin-user-info">
+                    <small class="text-white-50">
+                        <i class="fas fa-user"></i> Admin User | 
+                        <a href="/admin/logout" class="text-white-50 text-decoration-none">
+                            <i class="fas fa-sign-out-alt"></i> Logout
+                        </a>
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="fas fa-print"></i> Printer Management</h5>
+                    <button class="btn btn-info">
+                        <i class="fas fa-plus"></i> Add New Printer
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Printer Management</strong> - This feature is coming soon. You'll be able to manage your printers here.
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>IP Address</th>
+                                    <th>Port</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted">
+                                        No printers found. Add your first printer to get started.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
