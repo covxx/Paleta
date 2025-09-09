@@ -592,10 +592,16 @@ display_final_info() {
     echo "  - Application Server: Gunicorn"
     echo
     echo "Access Information:"
-    echo "  - Web Interface: https://$DOMAIN"
-    echo "  - HTTP (redirects): http://$DOMAIN"
-    echo "  - Admin Login: https://$DOMAIN/admin/login"
-    echo "  - Health Check: https://$DOMAIN/health"
+    if [[ "$SKIP_SSL" == "false" ]]; then
+        echo "  - Web Interface: https://$DOMAIN"
+        echo "  - HTTP (redirects): http://$DOMAIN"
+        echo "  - Admin Login: https://$DOMAIN/admin/login"
+        echo "  - Health Check: https://$DOMAIN/health"
+    else
+        echo "  - Web Interface: http://$DOMAIN"
+        echo "  - Admin Login: http://$DOMAIN/admin/login"
+        echo "  - Health Check: http://$DOMAIN/health"
+    fi
     echo
     echo "Service Management:"
     echo "  - Start: systemctl start $SERVICE_NAME"
@@ -609,10 +615,15 @@ display_final_info() {
     echo "  - Reload: systemctl reload nginx"
     echo "  - Logs: tail -f /var/log/nginx/access.log"
     echo
-    echo "SSL Management:"
-    echo "  - View certificates: certbot certificates"
-    echo "  - Renew: certbot renew"
-    echo "  - Test renewal: certbot renew --dry-run"
+    if [[ "$SKIP_SSL" == "false" ]]; then
+        echo "SSL Management:"
+        echo "  - View certificates: certbot certificates"
+        echo "  - Renew: certbot renew"
+        echo "  - Test renewal: certbot renew --dry-run"
+    else
+        echo "SSL Setup:"
+        echo "  - Enable SSL: sudo $APP_DIR/scripts/setup_ssl_production.sh -d $DOMAIN -e $EMAIL"
+    fi
     echo
     echo "Backup:"
     echo "  - Manual: $APP_DIR/backup.sh"
@@ -631,8 +642,16 @@ display_final_info() {
     echo
     echo "=========================================="
     echo
-    print_status "Your QuickBooks Label Printer is now running at:"
-    print_status "https://$DOMAIN"
+    if [[ "$SKIP_SSL" == "false" ]]; then
+        print_status "Your QuickBooks Label Printer is now running at:"
+        print_status "https://$DOMAIN"
+    else
+        print_status "Your QuickBooks Label Printer is now running at:"
+        print_status "http://$DOMAIN"
+        echo
+        print_status "To enable SSL later, run:"
+        print_status "sudo $APP_DIR/scripts/setup_ssl_production.sh -d $DOMAIN -e $EMAIL"
+    fi
     echo
 }
 
@@ -647,12 +666,14 @@ show_help() {
     echo "  -d, --domain DOMAIN   Domain name (default: app.srjlabs.dev)"
     echo "  -e, --email EMAIL     Email address for Let's Encrypt (default: admin@srjlabs.dev)"
     echo "  -r, --repo REPO       Git repository URL"
-    echo "  --skip-ssl            Skip SSL certificate setup"
+    echo "  --enable-ssl          Enable SSL certificate setup (disabled by default)"
+    echo "  --skip-ssl            Skip SSL certificate setup (default)"
     echo
     echo "Examples:"
-    echo "  sudo $0                                    # Use defaults"
+    echo "  sudo $0                                    # Use defaults (no SSL)"
     echo "  sudo $0 -d app.srjlabs.dev -e admin@srjlabs.dev"
-    echo "  sudo $0 --skip-ssl                         # Skip SSL setup"
+    echo "  sudo $0 --enable-ssl                       # Enable SSL setup"
+    echo "  sudo $0 --skip-ssl                         # Skip SSL setup (default)"
     echo
     echo "Prerequisites:"
     echo "  - Ubuntu 20.04+ VPS with 4+ cores"
@@ -670,14 +691,14 @@ show_help() {
     echo "  - Configures systemd service"
     echo "  - Sets up Nginx reverse proxy"
     echo "  - Configures firewall"
-    echo "  - Sets up SSL with Let's Encrypt"
+    echo "  - Sets up SSL with Let's Encrypt (if --enable-ssl is used)"
     echo "  - Configures monitoring and backups"
     echo "  - Starts all services"
 }
 
 # Function to parse command line arguments
 parse_arguments() {
-    SKIP_SSL=false
+    SKIP_SSL=true  # SSL disabled by default
     
     while [[ $# -gt 0 ]]; do
         case $1 in
@@ -696,6 +717,10 @@ parse_arguments() {
             -r|--repo)
                 GIT_REPO="$2"
                 shift 2
+                ;;
+            --enable-ssl)
+                SKIP_SSL=false
+                shift
                 ;;
             --skip-ssl)
                 SKIP_SSL=true
@@ -745,7 +770,9 @@ main() {
     
     # Setup SSL if not skipped
     if [[ "$SKIP_SSL" == "false" ]]; then
-        setup_ssl
+        print_warning "SSL setup is disabled by default"
+        print_status "To enable SSL later, run:"
+        print_status "sudo $APP_DIR/scripts/setup_ssl_production.sh -d $DOMAIN -e $EMAIL"
     else
         print_warning "SSL setup skipped"
         print_status "You can run SSL setup manually later with:"
