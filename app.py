@@ -1801,6 +1801,50 @@ def create_printer():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 400
 
+@app.route('/api/printers/<int:printer_id>', methods=['PUT'])
+@admin_required
+def update_printer(printer_id):
+    """Update an existing printer configuration"""
+    printer = Printer.query.get_or_404(printer_id)
+    data = request.json
+    
+    try:
+        # Update printer fields
+        if 'name' in data:
+            printer.name = data['name']
+        if 'ip_address' in data:
+            printer.ip_address = data['ip_address']
+        if 'port' in data:
+            printer.port = data['port']
+        if 'printer_type' in data:
+            printer.printer_type = data['printer_type']
+        if 'label_width' in data:
+            printer.label_width = data['label_width']
+        if 'label_height' in data:
+            printer.label_height = data['label_height']
+        if 'dpi' in data:
+            printer.dpi = data['dpi']
+        
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Printer updated successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+@app.route('/api/printers/<int:printer_id>', methods=['DELETE'])
+@admin_required
+def delete_printer(printer_id):
+    """Delete a printer configuration"""
+    printer = Printer.query.get_or_404(printer_id)
+    
+    try:
+        db.session.delete(printer)
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Printer deleted successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 400
+
 @app.route('/api/printers/<int:printer_id>/test', methods=['POST'])
 @admin_required
 def test_printer(printer_id):
