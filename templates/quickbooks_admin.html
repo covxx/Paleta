@@ -877,10 +877,11 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    document.getElementById('itemsCount').textContent = data.items_count || 0;
-                    document.getElementById('customersCount').textContent = data.customers_count || 0;
-                    document.getElementById('ordersCount').textContent = data.orders_count || 0;
-                    document.getElementById('lastSync').textContent = data.last_sync || 'Never';
+                    // Handle both old and new field names
+                    document.getElementById('itemsCount').textContent = data.items_count || data.item_status || '0/0 synced';
+                    document.getElementById('customersCount').textContent = data.customers_count || data.customer_status || '0/0 synced';
+                    document.getElementById('ordersCount').textContent = data.orders_count || data.pending_orders || 0;
+                    document.getElementById('lastSync').textContent = data.last_sync || data.last_sync_time || 'Never';
                     document.getElementById('customPricingCount').textContent = data.custom_pricing_count || 0;
                     document.getElementById('lastPricingUpdate').textContent = data.last_pricing_update || 'Never';
                 }
@@ -909,6 +910,9 @@
                     
                     // Update recent activity
                     document.getElementById('ordersCount').textContent = `${stats.recent_activity.successful_syncs}/${stats.recent_activity.total_syncs}`;
+                    
+                    // Update customer pricing section (don't override with sync data)
+                    // Keep the existing customer pricing data from loadSyncStatus
                 }
             })
             .catch(error => {
@@ -957,9 +961,9 @@
                     tbody.innerHTML = data.logs.slice(0, 5).map(log => 
                         '<tr>' +
                             '<td>' + new Date(log.timestamp).toLocaleString() + '</td>' +
-                            '<td>' + log.action + '</td>' +
+                            '<td>' + (log.type || log.action || 'Unknown') + '</td>' +
                             '<td><span class="badge badge-' + (log.status === 'success' ? 'success' : 'danger') + '">' + log.status + '</span></td>' +
-                            '<td>' + (log.details || '-') + '</td>' +
+                            '<td>' + (log.message || log.details || '-') + '</td>' +
                         '</tr>'
                     ).join('');
                 }
