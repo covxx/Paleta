@@ -166,7 +166,7 @@ def clear_cache():
 # QuickBooks Online Configuration
 QB_CLIENT_ID = os.getenv('QB_CLIENT_ID', 'ABUW0U3AsMTGyq7bb1ujpj17IodZlrGkMYtjaWGfke6gcztmtY')
 QB_CLIENT_SECRET = os.getenv('QB_CLIENT_SECRET', 'H75cxmzTruVA2LpU27IyAUzJKJlsNgWHMrJaz3MN')
-QB_REDIRECT_URI = os.getenv('QB_REDIRECT_URI', 'http://localhost:5001/qb/callback')
+QB_REDIRECT_URI = os.getenv('QB_REDIRECT_URI', 'https://app.srjlabs.dev/qb/callback')
 QB_SCOPE = 'com.intuit.quickbooks.accounting'
 QB_DISCOVERY_DOCUMENT = 'https://appcenter.intuit.com/api/v1/OpenID/QBOpenID'
 QB_BASE_URL = 'https://sandbox-quickbooks.api.intuit.com'  # Use sandbox for testing
@@ -3195,6 +3195,10 @@ def quickbooks_callback():
         code = request.args.get('code')
         state = request.args.get('state')
         realm_id = request.args.get('realmId')  # Company ID
+        
+        # Debug logging
+        print(f"QuickBooks Callback - Code: {code[:10]}..., State: {state}, Realm ID: {realm_id}")
+        print(f"Session state: {session.get('qb_oauth_state')}")
         
         # Verify state parameter
         if state != session.get('qb_oauth_state'):
