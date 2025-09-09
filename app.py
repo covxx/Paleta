@@ -3197,11 +3197,13 @@ def quickbooks_callback():
         realm_id = request.args.get('realmId')  # Company ID
         
         # Verify state parameter
-        if state != session.get('qb_state'):
-            return jsonify({'error': 'Invalid state parameter'}), 400
+        if state != session.get('qb_oauth_state'):
+            flash('Invalid state parameter - security check failed', 'error')
+            return redirect(url_for('quickbooks_admin'))
         
         if not code:
-            return jsonify({'error': 'Authorization code not provided'}), 400
+            flash('Authorization code not provided', 'error')
+            return redirect(url_for('quickbooks_admin'))
         
         # Exchange authorization code for access token
         token_url = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer'
@@ -3215,10 +3217,8 @@ def quickbooks_callback():
         response = requests.post(token_url, data=token_data, auth=(QB_CLIENT_ID, QB_CLIENT_SECRET))
         
         if response.status_code != 200:
-            return jsonify({
-                'error': 'Failed to exchange code for token',
-                'details': response.text
-            }), 400
+            flash(f'Failed to exchange code for token: {response.text}', 'error')
+            return redirect(url_for('quickbooks_admin'))
         
         token_response = response.json()
         
@@ -3232,18 +3232,13 @@ def quickbooks_callback():
         global QB_COMPANY_ID
         QB_COMPANY_ID = realm_id
         
-        return jsonify({
-            'success': True,
-            'message': 'QuickBooks connected successfully',
-            'company_id': realm_id,
-            'expires_in': token_response.get('expires_in')
-        })
+        # Redirect back to QuickBooks admin page with success message
+        flash('QuickBooks connected successfully!', 'success')
+        return redirect(url_for('quickbooks_admin'))
         
     except Exception as e:
-        return jsonify({
-            'error': 'OAuth callback failed',
-            'details': str(e)
-        }), 500
+        flash(f'QuickBooks connection failed: {str(e)}', 'error')
+        return redirect(url_for('quickbooks_admin'))
 
 def create_qb_sales_invoice(order):
     """Create a sales invoice in QuickBooks for an order"""
