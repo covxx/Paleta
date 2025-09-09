@@ -673,6 +673,32 @@
     });
 
     // QuickBooks Functions
+    function checkConnectionStatus() {
+        const statusElement = document.getElementById('connectionStatus');
+        const detailsElement = document.getElementById('connectionDetails');
+        
+        // Check if we have a stored connection status
+        const hasToken = sessionStorage.getItem('qb_connected') === 'true';
+        
+        if (hasToken) {
+            statusElement.innerHTML = '<i class="fas fa-check-circle"></i> Connected';
+            statusElement.className = 'sync-status connected';
+            detailsElement.innerHTML = 
+                '<div class="alert alert-success">' +
+                    '<strong>QuickBooks Connected</strong><br>' +
+                    'Ready to sync data with QuickBooks' +
+                '</div>';
+        } else {
+            statusElement.innerHTML = '<i class="fas fa-times-circle"></i> Not Connected';
+            statusElement.className = 'sync-status disconnected';
+            detailsElement.innerHTML = 
+                '<div class="alert alert-warning">' +
+                    '<strong>Not Connected to QuickBooks</strong><br>' +
+                    'Click "Connect to QB" to establish connection' +
+                '</div>';
+        }
+    }
+
     function testConnection() {
         const statusElement = document.getElementById('connectionStatus');
         const detailsElement = document.getElementById('connectionDetails');
@@ -686,25 +712,36 @@
                 if (data.success) {
                     statusElement.innerHTML = '<i class="fas fa-check-circle"></i> Connected';
                     statusElement.className = 'sync-status connected';
+                    sessionStorage.setItem('qb_connected', 'true');
+                    
+                    const companyInfo = data.company_info || {};
                     detailsElement.innerHTML = 
                         '<div class="alert alert-success">' +
                             '<strong>Connection Successful!</strong><br>' +
-                            'Company: ' + (data.company_name || 'Unknown') + '<br>' +
-                            'Last Sync: ' + (data.last_sync || 'Never') +
+                            'Company: ' + (companyInfo.CompanyName || 'Unknown') + '<br>' +
+                            'Company ID: ' + (companyInfo.Id || 'Unknown') +
                         '</div>';
                 } else {
                     statusElement.innerHTML = '<i class="fas fa-times-circle"></i> Disconnected';
                     statusElement.className = 'sync-status disconnected';
+                    sessionStorage.setItem('qb_connected', 'false');
+                    
+                    let errorMessage = data.error || 'Unknown error occurred';
+                    if (data.action_required === 'oauth_connect') {
+                        errorMessage = 'Please connect to QuickBooks first';
+                    }
+                    
                     detailsElement.innerHTML = 
                         '<div class="alert alert-danger">' +
                             '<strong>Connection Failed!</strong><br>' +
-                            (data.error || 'Unknown error occurred') +
+                            errorMessage +
                         '</div>';
                 }
             })
             .catch(error => {
                 statusElement.innerHTML = '<i class="fas fa-times-circle"></i> Error';
                 statusElement.className = 'sync-status disconnected';
+                sessionStorage.setItem('qb_connected', 'false');
                 detailsElement.innerHTML = 
                     '<div class="alert alert-danger">' +
                         '<strong>Connection Error!</strong><br>' +
@@ -714,6 +751,7 @@
     }
 
     function connectToQuickBooks() {
+        showNotification('Info', 'Redirecting to QuickBooks for authorization...', 'info');
         fetch('/api/quickbooks/connect')
             .then(response => response.json())
             .then(data => {
@@ -736,7 +774,8 @@
                 .then(data => {
                     if (data.success) {
                         showNotification('Success', 'Disconnected from QuickBooks', 'success');
-                        testConnection();
+                        sessionStorage.setItem('qb_connected', 'false');
+                        checkConnectionStatus();
                     } else {
                         showNotification('Error', 'Failed to disconnect', 'error');
                     }
@@ -752,6 +791,7 @@
         loadSyncStatistics();
         loadSyncLog();
         loadSyncedItems();
+        checkConnectionStatus();
         testConnection();
         showNotification('Info', 'All status refreshed', 'info');
     }
@@ -985,13 +1025,28 @@
         showNotification('Info', 'Pricing export feature coming soon', 'info');
     }
 
+    // Check if we just returned from OAuth callback
+    function checkOAuthReturn() {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('code') && urlParams.get('state')) {
+            // We just returned from OAuth, update connection status
+            sessionStorage.setItem('qb_connected', 'true');
+            showNotification('Success', 'QuickBooks connection established!', 'success');
+            // Clean up URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }
+
     // Initialize page
     document.addEventListener('DOMContentLoaded', function() {
+        checkOAuthReturn();
         loadSyncStatus();
         loadSyncStatistics();
         loadSyncLog();
         loadSyncedItems();
-        testConnection();
+        checkConnectionStatus();
+        // Test connection after a short delay to allow initial status to show
+        setTimeout(testConnection, 1000);
     });
 </script>
 {% endblock %}
