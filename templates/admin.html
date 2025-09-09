@@ -292,25 +292,25 @@
         </div>
         <div class="d-flex justify-content-between align-items-center">
             <nav class="header-nav">
-                <a href="#dashboard" class="header-nav-link active" onclick="showTab('dashboard')">
+                <a href="#dashboard" class="header-nav-link active" onclick="showTab('dashboard', this)">
                     <i class="fas fa-tachometer-alt"></i> Dashboard
                 </a>
-                <a href="#items" class="header-nav-link" onclick="showTab('items')">
+                <a href="#items" class="header-nav-link" onclick="showTab('items', this)">
                     <i class="fas fa-boxes"></i> Items
                 </a>
-                <a href="#lots" class="header-nav-link" onclick="showTab('lots')">
+                <a href="#lots" class="header-nav-link" onclick="showTab('lots', this)">
                     <i class="fas fa-tags"></i> LOTs
                 </a>
-                <a href="#vendors" class="header-nav-link" onclick="showTab('vendors')">
+                <a href="#vendors" class="header-nav-link" onclick="showTab('vendors', this)">
                     <i class="fas fa-truck"></i> Vendors
                 </a>
-                <a href="#printers" class="header-nav-link" onclick="showTab('printers')">
+                <a href="#printers" class="header-nav-link" onclick="showTab('printers', this)">
                     <i class="fas fa-print"></i> Printers
                 </a>
-                <a href="#active-users" class="header-nav-link" onclick="showTab('active-users')" id="activeUsersTab">
+                <a href="#active-users" class="header-nav-link" onclick="showTab('active-users', this)" id="activeUsersTab">
                     <i class="fas fa-user-check"></i> Users
                 </a>
-                <a href="#analytics" class="header-nav-link" onclick="showTab('analytics')">
+                <a href="#analytics" class="header-nav-link" onclick="showTab('analytics', this)">
                     <i class="fas fa-chart-bar"></i> Analytics
                 </a>
             </nav>
@@ -615,7 +615,9 @@
 {% block extra_js %}
 <script>
     // Tab Management
-    function showTab(tabName) {
+    function showTab(tabName, clickedElement) {
+        console.log('Switching to tab:', tabName);
+        
         // Hide all tab contents
         document.querySelectorAll('.tab-content').forEach(tab => {
             tab.classList.remove('active');
@@ -627,10 +629,18 @@
         });
         
         // Show selected tab
-        document.getElementById(tabName).classList.add('active');
+        const targetTab = document.getElementById(tabName);
+        if (targetTab) {
+            targetTab.classList.add('active');
+            console.log('Tab activated:', tabName);
+        } else {
+            console.error('Tab not found:', tabName);
+        }
         
         // Add active class to clicked nav item
-        event.target.classList.add('active');
+        if (clickedElement) {
+            clickedElement.classList.add('active');
+        }
         
         // Load tab data
         loadTabData(tabName);
@@ -955,7 +965,11 @@
 
     // Initialize dashboard on page load
     document.addEventListener('DOMContentLoaded', function() {
+        console.log('Admin page loaded');
         loadDashboardData();
+        
+        // Test tab switching
+        console.log('Available tabs:', document.querySelectorAll('.tab-content').length);
     });
 </script>
 {% endblock %}
