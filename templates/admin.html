@@ -90,28 +90,33 @@
     
     .tab-content.active {
         display: block;
-        animation: fadeIn var(--transition-normal) ease-in-out;
+        animation: fadeIn 0.3s ease-in-out;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
     }
     
     .stats-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: var(--space-6);
-        margin-bottom: var(--space-8);
+        gap: 1.5rem;
+        margin-bottom: 2rem;
     }
     
     .stat-card {
-        background: var(--bg-primary);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-lg);
-        padding: var(--space-6);
+        background: #ffffff;
+        border: 1px solid #e1e5e9;
+        border-radius: 8px;
+        padding: 1.5rem;
         text-align: center;
-        transition: all var(--transition-normal);
+        transition: all 0.3s ease;
     }
     
     .stat-card:hover {
         transform: translateY(-2px);
-        box-shadow: var(--shadow-lg);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
     }
     
     .stat-icon {
@@ -292,25 +297,25 @@
         </div>
         <div class="d-flex justify-content-between align-items-center">
             <nav class="header-nav">
-                <a href="#dashboard" class="header-nav-link active" onclick="showTab('dashboard', this)">
+                <a href="#dashboard" class="header-nav-link active" data-tab="dashboard">
                     <i class="fas fa-tachometer-alt"></i> Dashboard
                 </a>
-                <a href="#items" class="header-nav-link" onclick="showTab('items', this)">
+                <a href="#items" class="header-nav-link" data-tab="items">
                     <i class="fas fa-boxes"></i> Items
                 </a>
-                <a href="#lots" class="header-nav-link" onclick="showTab('lots', this)">
+                <a href="#lots" class="header-nav-link" data-tab="lots">
                     <i class="fas fa-tags"></i> LOTs
                 </a>
-                <a href="#vendors" class="header-nav-link" onclick="showTab('vendors', this)">
+                <a href="#vendors" class="header-nav-link" data-tab="vendors">
                     <i class="fas fa-truck"></i> Vendors
                 </a>
-                <a href="#printers" class="header-nav-link" onclick="showTab('printers', this)">
+                <a href="#printers" class="header-nav-link" data-tab="printers">
                     <i class="fas fa-print"></i> Printers
                 </a>
-                <a href="#active-users" class="header-nav-link" onclick="showTab('active-users', this)" id="activeUsersTab">
+                <a href="#active-users" class="header-nav-link" data-tab="active-users" id="activeUsersTab">
                     <i class="fas fa-user-check"></i> Users
                 </a>
-                <a href="#analytics" class="header-nav-link" onclick="showTab('analytics', this)">
+                <a href="#analytics" class="header-nav-link" data-tab="analytics">
                     <i class="fas fa-chart-bar"></i> Analytics
                 </a>
             </nav>
@@ -614,45 +619,50 @@
 
 {% block extra_js %}
 <script>
-    // Simple Tab Management
-    function showTab(tabName, clickedElement) {
-        console.log('Switching to tab:', tabName);
-        
-        // Hide all tab contents
-        var tabs = document.querySelectorAll('.tab-content');
-        for (var i = 0; i < tabs.length; i++) {
-            tabs[i].classList.remove('active');
-        }
-        
-        // Remove active class from all nav items
-        var navItems = document.querySelectorAll('.header-nav-link');
-        for (var i = 0; i < navItems.length; i++) {
-            navItems[i].classList.remove('active');
-        }
-        
-        // Show selected tab
-        var targetTab = document.getElementById(tabName);
-        if (targetTab) {
-            targetTab.classList.add('active');
-            console.log('Tab activated:', tabName);
-        } else {
-            console.error('Tab not found:', tabName);
-        }
-        
-        // Add active class to clicked nav item
-        if (clickedElement) {
-            clickedElement.classList.add('active');
-        }
-    }
-    
-    // Make showTab globally available
-    window.showTab = showTab;
-
-    // Initialize on page load
+    // Tab Management using Event Listeners
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('Admin page loaded');
-        console.log('showTab function available:', typeof showTab);
-        console.log('Available tabs:', document.querySelectorAll('.tab-content').length);
+        console.log('Admin page loaded - setting up tab management');
+        
+        // Get all navigation links
+        var navLinks = document.querySelectorAll('.header-nav-link[data-tab]');
+        console.log('Found navigation links:', navLinks.length);
+        
+        // Add click event listeners to each nav link
+        navLinks.forEach(function(link) {
+            link.addEventListener('click', function(e) {
+                e.preventDefault(); // Prevent default link behavior
+                
+                var tabName = this.getAttribute('data-tab');
+                console.log('Clicked tab:', tabName);
+                
+                // Hide all tab contents
+                var tabs = document.querySelectorAll('.tab-content');
+                tabs.forEach(function(tab) {
+                    tab.classList.remove('active');
+                });
+                
+                // Remove active class from all nav items
+                navLinks.forEach(function(navLink) {
+                    navLink.classList.remove('active');
+                });
+                
+                // Show selected tab
+                var targetTab = document.getElementById(tabName);
+                if (targetTab) {
+                    targetTab.classList.add('active');
+                    console.log('Tab activated:', tabName);
+                    console.log('Tab element:', targetTab);
+                    console.log('Tab classes:', targetTab.className);
+                } else {
+                    console.error('Tab not found:', tabName);
+                }
+                
+                // Add active class to clicked nav item
+                this.classList.add('active');
+            });
+        });
+        
+        console.log('Tab management setup complete');
     });
 </script>
 {% endblock %}
