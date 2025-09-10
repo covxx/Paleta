@@ -10,7 +10,7 @@ from typing import List, Dict, Optional, Tuple
 from sqlalchemy import and_, or_, desc, asc, func
 from sqlalchemy.exc import IntegrityError
 from app import db
-from models import Order, Customer, Item, Lot
+from app import Order, Customer, Item, Lot
 
 class OrderService:
     """Service class for order management operations"""

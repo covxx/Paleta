@@ -12,7 +12,7 @@ from typing import List, Dict, Optional, Tuple
 from sqlalchemy import and_, or_, desc, asc, func
 from sqlalchemy.exc import IntegrityError
 from app import db, session
-from models import Item, Customer, Order, SyncLog
+from app import Item, Customer, Order, SyncLog
 
 class QuickBooksService:
     """Service class for QuickBooks integration operations"""

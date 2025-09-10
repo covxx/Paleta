@@ -12,7 +12,7 @@ from typing import List, Dict, Optional, Tuple
 from sqlalchemy import and_, or_, desc, asc
 from sqlalchemy.exc import IntegrityError
 from app import db
-from models import Printer
+from app import Printer
 
 class PrinterService:
     """Service class for printer management operations"""

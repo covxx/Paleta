@@ -10,7 +10,7 @@ from typing import List, Dict, Optional, Tuple
 from sqlalchemy import and_, or_, desc, asc
 from sqlalchemy.exc import IntegrityError
 from app import db
-from models import Item, Lot, Vendor
+from app import Item, Lot, Vendor
 
 class InventoryService:
     """Service class for inventory management operations"""
