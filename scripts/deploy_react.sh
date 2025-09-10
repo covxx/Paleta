@@ -60,6 +60,12 @@ cd "$FRONTEND_DIR"
 print_status "Installing React dependencies..."
 npm install
 
+# Set environment variables for production build
+print_status "Setting production environment variables..."
+export REACT_APP_API_BASE_URL="https://app.srjlabs.dev"
+export REACT_APP_ENVIRONMENT="production"
+export GENERATE_SOURCEMAP=false
+
 # Build React app
 print_status "Building React app for production..."
 npm run build
