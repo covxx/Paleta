@@ -1590,7 +1590,7 @@ def create_admin_user_v2():
         from services.user_service import UserService
         from utils.api_utils import validate_request_data
         
-        data = validate_request_data(['email', 'password', 'name'])
+        data = validate_request_data(['email', 'password', 'first_name', 'last_name'])
         result = UserService.create_admin_user(data)
         
         return jsonify({
@@ -1613,7 +1613,7 @@ def update_admin_user_v2(user_id):
         from services.user_service import UserService
         from utils.api_utils import validate_request_data
         
-        data = validate_request_data(optional_fields=['email', 'password', 'name'])
+        data = validate_request_data(optional_fields=['email', 'password', 'first_name', 'last_name'])
         result = UserService.update_admin_user(user_id, data)
         
         return jsonify({
