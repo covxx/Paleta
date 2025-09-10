@@ -1,8 +1,10 @@
-# Changelog management for ProduceFlow Application
 import json
 import os
+
 from datetime import datetime
 from typing import Dict, List, Optional
+
+# Changelog management for ProduceFlow Application
 
 # Changelog file path
 CHANGELOG_FILE = "changelog.json"
@@ -100,7 +102,7 @@ DEFAULT_CHANGELOG = {
                 "description": "Complete deployment system optimized for 4-core VPS with Gunicorn, Nginx, and Redis"
             },
             {
-                "type": "feature", 
+                "type": "feature",
                 "title": "Version Management System",
                 "description": "Comprehensive version tracking with git integration and admin interface"
             },
@@ -128,7 +130,7 @@ DEFAULT_CHANGELOG = {
                 "priority": "high"
             },
             {
-                "id": "VPS-002", 
+                "id": "VPS-002",
                 "title": "Implement version management",
                 "status": "completed",
                 "priority": "medium"
@@ -244,7 +246,7 @@ def load_changelog() -> Dict:
                 return json.load(f)
     except Exception as e:
         print(f"Error loading changelog: {e}")
-    
+
     return DEFAULT_CHANGELOG
 
 def save_changelog(changelog: Dict) -> bool:
@@ -267,7 +269,7 @@ def get_latest_changelog() -> Optional[Dict]:
     changelog = load_changelog()
     if not changelog:
         return None
-    
+
     # Sort versions and get latest
     versions = sorted(changelog.keys(), key=lambda x: [int(i) for i in x.split('.')], reverse=True)
     return changelog.get(versions[0]) if versions else None
@@ -277,7 +279,7 @@ def get_all_versions() -> List[str]:
     changelog = load_changelog()
     if not changelog:
         return []
-    
+
     # Sort versions in descending order
     return sorted(changelog.keys(), key=lambda x: [int(i) for i in x.split('.')], reverse=True)
 
@@ -317,7 +319,7 @@ def get_changelog_summary() -> Dict:
     """Get summary of all changelog data"""
     changelog = load_changelog()
     versions = get_all_versions()
-    
+
     summary = {
         "total_versions": len(versions),
         "latest_version": versions[0] if versions else None,
@@ -326,16 +328,16 @@ def get_changelog_summary() -> Dict:
         "total_issues": 0,
         "recent_versions": versions[:5] if versions else []
     }
-    
+
     # Count by type
     for version, data in changelog.items():
         version_type = data.get("type", "unknown")
         summary["version_types"][version_type] = summary["version_types"].get(version_type, 0) + 1
-        
+
         # Count changes and issues
         summary["total_changes"] += len(data.get("changes", []))
         summary["total_issues"] += len(data.get("issues", []))
-    
+
     return summary
 
 # Initialize changelog on import

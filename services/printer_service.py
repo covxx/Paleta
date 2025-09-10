@@ -14,16 +14,15 @@ from sqlalchemy.exc import IntegrityError
 from app import db
 from models import Printer
 
-
 class PrinterService:
     """Service class for printer management operations"""
-    
+
     @staticmethod
     def get_all_printers() -> List[Dict]:
         """Get all printers with status information"""
         try:
             printers = Printer.query.order_by(Printer.name.asc()).all()
-            
+
             result = []
             for printer in printers:
                 # Check if printer is online (last seen within 5 minutes)
@@ -31,7 +30,7 @@ class PrinterService:
                 if printer.last_seen:
                     time_diff = datetime.utcnow() - printer.last_seen
                     is_online = time_diff.total_seconds() < 300  # 5 minutes
-                
+
                 result.append({
                     'id': printer.id,
                     'name': printer.name,
@@ -45,11 +44,11 @@ class PrinterService:
                     'last_seen': printer.last_seen.isoformat() if printer.last_seen else None,
                     'created_at': printer.created_at.isoformat() if printer.created_at else None
                 })
-            
+
             return result
         except Exception as e:
             raise Exception(f"Failed to retrieve printers: {str(e)}")
-    
+
     @staticmethod
     def get_printer_by_id(printer_id: int) -> Optional[Dict]:
         """Get a specific printer by ID"""
@@ -57,13 +56,13 @@ class PrinterService:
             printer = Printer.query.get(printer_id)
             if not printer:
                 return None
-            
+
             # Check if printer is online
             is_online = False
             if printer.last_seen:
                 time_diff = datetime.utcnow() - printer.last_seen
                 is_online = time_diff.total_seconds() < 300  # 5 minutes
-            
+
             return {
                 'id': printer.id,
                 'name': printer.name,
@@ -79,7 +78,7 @@ class PrinterService:
             }
         except Exception as e:
             raise Exception(f"Failed to retrieve printer {printer_id}: {str(e)}")
-    
+
     @staticmethod
     def create_printer(printer_data: Dict) -> Dict:
         """Create a new printer"""
@@ -89,18 +88,18 @@ class PrinterService:
                 raise ValueError("Printer name is required")
             if not printer_data.get('ip_address'):
                 raise ValueError("IP address is required")
-            
+
             # Validate IP address format
             try:
                 socket.inet_aton(printer_data['ip_address'])
             except socket.error:
                 raise ValueError("Invalid IP address format")
-            
+
             # Check for duplicate IP address
             existing_printer = Printer.query.filter_by(ip_address=printer_data['ip_address']).first()
             if existing_printer:
                 raise ValueError(f"Printer with IP address '{printer_data['ip_address']}' already exists")
-            
+
             # Create new printer
             printer = Printer(
                 name=printer_data['name'],
@@ -112,24 +111,24 @@ class PrinterService:
                 dpi=printer_data.get('dpi', 203),
                 status='offline'
             )
-            
+
             db.session.add(printer)
             db.session.commit()
-            
+
             return {
                 'id': printer.id,
                 'name': printer.name,
                 'ip_address': printer.ip_address,
                 'message': 'Printer created successfully'
             }
-            
+
         except IntegrityError as e:
             db.session.rollback()
             raise ValueError(f"Database integrity error: {str(e)}")
         except Exception as e:
             db.session.rollback()
             raise Exception(f"Failed to create printer: {str(e)}")
-    
+
     @staticmethod
     def update_printer(printer_id: int, printer_data: Dict) -> Dict:
         """Update an existing printer"""
@@ -137,7 +136,7 @@ class PrinterService:
             printer = Printer.query.get(printer_id)
             if not printer:
                 raise ValueError(f"Printer with ID {printer_id} not found")
-            
+
             # Check for duplicate IP address (excluding current printer)
             if printer_data.get('ip_address') and printer_data['ip_address'] != printer.ip_address:
                 existing_printer = Printer.query.filter(
@@ -145,13 +144,13 @@ class PrinterService:
                 ).first()
                 if existing_printer:
                     raise ValueError(f"Printer with IP address '{printer_data['ip_address']}' already exists")
-                
+
                 # Validate IP address format
                 try:
                     socket.inet_aton(printer_data['ip_address'])
                 except socket.error:
                     raise ValueError("Invalid IP address format")
-            
+
             # Update fields
             if 'name' in printer_data:
                 printer.name = printer_data['name']
@@ -167,20 +166,20 @@ class PrinterService:
                 printer.label_height = printer_data['label_height']
             if 'dpi' in printer_data:
                 printer.dpi = printer_data['dpi']
-            
+
             db.session.commit()
-            
+
             return {
                 'id': printer.id,
                 'name': printer.name,
                 'ip_address': printer.ip_address,
                 'message': 'Printer updated successfully'
             }
-            
+
         except Exception as e:
             db.session.rollback()
             raise Exception(f"Failed to update printer: {str(e)}")
-    
+
     @staticmethod
     def delete_printer(printer_id: int) -> Dict:
         """Delete a printer"""
@@ -188,19 +187,19 @@ class PrinterService:
             printer = Printer.query.get(printer_id)
             if not printer:
                 raise ValueError(f"Printer with ID {printer_id} not found")
-            
+
             db.session.delete(printer)
             db.session.commit()
-            
+
             return {
                 'id': printer_id,
                 'message': 'Printer deleted successfully'
             }
-            
+
         except Exception as e:
             db.session.rollback()
             raise Exception(f"Failed to delete printer: {str(e)}")
-    
+
     @staticmethod
     def test_printer_connection(printer_id: int) -> Dict:
         """Test connection to a printer"""
@@ -208,7 +207,7 @@ class PrinterService:
             printer = Printer.query.get(printer_id)
             if not printer:
                 raise ValueError(f"Printer with ID {printer_id} not found")
-            
+
             # Test network connectivity
             start_time = time.time()
             try:
@@ -217,13 +216,13 @@ class PrinterService:
                 result = sock.connect_ex((printer.ip_address, printer.port))
                 sock.close()
                 connection_time = time.time() - start_time
-                
+
                 if result == 0:
                     # Connection successful, update last_seen
                     printer.last_seen = datetime.utcnow()
                     printer.status = 'online'
                     db.session.commit()
-                    
+
                     return {
                         'id': printer_id,
                         'name': printer.name,
@@ -237,7 +236,7 @@ class PrinterService:
                     # Connection failed
                     printer.status = 'offline'
                     db.session.commit()
-                    
+
                     return {
                         'id': printer_id,
                         'name': printer.name,
@@ -247,11 +246,11 @@ class PrinterService:
                         'connection_time': round(connection_time, 3),
                         'message': 'Connection failed'
                     }
-                    
+
             except socket.timeout:
                 printer.status = 'offline'
                 db.session.commit()
-                
+
                 return {
                     'id': printer_id,
                     'name': printer.name,
@@ -264,7 +263,7 @@ class PrinterService:
             except Exception as e:
                 printer.status = 'offline'
                 db.session.commit()
-                
+
                 return {
                     'id': printer_id,
                     'name': printer.name,
@@ -274,10 +273,10 @@ class PrinterService:
                     'connection_time': 0.0,
                     'message': f'Connection error: {str(e)}'
                 }
-                
+
         except Exception as e:
             raise Exception(f"Failed to test printer connection: {str(e)}")
-    
+
     @staticmethod
     def print_label(printer_id: int, label_data: Dict) -> Dict:
         """Print a label to a specific printer"""
@@ -285,10 +284,10 @@ class PrinterService:
             printer = Printer.query.get(printer_id)
             if not printer:
                 raise ValueError(f"Printer with ID {printer_id} not found")
-            
+
             # Generate ZPL code
             zpl_code = PrinterService._generate_zpl_code(label_data, printer)
-            
+
             # Send to printer
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -296,33 +295,33 @@ class PrinterService:
                 sock.connect((printer.ip_address, printer.port))
                 sock.send(zpl_code.encode('utf-8'))
                 sock.close()
-                
+
                 # Update printer status
                 printer.last_seen = datetime.utcnow()
                 printer.status = 'online'
                 db.session.commit()
-                
+
                 return {
                     'id': printer_id,
                     'name': printer.name,
                     'status': 'success',
                     'message': 'Label printed successfully'
                 }
-                
+
             except Exception as e:
                 printer.status = 'offline'
                 db.session.commit()
-                
+
                 return {
                     'id': printer_id,
                     'name': printer.name,
                     'status': 'error',
                     'message': f'Print failed: {str(e)}'
                 }
-                
+
         except Exception as e:
             raise Exception(f"Failed to print label: {str(e)}")
-    
+
     @staticmethod
     def get_printer_statistics() -> Dict:
         """Get printer statistics"""
@@ -330,7 +329,7 @@ class PrinterService:
             total_printers = Printer.query.count()
             online_printers = 0
             offline_printers = 0
-            
+
             printers = Printer.query.all()
             for printer in printers:
                 if printer.last_seen:
@@ -341,13 +340,13 @@ class PrinterService:
                         offline_printers += 1
                 else:
                     offline_printers += 1
-            
+
             # Get printer types distribution
             printer_types = db.session.query(
                 Printer.printer_type,
                 db.func.count(Printer.id).label('count')
             ).group_by(Printer.printer_type).all()
-            
+
             return {
                 'total_printers': total_printers,
                 'online_printers': online_printers,
@@ -362,7 +361,7 @@ class PrinterService:
             }
         except Exception as e:
             raise Exception(f"Failed to retrieve printer statistics: {str(e)}")
-    
+
     @staticmethod
     def _generate_zpl_code(label_data: Dict, printer: Printer) -> str:
         """Generate ZPL code for label printing"""
@@ -373,11 +372,11 @@ class PrinterService:
             expiry_date = label_data.get('expiry_date', 'N/A')
             quantity = label_data.get('quantity', 'N/A')
             unit = label_data.get('unit', 'pcs')
-            
+
             # Calculate label dimensions in dots
             width_dots = int(printer.label_width * printer.dpi)
             height_dots = int(printer.label_height * printer.dpi)
-            
+
             # Generate ZPL code
             zpl = f"""
 ^XA
@@ -388,26 +387,26 @@ class PrinterService:
 ^FO50,200^BY3^BCN,50,Y,N,N^FD{lot_code}^FS
 ^XZ
 """
-            
+
             return zpl.strip()
-            
+
         except Exception as e:
             raise Exception(f"Failed to generate ZPL code: {str(e)}")
-    
+
     @staticmethod
     def bulk_test_connections() -> Dict:
         """Test connections to all printers"""
         try:
             printers = Printer.query.all()
             results = []
-            
+
             for printer in printers:
                 result = PrinterService.test_printer_connection(printer.id)
                 results.append(result)
-            
+
             online_count = sum(1 for r in results if r['status'] == 'online')
             offline_count = len(results) - online_count
-            
+
             return {
                 'total_tested': len(results),
                 'online_count': online_count,
@@ -415,6 +414,6 @@ class PrinterService:
                 'results': results,
                 'message': f'Tested {len(results)} printers: {online_count} online, {offline_count} offline'
             }
-            
+
         except Exception as e:
             raise Exception(f"Failed to bulk test printer connections: {str(e)}")

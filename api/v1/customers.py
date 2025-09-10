@@ -11,7 +11,6 @@ from utils.api_utils import APIResponse, handle_api_error, validate_request_data
 
 customers_bp = Blueprint('customers_v1', __name__, url_prefix='/api/v1/customers')
 
-
 def admin_required(f):
     """Decorator to require admin authentication"""
     @wraps(f)
@@ -22,7 +21,6 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-
 @customers_bp.route('', methods=['GET'])
 @log_api_request
 def get_customers():
@@ -32,7 +30,6 @@ def get_customers():
         return APIResponse.success(customers, "Customers retrieved successfully")
     except Exception as e:
         return APIResponse.error(f"Failed to retrieve customers: {str(e)}", status_code=500)
-
 
 @customers_bp.route('/<int:customer_id>', methods=['GET'])
 @log_api_request
@@ -45,7 +42,6 @@ def get_customer(customer_id):
         return APIResponse.success(customer, "Customer retrieved successfully")
     except Exception as e:
         return APIResponse.error(f"Failed to retrieve customer: {str(e)}", status_code=500)
-
 
 @customers_bp.route('', methods=['POST'])
 @admin_required
@@ -61,7 +57,6 @@ def create_customer():
     except Exception as e:
         return APIResponse.error(f"Failed to create customer: {str(e)}", status_code=500)
 
-
 @customers_bp.route('/<int:customer_id>', methods=['PUT'])
 @admin_required
 @log_api_request
@@ -76,7 +71,6 @@ def update_customer(customer_id):
     except Exception as e:
         return APIResponse.error(f"Failed to update customer: {str(e)}", status_code=500)
 
-
 @customers_bp.route('/<int:customer_id>', methods=['DELETE'])
 @admin_required
 @log_api_request
@@ -90,7 +84,6 @@ def delete_customer(customer_id):
     except Exception as e:
         return APIResponse.error(f"Failed to delete customer: {str(e)}", status_code=500)
 
-
 @customers_bp.route('/statistics', methods=['GET'])
 @log_api_request
 def get_customer_statistics():
@@ -101,7 +94,6 @@ def get_customer_statistics():
     except Exception as e:
         return APIResponse.error(f"Failed to retrieve customer statistics: {str(e)}", status_code=500)
 
-
 @customers_bp.route('/search', methods=['GET'])
 @log_api_request
 def search_customers():
@@ -110,12 +102,11 @@ def search_customers():
         search_term = request.args.get('q', '')
         if not search_term:
             return APIResponse.error("Search term is required", 'VALIDATION_ERROR', 400)
-        
+
         customers = CustomerService.search_customers(search_term)
         return APIResponse.success(customers, f"Search results for '{search_term}' retrieved successfully")
     except Exception as e:
         return APIResponse.error(f"Failed to search customers: {str(e)}", status_code=500)
-
 
 @customers_bp.route('/quickbooks-sync', methods=['GET'])
 @log_api_request
@@ -128,7 +119,6 @@ def get_customers_by_sync_status():
     except Exception as e:
         return APIResponse.error(f"Failed to retrieve customers by sync status: {str(e)}", status_code=500)
 
-
 @customers_bp.route('/bulk-update-quickbooks', methods=['POST'])
 @admin_required
 @log_api_request
@@ -138,7 +128,7 @@ def bulk_update_quickbooks_ids():
         data = validate_request_data(['updates'])
         if not isinstance(data['updates'], list):
             return APIResponse.error("Updates must be a list", 'VALIDATION_ERROR', 400)
-        
+
         result = CustomerService.bulk_update_quickbooks_ids(data['updates'])
         return APIResponse.success(result, "QuickBooks IDs updated successfully")
     except ValueError as e:

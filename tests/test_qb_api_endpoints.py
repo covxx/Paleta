@@ -17,7 +17,7 @@ def test_api_url_structure():
     """Test the API URL structure"""
     print("🔗 Testing QuickBooks API URL Structure...")
     print()
-    
+
     # Test different endpoint structures
     endpoints = [
         {
@@ -41,7 +41,7 @@ def test_api_url_structure():
             'data': {"query": "SELECT * FROM Customer"}
         }
     ]
-    
+
     for endpoint in endpoints:
         print(f"📋 {endpoint['name']}:")
         print(f"   Endpoint: {endpoint['endpoint']}")
@@ -54,10 +54,10 @@ def test_api_url_structure():
 def test_oauth_url():
     """Test OAuth URL generation"""
     print("🔐 Testing OAuth URL Generation...")
-    
+
     import secrets
     state = secrets.token_urlsafe(32)
-    
+
     auth_url = (
         f"https://appcenter.intuit.com/connect/oauth2?"
         f"client_id={QB_CLIENT_ID}&"
@@ -66,7 +66,7 @@ def test_oauth_url():
         f"response_type=code&"
         f"state={state}"
     )
-    
+
     print(f"✅ OAuth URL generated successfully")
     print(f"📋 State: {state}")
     print(f"🔗 Auth URL: {auth_url[:100]}...")
@@ -75,16 +75,16 @@ def test_oauth_url():
 def test_token_exchange_url():
     """Test token exchange URL"""
     print("🔄 Testing Token Exchange URL...")
-    
+
     token_url = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer'
-    
+
     print(f"✅ Token exchange URL: {token_url}")
     print()
 
 def test_query_examples():
     """Test QuickBooks query examples"""
     print("📊 QuickBooks Query Examples...")
-    
+
     queries = [
         {
             'name': 'Get All Items',
@@ -103,7 +103,7 @@ def test_query_examples():
             'query': "SELECT * FROM CompanyInfo"
         }
     ]
-    
+
     for query in queries:
         print(f"📋 {query['name']}:")
         print(f"   Query: {query['query']}")
@@ -114,18 +114,18 @@ def main():
     print("🧪 QuickBooks API Endpoint Test")
     print("=" * 50)
     print()
-    
+
     print("📋 Configuration:")
     print(f"Client ID: {QB_CLIENT_ID[:10]}...")
     print(f"Company ID: {QB_COMPANY_ID}")
     print(f"Base URL: {QB_BASE_URL}")
     print()
-    
+
     test_api_url_structure()
     test_oauth_url()
     test_token_exchange_url()
     test_query_examples()
-    
+
     print("🎯 Key Points:")
     print("1. Use /query endpoint for most data retrieval")
     print("2. Use /companyinfo/{companyId} for company information")

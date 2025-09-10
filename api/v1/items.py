@@ -11,7 +11,6 @@ from utils.api_utils import APIResponse, handle_api_error, validate_request_data
 
 items_bp = Blueprint('items_v1', __name__, url_prefix='/api/v1/items')
 
-
 def admin_required(f):
     """Decorator to require admin authentication"""
     @wraps(f)
@@ -22,7 +21,6 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-
 @items_bp.route('', methods=['GET'])
 @log_api_request
 def get_items():
@@ -32,7 +30,6 @@ def get_items():
         return APIResponse.success(items, "Items retrieved successfully")
     except Exception as e:
         return APIResponse.error(f"Failed to retrieve items: {str(e)}", status_code=500)
-
 
 @items_bp.route('/<int:item_id>', methods=['GET'])
 @log_api_request
@@ -45,7 +42,6 @@ def get_item(item_id):
         return APIResponse.success(item, "Item retrieved successfully")
     except Exception as e:
         return APIResponse.error(f"Failed to retrieve item: {str(e)}", status_code=500)
-
 
 @items_bp.route('', methods=['POST'])
 @admin_required
@@ -61,7 +57,6 @@ def create_item():
     except Exception as e:
         return APIResponse.error(f"Failed to create item: {str(e)}", status_code=500)
 
-
 @items_bp.route('/<int:item_id>', methods=['PUT'])
 @admin_required
 @log_api_request
@@ -76,7 +71,6 @@ def update_item(item_id):
     except Exception as e:
         return APIResponse.error(f"Failed to update item: {str(e)}", status_code=500)
 
-
 @items_bp.route('/<int:item_id>', methods=['DELETE'])
 @admin_required
 @log_api_request
@@ -89,7 +83,6 @@ def delete_item(item_id):
         return APIResponse.error(str(e), 'VALIDATION_ERROR', 400)
     except Exception as e:
         return APIResponse.error(f"Failed to delete item: {str(e)}", status_code=500)
-
 
 @items_bp.route('/statistics', methods=['GET'])
 @log_api_request

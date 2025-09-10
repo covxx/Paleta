@@ -11,7 +11,7 @@ from .logging_utils import setup_logging, log_api_call, log_error
 
 __all__ = [
     'APIResponse',
-    'handle_api_error', 
+    'handle_api_error',
     'validate_required_fields',
     'validate_email',
     'validate_phone',

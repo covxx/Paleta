@@ -15,7 +15,7 @@ def test_customer_field_mapping():
     print("🧪 Testing Customer Field Mapping")
     print("=" * 40)
     print()
-    
+
     # Sample QuickBooks customer response (what we expect)
     sample_qb_response = {
         "QueryResponse": {
@@ -59,67 +59,67 @@ def test_customer_field_mapping():
             ]
         }
     }
-    
+
     print("📋 Sample QuickBooks Response:")
     print(json.dumps(sample_qb_response, indent=2))
     print()
-    
+
     # Test field extraction
     for qb_customer in sample_qb_response.get('QueryResponse', {}).get('Customer', []):
         print("🔍 Field Extraction Test:")
         print("-" * 25)
-        
+
         # Test different name field options
         name_options = [
             ('Name', qb_customer.get('Name')),
             ('DisplayName', qb_customer.get('DisplayName')),
             ('CompanyName', qb_customer.get('CompanyName'))
         ]
-        
+
         print("📝 Name Field Options:")
         for field_name, value in name_options:
             print(f"   {field_name}: '{value}'")
-        
+
         # Select the best name
-        selected_name = (qb_customer.get('Name') or 
-                        qb_customer.get('DisplayName') or 
-                        qb_customer.get('CompanyName') or 
+        selected_name = (qb_customer.get('Name') or
+                        qb_customer.get('DisplayName') or
+                        qb_customer.get('CompanyName') or
                         'Unknown Customer')
         print(f"   ✅ Selected: '{selected_name}'")
         print()
-        
+
         # Test email field options
         email_options = [
             ('PrimaryEmailAddr.Address', qb_customer.get('PrimaryEmailAddr', {}).get('Address')),
             ('EmailAddr.Address', qb_customer.get('EmailAddr', {}).get('Address'))
         ]
-        
+
         print("📧 Email Field Options:")
         for field_name, value in email_options:
             print(f"   {field_name}: '{value}'")
-        
+
         # Select the best email
-        selected_email = (qb_customer.get('PrimaryEmailAddr', {}).get('Address', '') or 
+        selected_email = (qb_customer.get('PrimaryEmailAddr', {}).get('Address', '') or
                          qb_customer.get('EmailAddr', {}).get('Address', ''))
         print(f"   ✅ Selected: '{selected_email}'")
         print()
-        
+
         # Test phone field options
         phone_options = [
             ('PrimaryPhone.FreeFormNumber', qb_customer.get('PrimaryPhone', {}).get('FreeFormNumber')),
             ('Phone.FreeFormNumber', qb_customer.get('Phone', {}).get('FreeFormNumber'))
         ]
-        
+
         print("📞 Phone Field Options:")
         for field_name, value in phone_options:
             print(f"   {field_name}: '{value}'")
-        
+
         # Select the best phone
-        selected_phone = (qb_customer.get('PrimaryPhone', {}).get('FreeFormNumber', '') or 
+        selected_phone = (qb_customer.get('PrimaryPhone', {}).get('FreeFormNumber', '') or
                          qb_customer.get('Phone', {}).get('FreeFormNumber', ''))
         print(f"   ✅ Selected: '{selected_phone}'")
         print()
-        
+
         # Show final customer data
         customer_data = {
             'name': selected_name,
@@ -137,7 +137,7 @@ def test_customer_field_mapping():
             'ship_to_state': qb_customer.get('ShipAddr', {}).get('CountrySubDivisionCode', ''),
             'ship_to_zip': qb_customer.get('ShipAddr', {}).get('PostalCode', '')
         }
-        
+
         print("📋 Final Customer Data:")
         for key, value in customer_data.items():
             print(f"   {key}: '{value}'")
@@ -148,30 +148,30 @@ def test_empty_field_scenarios():
     print("🔍 Testing Empty Field Scenarios")
     print("=" * 35)
     print()
-    
+
     # Test with minimal data
     minimal_customer = {
         "Id": "2",
         "DisplayName": "Jane Smith"
         # Missing Name, email, phone
     }
-    
+
     print("📋 Minimal Customer Data:")
     print(json.dumps(minimal_customer, indent=2))
     print()
-    
+
     # Test field extraction with fallbacks
-    name = (minimal_customer.get('Name') or 
-            minimal_customer.get('DisplayName') or 
-            minimal_customer.get('CompanyName') or 
+    name = (minimal_customer.get('Name') or
+            minimal_customer.get('DisplayName') or
+            minimal_customer.get('CompanyName') or
             'Unknown Customer')
-    
-    email = (minimal_customer.get('PrimaryEmailAddr', {}).get('Address', '') or 
+
+    email = (minimal_customer.get('PrimaryEmailAddr', {}).get('Address', '') or
              minimal_customer.get('EmailAddr', {}).get('Address', ''))
-    
-    phone = (minimal_customer.get('PrimaryPhone', {}).get('FreeFormNumber', '') or 
+
+    phone = (minimal_customer.get('PrimaryPhone', {}).get('FreeFormNumber', '') or
              minimal_customer.get('Phone', {}).get('FreeFormNumber', ''))
-    
+
     print("🔍 Field Extraction Results:")
     print(f"   Name: '{name}'")
     print(f"   Email: '{email}'")
@@ -183,7 +183,7 @@ def show_debugging_tips():
     print("🐛 Debugging Tips:")
     print("=" * 20)
     print()
-    
+
     tips = [
         "1. Check the Flask console output for DEBUG messages",
         "2. Look for 'DEBUG: QB Customer data:' in the logs",
@@ -191,11 +191,11 @@ def show_debugging_tips():
         "4. Verify if QuickBooks sandbox has test customers",
         "5. Check if customers have the expected field names"
     ]
-    
+
     for tip in tips:
         print(f"   {tip}")
     print()
-    
+
     print("🔧 Next Steps:")
     print("   1. Run the customer import in the app")
     print("   2. Check the console output for DEBUG messages")

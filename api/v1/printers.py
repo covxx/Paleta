@@ -11,7 +11,6 @@ from utils.api_utils import APIResponse, handle_api_error, validate_request_data
 
 printers_bp = Blueprint('printers_v1', __name__, url_prefix='/api/v1/printers')
 
-
 def admin_required(f):
     """Decorator to require admin authentication"""
     @wraps(f)
@@ -22,7 +21,6 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-
 @printers_bp.route('', methods=['GET'])
 @log_api_request
 def get_printers():
@@ -32,7 +30,6 @@ def get_printers():
         return APIResponse.success(printers, "Printers retrieved successfully")
     except Exception as e:
         return APIResponse.error(f"Failed to retrieve printers: {str(e)}", status_code=500)
-
 
 @printers_bp.route('/<int:printer_id>', methods=['GET'])
 @log_api_request
@@ -45,7 +42,6 @@ def get_printer(printer_id):
         return APIResponse.success(printer, "Printer retrieved successfully")
     except Exception as e:
         return APIResponse.error(f"Failed to retrieve printer: {str(e)}", status_code=500)
-
 
 @printers_bp.route('', methods=['POST'])
 @admin_required
@@ -61,7 +57,6 @@ def create_printer():
     except Exception as e:
         return APIResponse.error(f"Failed to create printer: {str(e)}", status_code=500)
 
-
 @printers_bp.route('/<int:printer_id>', methods=['PUT'])
 @admin_required
 @log_api_request
@@ -76,7 +71,6 @@ def update_printer(printer_id):
     except Exception as e:
         return APIResponse.error(f"Failed to update printer: {str(e)}", status_code=500)
 
-
 @printers_bp.route('/<int:printer_id>', methods=['DELETE'])
 @admin_required
 @log_api_request
@@ -90,7 +84,6 @@ def delete_printer(printer_id):
     except Exception as e:
         return APIResponse.error(f"Failed to delete printer: {str(e)}", status_code=500)
 
-
 @printers_bp.route('/<int:printer_id>/test', methods=['POST'])
 @admin_required
 @log_api_request
@@ -101,7 +94,6 @@ def test_printer(printer_id):
         return APIResponse.success(result, "Printer test completed")
     except Exception as e:
         return APIResponse.error(f"Failed to test printer: {str(e)}", status_code=500)
-
 
 @printers_bp.route('/<int:printer_id>/print', methods=['POST'])
 @admin_required
@@ -117,7 +109,6 @@ def print_label(printer_id):
     except Exception as e:
         return APIResponse.error(f"Failed to print label: {str(e)}", status_code=500)
 
-
 @printers_bp.route('/statistics', methods=['GET'])
 @log_api_request
 def get_printer_statistics():
@@ -127,7 +118,6 @@ def get_printer_statistics():
         return APIResponse.success(stats, "Printer statistics retrieved successfully")
     except Exception as e:
         return APIResponse.error(f"Failed to retrieve printer statistics: {str(e)}", status_code=500)
-
 
 @printers_bp.route('/bulk-test', methods=['POST'])
 @admin_required

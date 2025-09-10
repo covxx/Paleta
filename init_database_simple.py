@@ -18,19 +18,19 @@ def init_database_simple():
         # Import Flask and SQLAlchemy
         from flask import Flask
         from flask_sqlalchemy import SQLAlchemy
-        
+
         # Create a minimal Flask app for database initialization
         app = Flask(__name__)
-        
+
         # Set up database configuration
         app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{current_dir}/instance/inventory.db'
         app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-        
+
         # Initialize SQLAlchemy
         db = SQLAlchemy(app)
-        
+
         print("Defining database models...")
-        
+
         # Define all the models here to avoid importing the full app
         class Item(db.Model):
             __tablename__ = 'item'
@@ -45,7 +45,7 @@ def init_database_simple():
             created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
             updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
             quickbooks_id = db.Column(db.String(50), nullable=True)
-            
+
         class Vendor(db.Model):
             __tablename__ = 'vendor'
             id = db.Column(db.Integer, primary_key=True)
@@ -56,7 +56,7 @@ def init_database_simple():
             address = db.Column(db.Text)
             created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
             updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
-            
+
         class Lot(db.Model):
             __tablename__ = 'lot'
             id = db.Column(db.Integer, primary_key=True)
@@ -68,7 +68,7 @@ def init_database_simple():
             vendor_id = db.Column(db.Integer, db.ForeignKey('vendor.id'))
             created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
             updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
-            
+
         class Printer(db.Model):
             __tablename__ = 'printer'
             id = db.Column(db.Integer, primary_key=True)
@@ -78,7 +78,7 @@ def init_database_simple():
             is_active = db.Column(db.Boolean, default=True)
             created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
             updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
-            
+
         class Customer(db.Model):
             __tablename__ = 'customer'
             id = db.Column(db.Integer, primary_key=True)
@@ -89,7 +89,7 @@ def init_database_simple():
             created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
             updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
             quickbooks_id = db.Column(db.String(50), nullable=True)
-            
+
         class Order(db.Model):
             __tablename__ = 'order'
             id = db.Column(db.Integer, primary_key=True)
@@ -101,7 +101,7 @@ def init_database_simple():
             created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
             updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
             quickbooks_id = db.Column(db.String(50), nullable=True)
-            
+
         class OrderItem(db.Model):
             __tablename__ = 'order_item'
             id = db.Column(db.Integer, primary_key=True)
@@ -110,7 +110,7 @@ def init_database_simple():
             quantity = db.Column(db.Integer, nullable=False)
             price = db.Column(db.Numeric(10, 2), nullable=False)
             created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
-            
+
         class SyncLog(db.Model):
             __tablename__ = 'sync_log'
             id = db.Column(db.Integer, primary_key=True)
@@ -125,7 +125,7 @@ def init_database_simple():
             notes = db.Column(db.Text, nullable=True)
             created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
             updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
-            
+
         class SyncStatus(db.Model):
             __tablename__ = 'sync_status'
             id = db.Column(db.Integer, primary_key=True)
@@ -138,21 +138,21 @@ def init_database_simple():
             last_error = db.Column(db.Text, nullable=True)
             created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
             updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
-        
+
         # Create the database tables
         print("Creating database tables...")
         with app.app_context():
             db.create_all()
             print("Database tables created successfully!")
-            
+
             # Verify tables were created
             print("Verifying database tables...")
             result = db.session.execute(db.text("SELECT name FROM sqlite_master WHERE type='table'"))
             tables = [row[0] for row in result.fetchall()]
             print(f"Tables created: {', '.join(tables)}")
-            
+
         return True
-        
+
     except Exception as e:
         print(f"Error initializing database: {e}")
         import traceback

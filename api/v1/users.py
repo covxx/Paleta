@@ -11,7 +11,6 @@ from utils.api_utils import APIResponse, handle_api_error, validate_request_data
 
 users_bp = Blueprint('users_v1', __name__, url_prefix='/api/v1/users')
 
-
 def admin_required(f):
     """Decorator to require admin authentication"""
     @wraps(f)
@@ -21,7 +20,6 @@ def admin_required(f):
             return APIResponse.unauthorized("Admin authentication required")
         return f(*args, **kwargs)
     return decorated_function
-
 
 @users_bp.route('/active', methods=['GET'])
 @admin_required
@@ -34,7 +32,6 @@ def get_active_users():
     except Exception as e:
         return APIResponse.error(f"Failed to retrieve active users: {str(e)}", status_code=500)
 
-
 @users_bp.route('/admin', methods=['GET'])
 @admin_required
 @log_api_request
@@ -45,7 +42,6 @@ def get_admin_users():
         return APIResponse.success(users, "Admin users retrieved successfully")
     except Exception as e:
         return APIResponse.error(f"Failed to retrieve admin users: {str(e)}", status_code=500)
-
 
 @users_bp.route('/admin', methods=['POST'])
 @admin_required
@@ -61,7 +57,6 @@ def create_admin_user():
     except Exception as e:
         return APIResponse.error(f"Failed to create admin user: {str(e)}", status_code=500)
 
-
 @users_bp.route('/admin/<int:user_id>', methods=['PUT'])
 @admin_required
 @log_api_request
@@ -76,7 +71,6 @@ def update_admin_user(user_id):
     except Exception as e:
         return APIResponse.error(f"Failed to update admin user: {str(e)}", status_code=500)
 
-
 @users_bp.route('/admin/<int:user_id>', methods=['DELETE'])
 @admin_required
 @log_api_request
@@ -90,7 +84,6 @@ def delete_admin_user(user_id):
     except Exception as e:
         return APIResponse.error(f"Failed to delete admin user: {str(e)}", status_code=500)
 
-
 @users_bp.route('/kick/<user_id>', methods=['POST'])
 @admin_required
 @log_api_request
@@ -101,7 +94,6 @@ def kick_user(user_id):
         return APIResponse.success(result, "User session terminated successfully")
     except Exception as e:
         return APIResponse.error(f"Failed to kick user: {str(e)}", status_code=500)
-
 
 @users_bp.route('/statistics', methods=['GET'])
 @admin_required
@@ -114,7 +106,6 @@ def get_user_statistics():
     except Exception as e:
         return APIResponse.error(f"Failed to retrieve user statistics: {str(e)}", status_code=500)
 
-
 @users_bp.route('/search', methods=['GET'])
 @admin_required
 @log_api_request
@@ -124,12 +115,11 @@ def search_users():
         search_term = request.args.get('q', '')
         if not search_term:
             return APIResponse.error("Search term is required", 'VALIDATION_ERROR', 400)
-        
+
         users = UserService.search_users(search_term)
         return APIResponse.success(users, f"Search results for '{search_term}' retrieved successfully")
     except Exception as e:
         return APIResponse.error(f"Failed to search users: {str(e)}", status_code=500)
-
 
 @users_bp.route('/change-password', methods=['POST'])
 @admin_required

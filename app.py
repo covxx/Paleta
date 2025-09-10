@@ -1,21 +1,23 @@
-from flask import Flask, render_template, request, jsonify, send_file, session, redirect, url_for, flash
-from flask_sqlalchemy import SQLAlchemy
-from flask_cors import CORS
-from werkzeug.security import generate_password_hash, check_password_hash
-from werkzeug.utils import secure_filename
-from datetime import datetime, timedelta, timezone
+import barcode
+import os
 import os
 import qrcode
-import barcode
+import sys
+import uuid
+
 from barcode.writer import ImageWriter
-from reportlab.pdfgen import canvas
+from datetime import datetime, timedelta, timezone
+from flask import Flask, render_template, request, jsonify, send_file, session, redirect, url_for, flash
+from flask_cors import CORS
+from flask_sqlalchemy import SQLAlchemy
+from io import BytesIO
+from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.lib.units import inch
-from reportlab.lib import colors
-from io import BytesIO
-import uuid
-import sys
-import os
+from reportlab.pdfgen import canvas
+from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
+
 sys.path.append(os.path.join(os.path.dirname(__file__), 'configs'))
 import config
 
@@ -38,7 +40,7 @@ from decimal import Decimal
 import requests
 from version import VERSION_INFO, VERSION, COMMIT_HASH, BRANCH, BUILD_DATE
 from changelog import (
-    load_changelog, get_version_changelog, get_latest_changelog, 
+    load_changelog, get_version_changelog, get_latest_changelog,
     get_all_versions, get_changelog_summary, CHANGELOG_DATA
 )
 
@@ -137,19 +139,19 @@ def rate_limit(max_requests=60, window=60):
             # Get client IP
             client_ip = request.remote_addr
             current_time = time.time()
-            
+
             with rate_limit_lock:
                 # Clean old requests
                 while rate_limits[client_ip] and rate_limits[client_ip][0] < current_time - window:
                     rate_limits[client_ip].popleft()
-                
+
                 # Check if limit exceeded
                 if len(rate_limits[client_ip]) >= max_requests:
                     return jsonify({'error': 'Rate limit exceeded. Please try again later.'}), 429
-                
+
                 # Add current request
                 rate_limits[client_ip].append(current_time)
-            
+
             return f(*args, **kwargs)
         return decorated_function
     return decorator
@@ -219,13 +221,13 @@ def refresh_qb_access_token():
         refresh_token = session.get('qb_refresh_token')
         if not refresh_token:
             return {'error': 'No refresh token available'}
-        
+
         # Prepare token refresh request
         token_data = {
             'grant_type': 'refresh_token',
             'refresh_token': refresh_token
         }
-        
+
         # Make request to QuickBooks token endpoint
         response = requests.post(
             'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer',
@@ -233,19 +235,19 @@ def refresh_qb_access_token():
             auth=(QB_CLIENT_ID, QB_CLIENT_SECRET),
             headers={'Accept': 'application/json'}
         )
-        
+
         if response.status_code == 200:
             token_info = response.json()
-            
+
             # Update session with new tokens
             session['qb_access_token'] = token_info.get('access_token')
             session['qb_refresh_token'] = token_info.get('refresh_token')
             session['qb_token_expires'] = datetime.now(timezone.utc) + timedelta(seconds=token_info.get('expires_in', 3600))
-            
+
             return {'success': True, 'access_token': token_info.get('access_token')}
         else:
             return {'error': f'Token refresh failed: {response.status_code} - {response.text}'}
-            
+
     except Exception as e:
         return {'error': f'Token refresh error: {str(e)}'}
 
@@ -254,7 +256,7 @@ def is_qb_token_expired():
     expires_at = session.get('qb_token_expires')
     if not expires_at:
         return True
-    
+
     # Add 5 minute buffer before expiration
     buffer_time = timedelta(minutes=5)
     return datetime.now(timezone.utc) + buffer_time >= expires_at
@@ -266,28 +268,28 @@ def make_qb_api_request(endpoint, method='GET', data=None):
         refresh_result = refresh_qb_access_token()
         if 'error' in refresh_result:
             return {'error': f'Token refresh failed: {refresh_result["error"]}'}
-    
+
     access_token = get_qb_access_token()
     if not access_token:
         return {'error': 'No QuickBooks access token found. Please connect to QuickBooks first.'}
-    
+
     headers = {
         'Authorization': f'Bearer {access_token}',
         'Accept': 'application/json',
         'Content-Type': 'application/json'
     }
-    
+
     # QuickBooks API URL structure
     # For company info: /v3/company/{companyId}/companyinfo/{companyId}
     # For queries: /v3/company/{companyId}/query?query=<selectStatement>&minorversion=75
-    
+
     if endpoint == 'companyinfo/1':
         # Special case for company info
         url = f"{QB_BASE_URL}/v3/company/{QB_COMPANY_ID}/companyinfo/{QB_COMPANY_ID}"
     else:
         # Standard endpoint structure - endpoint may include query parameters
         url = f"{QB_BASE_URL}/v3/company/{QB_COMPANY_ID}/{endpoint}"
-    
+
     try:
         if method == 'GET':
             response = requests.get(url, headers=headers)
@@ -295,26 +297,26 @@ def make_qb_api_request(endpoint, method='GET', data=None):
             response = requests.post(url, headers=headers, json=data)
         else:
             return {'error': f'Unsupported method: {method}'}
-        
+
         # Handle 401 Unauthorized - token might be invalid
         if response.status_code == 401:
             # Try to refresh token once more
             refresh_result = refresh_qb_access_token()
             if 'error' in refresh_result:
                 return {'error': 'QuickBooks access token expired and refresh failed. Please reconnect to QuickBooks.'}
-            
+
             # Retry the request with new token
             new_access_token = get_qb_access_token()
             headers['Authorization'] = f'Bearer {new_access_token}'
-            
+
             if method == 'GET':
                 response = requests.get(url, headers=headers)
             elif method == 'POST':
                 response = requests.post(url, headers=headers, json=data)
-        
+
         response.raise_for_status()
         return response.json()
-        
+
     except requests.exceptions.RequestException as e:
         error_msg = str(e)
         if '401' in error_msg:
@@ -336,11 +338,11 @@ def import_qb_customers():
         result = make_qb_api_request(f'query?query={query}&minorversion=75')
         if 'error' in result:
             return result
-        
+
         customers_imported = 0
         customers_updated = 0
         errors = []
-        
+
         for qb_customer in result.get('QueryResponse', {}).get('Customer', []):
             try:
                 # Extract customer data from QB response with fallbacks
@@ -366,10 +368,10 @@ def import_qb_customers():
                     'payment_terms': qb_customer.get('PaymentMethodRef', {}).get('name', ''),
                     'notes': f"Imported from QuickBooks on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
                 }
-                
+
                 # Check if customer already exists
                 existing_customer = Customer.query.filter_by(quickbooks_id=customer_data['quickbooks_id']).first()
-                
+
                 if existing_customer:
                     # Update existing customer
                     for key, value in customer_data.items():
@@ -381,20 +383,20 @@ def import_qb_customers():
                     customer = Customer(**customer_data)
                     db.session.add(customer)
                     customers_imported += 1
-                    
+
             except Exception as e:
                 errors.append(f"Error processing customer {qb_customer.get('Name', 'Unknown')}: {str(e)}")
-        
+
         db.session.commit()
         clear_cache()
-        
+
         return {
             'success': True,
             'customers_imported': customers_imported,
             'customers_updated': customers_updated,
             'errors': errors
         }
-        
+
     except Exception as e:
         db.session.rollback()
         return {'error': f'Import failed: {str(e)}'}
@@ -407,17 +409,17 @@ def import_qb_items():
         result = make_qb_api_request(f'query?query={query}&minorversion=75')
         if 'error' in result:
             return result
-        
+
         items_imported = 0
         items_updated = 0
         errors = []
-        
+
         for qb_item in result.get('QueryResponse', {}).get('Item', []):
             try:
                 # Skip service items, only import inventory items
                 if qb_item.get('Type') != 'Inventory':
                     continue
-                
+
                 # Extract item data from QB response with fallbacks
                 item_data = {
                     'name': qb_item.get('Name') or qb_item.get('DisplayName') or 'Unknown Item',
@@ -426,10 +428,10 @@ def import_qb_items():
                     'category': qb_item.get('ItemCategoryRef', {}).get('name', 'Imported'),
                     'description': qb_item.get('Description', '') or f"Imported from QuickBooks on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
                 }
-                
+
                 # Check if item already exists
                 existing_item = Item.query.filter_by(item_code=item_data['item_code']).first()
-                
+
                 if existing_item:
                     # Update existing item
                     for key, value in item_data.items():
@@ -441,20 +443,20 @@ def import_qb_items():
                     item = Item(**item_data)
                     db.session.add(item)
                     items_imported += 1
-                    
+
             except Exception as e:
                 errors.append(f"Error processing item {qb_item.get('Name', 'Unknown')}: {str(e)}")
-        
+
         db.session.commit()
         clear_cache()
-        
+
         return {
             'success': True,
             'items_imported': items_imported,
             'items_updated': items_updated,
             'errors': errors
         }
-        
+
     except Exception as e:
         db.session.rollback()
         return {'error': f'Import failed: {str(e)}'}
@@ -465,10 +467,10 @@ def save_receiving_photo(file, lot_code):
         # Generate unique filename
         filename = secure_filename(f"{lot_code}_{uuid.uuid4().hex[:8]}.{file.filename.rsplit('.', 1)[1].lower()}")
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        
+
         # Save file
         file.save(filepath)
-        
+
         # Resize image if too large (max 1920x1080)
         try:
             with Image.open(filepath) as img:
@@ -477,7 +479,7 @@ def save_receiving_photo(file, lot_code):
                     img.save(filepath, optimize=True, quality=85)
         except Exception as e:
             print(f"Error resizing image: {e}")
-        
+
         return filename
     return None
 
@@ -486,17 +488,17 @@ def track_user_session():
     if session.get('admin_logged_in'):
         user_id = session.get('admin_id')
         user_email = session.get('admin_email')
-        
+
         with session_lock:
             active_sessions[user_id] = {
                 'email': user_email,
                 'last_activity': time.time(),
                 'ip_address': request.remote_addr
             }
-            
+
             # Clean old sessions (older than 1 hour)
             current_time = time.time()
-            expired_sessions = [uid for uid, data in active_sessions.items() 
+            expired_sessions = [uid for uid, data in active_sessions.items()
                               if current_time - data['last_activity'] > 3600]
             for uid in expired_sessions:
                 del active_sessions[uid]
@@ -562,7 +564,7 @@ class PrintJob(db.Model):
     completed_at = db.Column(db.DateTime, nullable=True)
     error_message = db.Column(db.Text, nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('admin_user.id'), nullable=True)
-    
+
     # Relationships
     printer = db.relationship('Printer', backref='print_jobs')
     user = db.relationship('AdminUser', backref='print_jobs')
@@ -587,7 +589,7 @@ class Customer(db.Model):
     email = db.Column(db.String(120), nullable=True, index=True)
     phone = db.Column(db.String(20), nullable=True)
     quickbooks_id = db.Column(db.String(100), nullable=True, index=True)  # QB Customer ID
-    
+
     # Billing Address
     bill_to_name = db.Column(db.String(200), nullable=True)
     bill_to_address1 = db.Column(db.String(200), nullable=True)
@@ -596,7 +598,7 @@ class Customer(db.Model):
     bill_to_state = db.Column(db.String(50), nullable=True)
     bill_to_zip = db.Column(db.String(20), nullable=True)
     bill_to_country = db.Column(db.String(100), default='USA')
-    
+
     # Shipping Address
     ship_to_name = db.Column(db.String(200), nullable=True)
     ship_to_address1 = db.Column(db.String(200), nullable=True)
@@ -605,7 +607,7 @@ class Customer(db.Model):
     ship_to_state = db.Column(db.String(50), nullable=True)
     ship_to_zip = db.Column(db.String(20), nullable=True)
     ship_to_country = db.Column(db.String(100), default='USA')
-    
+
     # Additional fields
     tax_id = db.Column(db.String(50), nullable=True)
     payment_terms = db.Column(db.String(100), nullable=True)
@@ -613,7 +615,7 @@ class Customer(db.Model):
     is_active = db.Column(db.Boolean, default=True, index=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-    
+
     # Relationships
     orders = db.relationship('Order', backref='customer', lazy=True)
 
@@ -621,28 +623,28 @@ class Order(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     order_number = db.Column(db.String(50), nullable=False, unique=True, index=True)
     customer_id = db.Column(db.Integer, db.ForeignKey('customer.id'), nullable=False, index=True)
-    
+
     # Order details
     order_date = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), index=True)
     requested_delivery_date = db.Column(db.Date, nullable=True)
     status = db.Column(db.String(50), default='pending', index=True)  # pending, in_progress, filled, shipped, completed, cancelled
-    
+
     # QuickBooks integration
     quickbooks_id = db.Column(db.String(100), nullable=True, index=True)  # QB Sales Receipt ID
     quickbooks_synced = db.Column(db.Boolean, default=False, index=True)
     quickbooks_sync_date = db.Column(db.DateTime, nullable=True)
-    
+
     # Order totals
     subtotal = db.Column(db.Numeric(10, 2), default=0)
     tax_amount = db.Column(db.Numeric(10, 2), default=0)
     total_amount = db.Column(db.Numeric(10, 2), default=0)
-    
+
     # Additional fields
     notes = db.Column(db.Text, nullable=True)
     created_by = db.Column(db.Integer, db.ForeignKey('admin_user.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-    
+
     # Relationships
     order_items = db.relationship('OrderItem', backref='order', lazy=True, cascade='all, delete-orphan')
 
@@ -650,16 +652,16 @@ class OrderItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False, index=True)
     item_id = db.Column(db.Integer, db.ForeignKey('item.id'), nullable=False, index=True)
-    
+
     # Order item details
     quantity_ordered = db.Column(db.Numeric(10, 2), nullable=False)
     quantity_filled = db.Column(db.Numeric(10, 2), default=0)
     unit_price = db.Column(db.Numeric(10, 2), nullable=False)
     total_price = db.Column(db.Numeric(10, 2), nullable=False)
-    
+
     # Lot tracking
     lots_used = db.Column(db.Text, nullable=True)  # JSON string of lot allocations
-    
+
     # Status
     status = db.Column(db.String(50), default='pending', index=True)  # pending, partial, filled
 
@@ -697,7 +699,7 @@ class LotAllocation(db.Model):
     quantity_allocated = db.Column(db.Numeric(10, 2), nullable=False)
     allocated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     allocated_by = db.Column(db.Integer, db.ForeignKey('admin_user.id'), nullable=True)
-    
+
     # Relationships
     order_item = db.relationship('OrderItem', backref='lot_allocations')
     lot = db.relationship('Lot', backref='allocations')
@@ -758,9 +760,9 @@ def admin_login():
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
-        
+
         admin = AdminUser.query.filter_by(email=email, is_active=True).first()
-        
+
         if admin and check_password_hash(admin.password_hash, password):
             session['admin_logged_in'] = True
             session['admin_email'] = admin.email
@@ -773,7 +775,7 @@ def admin_login():
             return redirect(url_for('admin'))
         else:
             flash('Invalid email or password', 'error')
-    
+
     return render_template('admin_login.html')
 
 @app.route('/admin/logout')
@@ -793,7 +795,7 @@ def get_admin_users():
     """Get all admin users (super admin only)"""
     if not session.get('is_super_admin'):
         return jsonify({'error': 'Access denied. Super admin required.'}), 403
-    
+
     users = AdminUser.query.all()
     return jsonify([{
         'id': user.id,
@@ -812,20 +814,20 @@ def create_admin_user():
     """Create a new admin user (super admin only)"""
     if not session.get('is_super_admin'):
         return jsonify({'error': 'Access denied. Super admin required.'}), 403
-    
+
     data = request.get_json()
-    
+
     # Validate required fields
     required_fields = ['email', 'password', 'first_name', 'last_name']
     for field in required_fields:
         if not data.get(field):
             return jsonify({'error': f'Missing required field: {field}'}), 400
-    
+
     # Check if email already exists
     existing_user = AdminUser.query.filter_by(email=data['email']).first()
     if existing_user:
         return jsonify({'error': 'Email already exists'}), 400
-    
+
     try:
         user = AdminUser(
             email=data['email'],
@@ -834,16 +836,16 @@ def create_admin_user():
             last_name=data['last_name'],
             is_super_admin=data.get('is_super_admin', False)
         )
-        
+
         db.session.add(user)
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
             'message': 'Admin user created successfully',
             'user_id': user.id
         }), 201
-        
+
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 400
@@ -854,10 +856,10 @@ def update_admin_user(user_id):
     """Update an admin user (super admin only)"""
     if not session.get('is_super_admin'):
         return jsonify({'error': 'Access denied. Super admin required.'}), 403
-    
+
     user = AdminUser.query.get_or_404(user_id)
     data = request.get_json()
-    
+
     try:
         if 'email' in data:
             # Check if email already exists for another user
@@ -865,29 +867,29 @@ def update_admin_user(user_id):
             if existing_user and existing_user.id != user_id:
                 return jsonify({'error': 'Email already exists'}), 400
             user.email = data['email']
-        
+
         if 'first_name' in data:
             user.first_name = data['first_name']
-        
+
         if 'last_name' in data:
             user.last_name = data['last_name']
-        
+
         if 'password' in data and data['password']:
             user.password_hash = generate_password_hash(data['password'])
-        
+
         if 'is_active' in data:
             user.is_active = data['is_active']
-        
+
         if 'is_super_admin' in data:
             user.is_super_admin = data['is_super_admin']
-        
+
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
             'message': 'Admin user updated successfully'
         })
-        
+
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 400
@@ -898,22 +900,22 @@ def delete_admin_user(user_id):
     """Delete an admin user (super admin only)"""
     if not session.get('is_super_admin'):
         return jsonify({'error': 'Access denied. Super admin required.'}), 403
-    
+
     # Prevent deleting yourself
     if user_id == session.get('admin_id'):
         return jsonify({'error': 'Cannot delete your own account'}), 400
-    
+
     user = AdminUser.query.get_or_404(user_id)
-    
+
     try:
         db.session.delete(user)
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
             'message': 'Admin user deleted successfully'
         })
-        
+
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 400
@@ -924,24 +926,24 @@ def reset_admin_password(user_id):
     """Reset an admin user's password (super admin only)"""
     if not session.get('is_super_admin'):
         return jsonify({'error': 'Access denied. Super admin required.'}), 403
-    
+
     user = AdminUser.query.get_or_404(user_id)
     data = request.get_json()
-    
+
     if not data.get('new_password'):
         return jsonify({'error': 'New password is required'}), 400
-    
+
     try:
         user.password_hash = generate_password_hash(data['new_password'])
         user.password_reset_token = None
         user.password_reset_expires = None
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
             'message': 'Password reset successfully'
         })
-        
+
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 400
@@ -996,7 +998,7 @@ def get_items():
     cached_items = get_from_cache('items')
     if cached_items is not None:
         return jsonify(cached_items)
-    
+
     # Query database with optimization
     items = Item.query.options(db.joinedload(Item.lots)).all()
     items_data = [{
@@ -1009,7 +1011,7 @@ def get_items():
         'created_at': item.created_at.isoformat(),
         'lot_count': len(item.lots)
     } for item in items]
-    
+
     # Cache the result
     set_cache('items', items_data)
     return jsonify(items_data)
@@ -1028,10 +1030,10 @@ def create_item():
         )
         db.session.add(item)
         db.session.commit()
-        
+
         # Clear cache when data changes
         clear_cache()
-        
+
         return jsonify({'success': True, 'id': item.id}), 201
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 400
@@ -1075,10 +1077,10 @@ def create_lot():
     try:
         # Generate unique LOT code
         lot_code = generate_lot_code(data['item_id'])
-        
+
         # Auto-set expiry date to 10 days from today for admin-created lots
         auto_expiry_date = (datetime.now(timezone.utc) + timedelta(days=10)).date()
-        
+
         lot = Lot(
             lot_code=lot_code,
             item_id=data['item_id'],
@@ -1109,7 +1111,7 @@ def generate_zpl_label(lot_code):
     lot = Lot.query.filter_by(lot_code=lot_code).first()
     if not lot:
         return jsonify({'error': 'Lot not found'}), 404
-    
+
     zpl_code = generate_palumbo_zpl(lot)
     return jsonify({
         'lot_code': lot_code,
@@ -1123,7 +1125,7 @@ def generate_pti_zpl_label(lot_code):
     lot = Lot.query.filter_by(lot_code=lot_code).first()
     if not lot:
         return jsonify({'error': 'Lot not found'}), 404
-    
+
     zpl_code = generate_pti_zpl(lot)
     return jsonify({
         'lot_code': lot_code,
@@ -1137,16 +1139,16 @@ def generate_pti_voice_pick_zpl_label(lot_code):
     lot = Lot.query.filter_by(lot_code=lot_code).first()
     if not lot:
         return jsonify({'error': 'Lot not found'}), 404
-    
+
     zpl_code = generate_pti_voice_pick_zpl(lot)
-    
+
     # Calculate Voice Pick Code for response
     voice_pick_code = calculate_voice_pick_code(
-        lot.item.gtin, 
-        lot.lot_code, 
+        lot.item.gtin,
+        lot.lot_code,
         datetime.now(timezone.utc)
     )
-    
+
     return jsonify({
         'lot_code': lot_code,
         'zpl_code': zpl_code,
@@ -1163,22 +1165,22 @@ def print_label_direct(lot_code):
     printer_id = data.get('printer_id')
     template = data.get('template', 'palumbo')
     quantity = data.get('quantity', 1)
-    
+
     if not printer_id:
         return jsonify({'error': 'Printer ID required'}), 400
-    
+
     printer = db.session.get(Printer, printer_id)
     if not printer:
         return jsonify({'error': 'Printer not found'}), 404
-    
+
     lot = Lot.query.filter_by(lot_code=lot_code).first()
     if not lot:
         return jsonify({'error': 'Lot not found'}), 404
-    
+
     try:
         # Track user session
         track_user_session()
-        
+
         # Use print queue lock to prevent conflicts
         with print_queue_lock:
             # Create print job record
@@ -1194,7 +1196,7 @@ def print_label_direct(lot_code):
             )
             db.session.add(print_job)
             db.session.commit()
-        
+
         # Generate ZPL based on template
         if template == 'pti':
             zpl_code = generate_pti_zpl(lot)
@@ -1202,20 +1204,20 @@ def print_label_direct(lot_code):
             zpl_code = generate_pti_voice_pick_zpl(lot)
         else:
             zpl_code = generate_palumbo_zpl(lot)
-        
+
         # Send multiple copies to printer
         success_count = 0
         for i in range(quantity):
             success = send_zpl_to_printer(printer, zpl_code)
             if success:
                 success_count += 1
-        
+
         # Update print job status
         if success_count == quantity:
             print_job.status = 'completed'
             print_job.completed_at = datetime.now(timezone.utc)
             db.session.commit()
-            
+
             return jsonify({
                 'success': True,
                 'message': f'{quantity} label(s) sent to {printer.name} ({printer.ip_address})',
@@ -1229,7 +1231,7 @@ def print_label_direct(lot_code):
             print_job.completed_at = datetime.now(timezone.utc)
             print_job.error_message = f'{quantity - success_count} labels failed to print'
             db.session.commit()
-            
+
             return jsonify({
                 'success': True,
                 'message': f'{success_count} of {quantity} label(s) sent to {printer.name}',
@@ -1244,13 +1246,13 @@ def print_label_direct(lot_code):
             print_job.completed_at = datetime.now(timezone.utc)
             print_job.error_message = 'Failed to send any labels to printer'
             db.session.commit()
-            
+
             return jsonify({
                 'success': False,
                 'error': f'Failed to send any labels to printer {printer.name}',
                 'job_id': print_job.id
             }), 500
-            
+
     except Exception as e:
         # Update print job status if it was created
         if 'print_job' in locals():
@@ -1258,7 +1260,7 @@ def print_label_direct(lot_code):
             print_job.completed_at = datetime.now(timezone.utc)
             print_job.error_message = str(e)
             db.session.commit()
-        
+
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # Label preview endpoint
@@ -1269,7 +1271,7 @@ def preview_label(lot_code, template):
         lot = Lot.query.filter_by(lot_code=lot_code).first()
         if not lot:
             return jsonify({'error': 'Lot not found'}), 404
-        
+
         # Generate ZPL based on template
         if template == 'pti':
             zpl_code = generate_pti_zpl(lot)
@@ -1277,10 +1279,10 @@ def preview_label(lot_code, template):
             zpl_code = generate_pti_voice_pick_zpl(lot)
         else:
             zpl_code = generate_palumbo_zpl(lot)
-        
+
         # Create a human-readable preview
         preview_text = create_label_preview(lot, template, zpl_code)
-        
+
         return jsonify({
             'success': True,
             'preview_text': preview_text,
@@ -1288,7 +1290,7 @@ def preview_label(lot_code, template):
             'template': template,
             'lot_code': lot_code
         })
-        
+
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -1310,7 +1312,7 @@ Label Size: 4" x 2"
 ZPL Code Preview:
 {zpl_code[:500]}{'...' if len(zpl_code) > 500 else ''}
     """.strip()
-    
+
     return preview
 
 # Batch print endpoint for multiple lots
@@ -1323,24 +1325,24 @@ def batch_print_labels():
     printer_id = data.get('printer_id')
     template = data.get('template', 'palumbo')
     quantity = data.get('quantity', 1)
-    
+
     if not lot_codes:
         return jsonify({'error': 'No LOT codes provided'}), 400
-    
+
     if not printer_id:
         return jsonify({'error': 'Printer ID required'}), 400
-    
+
     printer = db.session.get(Printer, printer_id)
     if not printer:
         return jsonify({'error': 'Printer not found'}), 404
-    
+
     # Track user session
     track_user_session()
-    
+
     results = []
     total_success = 0
     total_failed = 0
-    
+
     # Use print queue lock for batch operations
     with print_queue_lock:
         for lot_code in lot_codes:
@@ -1353,7 +1355,7 @@ def batch_print_labels():
                 })
                 total_failed += 1
                 continue
-            
+
             try:
                 # Generate ZPL based on template
                 if template == 'pti':
@@ -1362,14 +1364,14 @@ def batch_print_labels():
                     zpl_code = generate_pti_voice_pick_zpl(lot)
                 else:
                     zpl_code = generate_palumbo_zpl(lot)
-                
+
                 # Send multiple copies to printer
                 success_count = 0
                 for i in range(quantity):
                     success = send_zpl_to_printer(printer, zpl_code)
                     if success:
                         success_count += 1
-                
+
                 if success_count == quantity:
                     results.append({
                         'lot_code': lot_code,
@@ -1393,7 +1395,7 @@ def batch_print_labels():
                         'error': 'Failed to print any labels'
                     })
                     total_failed += 1
-                    
+
             except Exception as e:
                 results.append({
                     'lot_code': lot_code,
@@ -1401,7 +1403,7 @@ def batch_print_labels():
                     'error': str(e)
                 })
                 total_failed += 1
-    
+
     return jsonify({
         'success': total_failed == 0,
         'total_lots': len(lot_codes),
@@ -1428,7 +1430,7 @@ def generate_custom_label():
     ingredients = data.get('ingredients', 'Custom Ingredients')
     manufacturer = data.get('manufacturer', 'Palumbo Foods, LLC')
     manufacturer_address = data.get('manufacturer_address', 'Louisville, KY 40299, USA')
-    
+
     # If no dates provided, use current date and 10 days later
     if not pack_date:
         pack_date = datetime.now(timezone.utc).strftime('%Y-%m-%d')
@@ -1436,19 +1438,19 @@ def generate_custom_label():
         pack_dt = datetime.strptime(pack_date, '%Y-%m-%d')
         use_by_dt = pack_dt + timedelta(days=10)
         use_by_date = use_by_dt.strftime('%Y-%m-%d')
-    
+
     # Format dates for display (MM/DD/YY)
     pack_display = datetime.strptime(pack_date, '%Y-%m-%d').strftime('%m/%d/%y')
     use_by_display = datetime.strptime(use_by_date, '%Y-%m-%d').strftime('%m/%d/%Y')
-    
+
     # Generate barcode data (GTIN + LOT + Use By Date)
     # Using a simple GTIN format: 00850018478243 + item code + use by date (MMDDYY)
     use_by_barcode = datetime.strptime(use_by_date, '%Y-%m-%d').strftime('%m%d%y')
     barcode_data = f"(01)00850018478243(10){item_code}(15){use_by_barcode}"
-    
+
     # Alternative simpler barcode for testing
     simple_barcode = f"00850018478243{item_code}{use_by_barcode}"
-    
+
     # Generate ZPL for custom label using user's exact format
     # Fixed item code 1051, only lot code and dates are dynamic
     zpl_code = f"""CT~~CD,~CC^~CT~
@@ -1481,7 +1483,7 @@ def generate_custom_label():
 ^FT160,231^A0N,23,23^FH\\^CI28^FD{pack_display}^FS^CI27
 ^FT263,378^A0N,20,20^FH\\^CI28^FD(01)00850018478243(10){item_code}(15){use_by_barcode}^FS^CI27
 ^XZ"""
-    
+
     return jsonify({
         'success': True,
         'zpl_code': zpl_code,
@@ -1499,26 +1501,26 @@ def test_print():
     data = request.json
     printer_id = data.get('printer_id')
     zpl_code = data.get('zpl_code')
-    
+
     if not printer_id or not zpl_code:
         return jsonify({'error': 'Printer ID and ZPL code are required'}), 400
-    
+
     printer = db.session.get(Printer, printer_id)
     if not printer:
         return jsonify({'error': 'Printer not found'}), 404
-    
+
     try:
         # Track user session
         track_user_session()
-        
+
         # Send ZPL to printer
         success = send_zpl_to_printer(printer, zpl_code)
-        
+
         if success:
             return jsonify({'success': True, 'message': 'Test print sent successfully'})
         else:
             return jsonify({'success': False, 'error': 'Failed to send test print to printer'})
-            
+
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -1531,7 +1533,7 @@ def get_active_users():
     try:
         from services.user_service import UserService
         active_users = UserService.get_active_users()
-        
+
         return jsonify(active_users)  # Return array directly for JavaScript compatibility
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -1555,10 +1557,10 @@ def create_admin_user():
     try:
         from services.user_service import UserService
         from utils.api_utils import validate_request_data
-        
+
         data = validate_request_data(['email', 'password', 'name'])
         result = UserService.create_admin_user(data)
-        
+
         return jsonify({
             'success': True,
             'message': result['message'],
@@ -1578,10 +1580,10 @@ def update_admin_user(user_id):
     try:
         from services.user_service import UserService
         from utils.api_utils import validate_request_data
-        
+
         data = validate_request_data(optional_fields=['email', 'password', 'name'])
         result = UserService.update_admin_user(user_id, data)
-        
+
         return jsonify({
             'success': True,
             'message': result['message'],
@@ -1601,7 +1603,7 @@ def delete_admin_user(user_id):
     try:
         from services.user_service import UserService
         result = UserService.delete_admin_user(user_id)
-        
+
         return jsonify({
             'success': True,
             'message': result['message']
@@ -1616,7 +1618,7 @@ def kick_user(user_id):
     try:
         from services.user_service import UserService
         result = UserService.kick_user(user_id)
-        
+
         return jsonify({
             'success': True,
             'message': result['message']
@@ -1635,7 +1637,7 @@ def get_print_queue():
     """Get current print queue status"""
     try:
         jobs = PrintJob.query.order_by(PrintJob.created_at.desc()).limit(50).all()
-        
+
         queue_data = []
         for job in jobs:
             queue_data.append({
@@ -1651,7 +1653,7 @@ def get_print_queue():
                 'error_message': job.error_message,
                 'user_name': f"{job.user.first_name} {job.user.last_name}" if job.user else None
             })
-        
+
         # Get queue statistics
         stats = {
             'pending': PrintJob.query.filter_by(status='pending').count(),
@@ -1665,13 +1667,13 @@ def get_print_queue():
                 PrintJob.created_at >= datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
             ).count()
         }
-        
+
         return jsonify({
             'success': True,
             'jobs': queue_data,
             'stats': stats
         })
-        
+
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -1682,20 +1684,20 @@ def cancel_print_job(job_id):
         job = PrintJob.query.get(job_id)
         if not job:
             return jsonify({'error': 'Print job not found'}), 404
-        
+
         if job.status not in ['pending', 'printing']:
             return jsonify({'error': 'Cannot cancel completed or failed job'}), 400
-        
+
         job.status = 'failed'
         job.error_message = 'Cancelled by user'
         job.completed_at = datetime.now(timezone.utc)
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
             'message': 'Print job cancelled successfully'
         })
-        
+
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -1704,19 +1706,19 @@ def clear_completed_jobs():
     """Clear completed and failed print jobs older than 24 hours"""
     try:
         cutoff_time = datetime.now(timezone.utc) - timedelta(hours=24)
-        
+
         deleted_count = PrintJob.query.filter(
             PrintJob.status.in_(['completed', 'failed']),
             PrintJob.completed_at < cutoff_time
         ).delete()
-        
+
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
             'message': f'Cleared {deleted_count} old print jobs'
         })
-        
+
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -1728,14 +1730,14 @@ def generate_batch_labels():
     lot_codes = data.get('lot_codes', [])
     template = data.get('template', 'palumbo')
     copies = data.get('copies', 1)
-    
+
     if not lot_codes:
         return jsonify({'error': 'No LOT codes provided'}), 400
-    
+
     # Create combined PDF with multiple labels
     buffer = BytesIO()
     p = canvas.Canvas(buffer, pagesize=A4)
-    
+
     # Calculate layout for multiple labels per page
     labels_per_page = 4  # 2x2 grid
     page_width = 8.5 * inch
@@ -1743,15 +1745,15 @@ def generate_batch_labels():
     label_width = 4.0 * inch
     label_height = 2.0 * inch
     margin = 0.25 * inch
-    
+
     current_page = 0
     labels_on_current_page = 0
-    
+
     for lot_code in lot_codes:
         lot = Lot.query.filter_by(lot_code=lot_code).first()
         if not lot:
             continue
-            
+
         # Generate copies for this LOT
         for copy in range(copies):
             # Check if we need a new page
@@ -1759,29 +1761,29 @@ def generate_batch_labels():
                 p.showPage()
                 current_page += 1
                 labels_on_current_page = 0
-            
+
             # Calculate position for this label
             row = labels_on_current_page // 2
             col = labels_on_current_page % 2
             x = margin + col * (label_width + margin)
             y = page_height - margin - (row + 1) * (label_height + margin)
-            
+
             # Draw label border
             p.setStrokeColor(colors.black)
             p.setLineWidth(1)
             p.rect(x, y, label_width, label_height)
-            
+
             # Add label content based on template
             if template == 'pti':
                 draw_pti_label_content(p, lot, x, y, label_width, label_height)
             else:
                 draw_palumbo_label_content(p, lot, x, y, label_width, label_height)
-            
+
             labels_on_current_page += 1
-    
+
     p.save()
     buffer.seek(0)
-    
+
     return send_file(
         buffer,
         as_attachment=True,
@@ -1798,36 +1800,36 @@ def print_batch_zpl():
     printer_id = data.get('printer_id')
     template = data.get('template', 'palumbo')
     copies = data.get('copies', 1)
-    
+
     if not lot_codes:
         return jsonify({'error': 'No LOT codes provided'}), 400
-    
+
     if not printer_id:
         return jsonify({'error': 'Printer ID required'}), 400
-    
+
     printer = db.session.get(Printer, printer_id)
     if not printer:
         return jsonify({'error': 'Printer not found'}), 404
-    
+
     try:
         success_count = 0
         failed_lots = []
-        
+
         for lot_code in lot_codes:
             lot = Lot.query.filter_by(lot_code=lot_code).first()
             if not lot:
                 failed_lots.append(f"{lot_code}: Lot not found")
                 continue
-            
+
             # Generate ZPL based on template
             if template == 'pti':
                 zpl_code = generate_pti_zpl(lot)
             else:
                 zpl_code = generate_palumbo_zpl(lot)
-            
+
             # Send to printer
             success = send_zpl_to_printer(printer, zpl_code)
-            
+
             if success:
                 success_count += 1
                 # If multiple copies, send additional copies
@@ -1836,7 +1838,7 @@ def print_batch_zpl():
                     success_count += 1
             else:
                 failed_lots.append(f"{lot_code}: Printer communication failed")
-        
+
         return jsonify({
             'success': True,
             'message': f'Batch print completed: {success_count} labels sent to {printer.name}',
@@ -1845,7 +1847,7 @@ def print_batch_zpl():
             'printer': printer.name,
             'ip': printer.ip_address
         })
-        
+
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -1895,7 +1897,7 @@ def update_printer(printer_id):
     """Update an existing printer configuration"""
     printer = Printer.query.get_or_404(printer_id)
     data = request.json
-    
+
     try:
         # Update printer fields
         if 'name' in data:
@@ -1912,7 +1914,7 @@ def update_printer(printer_id):
             printer.label_height = data['label_height']
         if 'dpi' in data:
             printer.dpi = data['dpi']
-        
+
         db.session.commit()
         return jsonify({'success': True, 'message': 'Printer updated successfully'})
     except Exception as e:
@@ -1924,7 +1926,7 @@ def update_printer(printer_id):
 def delete_printer(printer_id):
     """Delete a printer configuration"""
     printer = Printer.query.get_or_404(printer_id)
-    
+
     try:
         db.session.delete(printer)
         db.session.commit()
@@ -1938,20 +1940,20 @@ def delete_printer(printer_id):
 def test_printer(printer_id):
     """Test printer connectivity and send test label"""
     printer = Printer.query.get_or_404(printer_id)
-    
+
     try:
         # Generate test ZPL
         test_zpl = generate_test_zpl(printer)
-        
+
         # Send to printer
         success = send_zpl_to_printer(printer, test_zpl)
-        
+
         if success:
             # Update printer status
             printer.status = 'online'
             printer.last_seen = datetime.now(timezone.utc)
             db.session.commit()
-            
+
             return jsonify({
                 'success': True,
                 'message': f'Test label sent successfully to {printer.name}',
@@ -1960,13 +1962,13 @@ def test_printer(printer_id):
         else:
             printer.status = 'offline'
             db.session.commit()
-            
+
             return jsonify({
                 'success': False,
                 'error': f'Failed to communicate with printer {printer.name}',
                 'printer_status': 'offline'
             }), 500
-            
+
     except Exception as e:
         printer.status = 'offline'
         db.session.commit()
@@ -1979,28 +1981,28 @@ def draw_palumbo_label_content(p, lot, x, y, width, height):
     p.drawString(x + 0.1*inch, y + height - 0.2*inch, config.COMPANY_NAME)
     p.setFont("Helvetica", 7)
     p.drawString(x + 0.1*inch, y + height - 0.35*inch, config.COMPANY_ADDRESS)
-    
+
     # Product info
     p.setFont("Helvetica-Bold", 9)
     product_text = f"{lot.quantity} / {lot.item.name}"
     p.drawString(x + 0.1*inch, y + height - 0.55*inch, product_text)
-    
+
     # GTIN and LOT
     p.setFont("Helvetica", 8)
     p.drawString(x + 0.1*inch, y + height - 0.75*inch, f"{lot.item.gtin[-6:]}")
     p.drawString(x + width - 1.2*inch, y + height - 0.75*inch, f"Lot#: {lot.lot_code[-6:]}")
-    
+
     # Barcode area placeholder
     p.rect(x + 0.1*inch, y + 0.2*inch, width - 0.2*inch, 0.3*inch)
     p.setFont("Helvetica", 6)
     p.drawString(x + 0.1*inch, y + 0.15*inch, f"(01) {lot.item.gtin}")
     p.drawString(x + 0.1*inch, y + 0.05*inch, f"(15) {lot.created_at.strftime('%y%m%d')}")
     p.drawString(x + 0.1*inch, y - 0.05*inch, f"(10) {lot.lot_code}")
-    
+
     # Quantity
     p.setFont("Helvetica-Bold", 8)
     p.drawString(x + 0.1*inch, y + 0.1*inch, f"{lot.quantity}")
-    
+
     # QR code placeholder
     p.rect(x + width - 0.8*inch, y + 0.1*inch, 0.6*inch, 0.6*inch)
     p.setFont("Helvetica", 4)
@@ -2013,20 +2015,20 @@ def draw_pti_label_content(p, lot, x, y, width, height):
     p.drawString(x + 0.1*inch, y + height - 0.2*inch, "PTI FSMA COMPLIANT")
     p.setFont("Helvetica-Bold", 9)
     p.drawString(x + 0.1*inch, y + height - 0.4*inch, config.COMPANY_NAME)
-    
+
     # Product info
     p.setFont("Helvetica-Bold", 10)
     p.drawString(x + 0.1*inch, y + height - 0.6*inch, f"Product: {lot.item.name}")
     p.setFont("Helvetica", 8)
     p.drawString(x + 0.1*inch, y + height - 0.8*inch, f"GTIN: {lot.item.gtin}")
-    
+
     # LOT and date
     p.drawString(x + 0.1*inch, y + height - 1.0*inch, f"LOT: {lot.lot_code}")
     p.drawString(x + 0.1*inch, y + height - 1.2*inch, f"Pack Date: {lot.created_at.strftime('%m/%d/%y')}")
-    
+
     # Quantity
     p.drawString(x + 0.1*inch, y + height - 1.4*inch, f"Quantity: {lot.quantity}")
-    
+
     # Barcode area
     p.rect(x + 0.1*inch, y + 0.1*inch, width - 0.2*inch, 0.25*inch)
     p.setFont("Helvetica", 6)
@@ -2039,15 +2041,15 @@ def generate_palumbo_zpl(lot):
     """Generate Palumbo-style ZPL code matching the working format"""
     # Get current date in YYMMDD format
     current_date = datetime.now(timezone.utc).strftime('%y%m%d')
-    
+
     # Create GS1-128 barcode data with proper format
     # Format: (01)GTIN(15)Date(10)LOT
     gtin = lot.item.gtin
     lot_short = lot.lot_code[-6:] if len(lot.lot_code) > 6 else lot.lot_code
-    
+
     # Create the barcode data string
     barcode_data = f">;01{gtin}15{current_date}10{lot_short}0000"
-    
+
     # Generate ZPL matching the working format
     zpl = f"""^XA^MMT^MNY^PW812^LL710^FWN^^FT30,40^FB750,1,,C^A0,30^FD{config.COMPANY_NAME}^FS
 ^FT30,80^FB750,1,,C^A0,30^FD{config.COMPANY_ADDRESS}^FS
@@ -2058,22 +2060,22 @@ def generate_palumbo_zpl(lot):
 ^FO10,320,2^FB750,1,,C^A0,23^FD(01) {gtin} (15) {current_date} (10) {lot_short} 0000^FS
 ^FT30,390^A0,50^FD{lot.quantity}^FS
 ^XZ"""
-    
+
     return zpl
 
 def generate_pti_zpl(lot):
     """Generate PTI FSMA compliant ZPL code matching the working format"""
     # Get current date in YYMMDD format
     current_date = datetime.now(timezone.utc).strftime('%y%m%d')
-    
+
     # Create GS1-128 barcode data with proper format
     # Format: (01)GTIN(15)Date(10)LOT
     gtin = lot.item.gtin
     lot_short = lot.lot_code[-6:] if len(lot.lot_code) > 6 else lot.lot_code
-    
+
     # Create the barcode data string
     barcode_data = f">;01{gtin}15{current_date}10{lot_short}0000"
-    
+
     # Generate ZPL matching the working format but with PTI FSMA header
     zpl = f"""^XA^MMT^MNY^PW812^LL710^FWN^^FT30,40^FB750,1,,C^A0,30^FDPTI FSMA COMPLIANT^FS
 ^FT30,80^FB750,1,,C^A0,30^FD{config.COMPANY_NAME}^FS
@@ -2085,40 +2087,40 @@ def generate_pti_zpl(lot):
 ^FO10,320,2^FB750,1,,C^A0,23^FD(01) {gtin} (15) {current_date} (10) {lot_short} 0000^FS
 ^FT30,390^A0,50^FD{lot.quantity}^FS
 ^XZ"""
-    
+
     return zpl
 
 def calculate_voice_pick_code(gtin, lot_code, pack_date=None):
     """
     Calculate PTI Voice Pick Code using ANSI CRC-16 algorithm
-    
+
     According to PTI specification:
     1. PlainText = GTIN + Lot + Date (YYMMDD format)
     2. Compute ANSI CRC-16 hash with polynomial X^16 + X^15 + X^2 + 1
     3. Take 4 least significant digits (Hash mod 10000)
-    
+
     Args:
         gtin (str): 14-digit GTIN
         lot_code (str): Lot code (1-20 alphanumeric characters)
         pack_date (datetime, optional): Pack date for date-specific codes
-    
+
     Returns:
         str: 4-digit Voice Pick Code
     """
     # Step 1: Create PlainText (GTIN + Lot + Date)
     plain_text = gtin + lot_code
-    
+
     if pack_date:
         # Format date as YYMMDD with zero padding
         date_str = pack_date.strftime('%y%m%d')
         plain_text += date_str
-    
+
     # Step 2: Compute ANSI CRC-16 hash
     # Using the exact algorithm from PTI specification
     # Polynomial: X^16 + X^15 + X^2 + 1 = 0x8005 (reversed to 0xA001)
     polynomial = 0xA001
     crc = 0x0000
-    
+
     for byte in plain_text.encode('ascii'):
         crc ^= byte
         for _ in range(8):
@@ -2126,40 +2128,40 @@ def calculate_voice_pick_code(gtin, lot_code, pack_date=None):
                 crc = (crc >> 1) ^ polynomial
             else:
                 crc >>= 1
-    
+
     # Step 3: Take 4 least significant digits
     voice_pick_code = f"{crc % 10000:04d}"
-    
+
     return voice_pick_code
 
 def generate_pti_voice_pick_zpl(lot):
     """
     Generate PTI FSMA compliant ZPL code with Voice Pick Code
-    
+
     This follows the PTI specification for enhanced traceability labels
     including the Voice Pick Code for warehouse operations.
     """
     # Get current date in YYMMDD format
     current_date = datetime.now(timezone.utc)
     date_str = current_date.strftime('%y%m%d')
-    
+
     # Calculate Voice Pick Code
     voice_pick_code = calculate_voice_pick_code(
-        lot.item.gtin, 
-        lot.lot_code, 
+        lot.item.gtin,
+        lot.lot_code,
         current_date
     )
-    
+
     # Create GS1-128 barcode data with proper format
     # Format: (01)GTIN(15)Date(10)LOT
     gtin = lot.item.gtin
     lot_short = lot.lot_code[-6:] if len(lot.lot_code) > 6 else lot.lot_code
-    
+
     # Create the barcode data string
     barcode_data = f">;01{gtin}15{date_str}10{lot_short}0000"
-    
+
     # Generate ZPL with Voice Pick Code prominently displayed
-    # Voice Pick Code is displayed with 2 large digits (least significant) 
+    # Voice Pick Code is displayed with 2 large digits (least significant)
     # and 2 small digits (most significant) as per PTI spec
     zpl = f"""^XA^MMT^MNY^PW812^LL710^FWN^^FT30,40^FB750,1,,C^A0,30^FD{config.COMPANY_NAME}^FS
 ^FT30,80^FB750,1,,C^A0,30^FD{config.COMPANY_ADDRESS}^FS
@@ -2176,7 +2178,7 @@ def generate_pti_voice_pick_zpl(lot):
 ^FT700,380^A0,35^FD{voice_pick_code[:2]}^FS
 ^FT750,380^A0,25^FD{voice_pick_code[2:]}^FS
 ^XZ"""
-    
+
     return zpl
 
 def generate_test_zpl(printer):
@@ -2184,7 +2186,7 @@ def generate_test_zpl(printer):
     dpi = printer.dpi
     label_width = int(printer.label_width * dpi)
     label_height = int(printer.label_height * dpi)
-    
+
     zpl = f"""^XA
 ^FO50,50^A0N,50,50^FDTest Label^FS
 ^FO50,120^A0N,30,30^FDPrinter: {printer.name}^FS
@@ -2193,7 +2195,7 @@ def generate_test_zpl(printer):
 ^FO50,240^A0N,30,30^FDDate: {datetime.now().strftime('%m/%d/%Y')}^FS
 ^FO50,280^BY3^BCN,100,Y,N,N^FD123456789012345^FS
 ^XZ"""
-    
+
     return zpl
 
 def send_zpl_to_printer(printer, zpl_code):
@@ -2202,21 +2204,21 @@ def send_zpl_to_printer(printer, zpl_code):
         # Create socket connection
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(10)  # 10 second timeout
-        
+
         # Connect to printer
         sock.connect((printer.ip_address, printer.port))
-        
+
         # Send ZPL code
         sock.send(zpl_code.encode('utf-8'))
-        
+
         # Wait a moment for processing
         time.sleep(0.5)
-        
+
         # Close connection
         sock.close()
-        
+
         return True
-        
+
     except Exception as e:
         print(f"Error sending to printer {printer.name}: {str(e)}")
         return False
@@ -2239,7 +2241,7 @@ def get_item(item_id):
 def update_item(item_id):
     item = Item.query.get_or_404(item_id)
     data = request.get_json()
-    
+
     if 'name' in data:
         item.name = data['name']
     if 'item_code' in data:
@@ -2250,7 +2252,7 @@ def update_item(item_id):
         item.description = data['description']
     if 'category' in data:
         item.category = data['category']
-    
+
     try:
         db.session.commit()
         return jsonify({'success': True, 'message': 'Item updated successfully'})
@@ -2262,12 +2264,12 @@ def update_item(item_id):
 @admin_required
 def delete_item(item_id):
     item = Item.query.get_or_404(item_id)
-    
+
     # Check if item has associated lots
     lots = Lot.query.filter_by(item_id=item_id).all()
     if lots:
         return jsonify({'success': False, 'error': 'Cannot delete item with associated LOT codes'}), 400
-    
+
     try:
         db.session.delete(item)
         db.session.commit()
@@ -2293,7 +2295,7 @@ def get_lot(lot_code):
 def update_lot(lot_code):
     lot = Lot.query.filter_by(lot_code=lot_code).first_or_404()
     data = request.get_json()
-    
+
     if 'item_id' in data:
         lot.item_id = data['item_id']
     if 'quantity' in data:
@@ -2303,7 +2305,7 @@ def update_lot(lot_code):
     lot.expiry_date = auto_expiry_date
     if 'notes' in data:
         lot.notes = data['notes']
-    
+
     try:
         db.session.commit()
         return jsonify({'success': True, 'message': 'LOT code updated successfully'})
@@ -2315,7 +2317,7 @@ def update_lot(lot_code):
 @admin_required
 def delete_lot(lot_code):
     lot = Lot.query.filter_by(lot_code=lot_code).first_or_404()
-    
+
     try:
         db.session.delete(lot)
         db.session.commit()
@@ -2328,39 +2330,39 @@ def generate_palumbo_style_label(lot_code):
     lot = Lot.query.filter_by(lot_code=lot_code).first()
     if not lot:
         return jsonify({'error': 'Lot not found'}), 404
-    
+
     # Create PDF label
     buffer = BytesIO()
     p = canvas.Canvas(buffer, pagesize=A4)
-    
+
     # Label dimensions (Zebra label format)
     label_width = config.LABEL_WIDTH * inch
     label_height = config.LABEL_HEIGHT * inch
-    
+
     # Draw border with rounded corners effect
     p.setStrokeColor(colors.black)
     p.setLineWidth(1)
     p.rect(config.LABEL_MARGIN*inch, config.LABEL_MARGIN*inch, label_width, label_height)
-    
+
     # Company header section (like Palumbo Foods)
     p.setFont("Helvetica-Bold", 12)
     p.drawString(0.2*inch, 1.8*inch, config.COMPANY_NAME)
     p.setFont("Helvetica", 8)
     p.drawString(0.2*inch, 1.65*inch, config.COMPANY_ADDRESS)
-    
+
     # Product description section (like "12 / 8 oz Whole White")
     p.setFont("Helvetica-Bold", 11)
     product_text = f"{lot.quantity} / {lot.item.name}"
     p.drawString(0.2*inch, 1.45*inch, product_text)
-    
+
     # Item code and LOT number section (like "250903" and "Lot#: 107733")
     p.setFont("Helvetica", 10)
     p.drawString(0.2*inch, 1.25*inch, f"{lot.item.gtin[-6:]}")  # Last 6 digits of GTIN
     p.drawString(2.2*inch, 1.25*inch, f"Lot#: {lot.lot_code[-6:]}")  # Last 6 digits of LOT
-    
+
     # Generate GS1-128 barcode data (PTI FSMA compliant)
     barcode_data = f"(01){lot.item.gtin}(15){lot.created_at.strftime('%y%m%d')}(10){lot.lot_code}"
-    
+
     # Create GS1-128 barcode
     try:
         # Generate barcode image
@@ -2369,27 +2371,27 @@ def generate_palumbo_style_label(lot_code):
         barcode_buffer = BytesIO()
         barcode_img.save(barcode_buffer, format='PNG')
         barcode_buffer.seek(0)
-        
+
         # Add barcode to PDF
         # Convert BytesIO to a temporary file path for reportlab
         import tempfile
         with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
             tmp_file.write(barcode_buffer.getvalue())
             tmp_file_path = tmp_file.name
-        
+
         try:
             p.drawImage(tmp_file_path, 0.2*inch, 0.8*inch, width=3.5*inch, height=0.3*inch)
         finally:
             # Clean up temporary file
             import os
             os.unlink(tmp_file_path)
-        
+
         # Barcode data labels below the barcode (like in your photo)
         p.setFont("Helvetica", 7)
         p.drawString(0.2*inch, 0.6*inch, f"(01) {lot.item.gtin}")
         p.drawString(0.2*inch, 0.5*inch, f"(15) {lot.created_at.strftime('%y%m%d')}")
         p.drawString(0.2*inch, 0.4*inch, f"(10) {lot.lot_code}")
-        
+
     except Exception as e:
         # Fallback to text representation if barcode generation fails
         p.setFont("Helvetica", 7)
@@ -2398,40 +2400,40 @@ def generate_palumbo_style_label(lot_code):
         p.drawString(0.2*inch, 0.6*inch, f"(01) {lot.item.gtin}")
         p.drawString(0.2*inch, 0.5*inch, f"(15) {lot.created_at.strftime('%y%m%d')}")
         p.drawString(0.2*inch, 0.4*inch, f"(10) {lot.lot_code}")
-    
+
     # Quantity in bottom left (like "1500" in your photo)
     p.setFont("Helvetica-Bold", 10)
     p.drawString(0.2*inch, 0.2*inch, f"{lot.quantity}")
-    
+
     # Generate QR code with GS1 data
     qr_data = f"GTIN:{lot.item.gtin}\nLOT:{lot.lot_code}\nQTY:{lot.quantity}\nDATE:{lot.created_at.strftime('%Y%m%d')}"
     qr = qrcode.QRCode(version=config.QR_VERSION, box_size=config.QR_BOX_SIZE, border=config.QR_BORDER)
     qr.add_data(qr_data)
     qr.make(fit=True)
-    
+
     # Save QR code temporarily and add to PDF
     qr_img = qr.make_image(fill_color="black", back_color="white")
     qr_buffer = BytesIO()
     qr_img.save(qr_buffer, format='PNG')
     qr_buffer.seek(0)
-    
+
     # Add QR code to PDF (positioned on the right side)
     # Convert BytesIO to a temporary file path for reportlab
     import tempfile
     with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
         tmp_file.write(qr_buffer.getvalue())
         tmp_file_path = tmp_file.name
-    
+
     try:
         p.drawImage(tmp_file_path, 3.2*inch, 0.2*inch, width=0.7*inch, height=0.7*inch)
     finally:
         # Clean up temporary file
         import os
         os.unlink(tmp_file_path)
-    
+
     p.save()
     buffer.seek(0)
-    
+
     return send_file(
         buffer,
         as_attachment=True,
@@ -2444,44 +2446,44 @@ def generate_pti_fsma_label(lot_code):
     lot = Lot.query.filter_by(lot_code=lot_code).first()
     if not lot:
         return jsonify({'error': 'Lot not found'}), 404
-    
+
     # Create PDF label
     buffer = BytesIO()
     p = canvas.Canvas(buffer, pagesize=A4)
-    
+
     # Label dimensions (PTI standard)
     label_width = 4.0 * inch
     label_height = 2.5 * inch
-    
+
     # Draw border
     p.setStrokeColor(colors.black)
     p.setLineWidth(1)
     p.rect(0.5*inch, 0.5*inch, label_width, label_height)
-    
+
     # PTI FSMA Header
     p.setFont("Helvetica-Bold", 16)
     p.drawString(0.7*inch, 2.2*inch, "PTI FSMA COMPLIANT")
     p.setFont("Helvetica-Bold", 12)
     p.drawString(0.7*inch, 2.0*inch, config.COMPANY_NAME)
-    
+
     # Product Information
     p.setFont("Helvetica-Bold", 14)
     p.drawString(0.7*inch, 1.8*inch, f"Product: {lot.item.name}")
     p.setFont("Helvetica", 12)
     p.drawString(0.7*inch, 1.6*inch, f"GTIN: {lot.item.gtin}")
-    
+
     # LOT and Date Information
     p.drawString(0.7*inch, 1.4*inch, f"LOT: {lot.lot_code}")
     p.drawString(0.7*inch, 1.2*inch, f"Pack Date: {lot.created_at.strftime('%m/%d/%y')}")
-    
+
     # Quantity and Expiry
     p.drawString(0.7*inch, 1.0*inch, f"Quantity: {lot.quantity}")
     if lot.expiry_date:
         p.drawString(0.7*inch, 0.8*inch, f"Expiry: {lot.expiry_date.strftime('%m/%d/%y')}")
-    
+
     # GS1-128 Barcode (PTI requirement)
     barcode_data = f"(01){lot.item.gtin}(15){lot.created_at.strftime('%y%m%d')}(10){lot.lot_code}"
-    
+
     try:
         # Generate barcode image
         barcode_class = barcode.get_barcode_class('code128')
@@ -2489,35 +2491,35 @@ def generate_pti_fsma_label(lot_code):
         barcode_buffer = BytesIO()
         barcode_img.save(barcode_buffer, format='PNG')
         barcode_buffer.seek(0)
-        
+
         # Add barcode to PDF
         # Convert BytesIO to a temporary file path for reportlab
         import tempfile
         with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
             tmp_file.write(barcode_buffer.getvalue())
             tmp_file_path = tmp_file.name
-        
+
         try:
             p.drawImage(tmp_file_path, 0.7*inch, 0.4*inch, width=3.0*inch, height=0.3*inch)
         finally:
             # Clean up temporary file
             import os
             os.unlink(tmp_file_path)
-        
+
         # Barcode data labels
         p.setFont("Helvetica", 8)
         p.drawString(0.7*inch, 0.3*inch, f"(01) {lot.item.gtin}")
         p.drawString(0.7*inch, 0.2*inch, f"(15) {lot.created_at.strftime('%y%m%d')}")
         p.drawString(0.7*inch, 0.1*inch, f"(10) {lot.lot_code}")
-        
+
     except Exception as e:
         # Fallback to text representation
         p.setFont("Helvetica", 8)
         p.drawString(0.7*inch, 0.4*inch, "Barcode: " + barcode_data)
-    
+
     p.save()
     buffer.seek(0)
-    
+
     return send_file(
         buffer,
         as_attachment=True,
@@ -2538,7 +2540,7 @@ def get_vendors():
     cached_vendors = get_from_cache('vendors')
     if cached_vendors is not None:
         return jsonify(cached_vendors)
-    
+
     # Query database
     vendors = Vendor.query.all()
     vendors_data = [{
@@ -2550,7 +2552,7 @@ def get_vendors():
         'address': vendor.address,
         'created_at': vendor.created_at.isoformat() if vendor.created_at else None
     } for vendor in vendors]
-    
+
     # Cache the result
     set_cache('vendors', vendors_data)
     return jsonify(vendors_data)
@@ -2568,10 +2570,10 @@ def create_vendor():
     )
     db.session.add(vendor)
     db.session.commit()
-    
+
     # Clear cache when data changes
     clear_cache()
-    
+
     return jsonify({'id': vendor.id, 'message': 'Vendor created successfully'}), 201
 
 @app.route('/api/vendors/<int:vendor_id>', methods=['PUT'])
@@ -2580,14 +2582,14 @@ def update_vendor(vendor_id):
     vendor = db.session.get(Vendor, vendor_id)
     if not vendor:
         return jsonify({'error': 'Vendor not found'}), 404
-    
+
     data = request.get_json()
     vendor.name = data.get('name', vendor.name)
     vendor.contact_person = data.get('contact_person', vendor.contact_person)
     vendor.email = data.get('email', vendor.email)
     vendor.phone = data.get('phone', vendor.phone)
     vendor.address = data.get('address', vendor.address)
-    
+
     db.session.commit()
     return jsonify({'message': 'Vendor updated successfully'})
 
@@ -2597,7 +2599,7 @@ def delete_vendor(vendor_id):
     vendor = db.session.get(Vendor, vendor_id)
     if not vendor:
         return jsonify({'error': 'Vendor not found'}), 404
-    
+
     db.session.delete(vendor)
     db.session.commit()
     return jsonify({'message': 'Vendor deleted successfully'})
@@ -2623,33 +2625,33 @@ def receive_product():
         unit_type = data.get('unit_type', 'cases')
         notes = data.get('notes', '')
         photo = None
-    
+
     # Validate required fields
     if not all([item_code, quantity, vendor_id]):
         return jsonify({'error': 'Missing required fields: item_code, quantity, vendor_id'}), 400
-    
+
     # Validate unit_type
     if unit_type not in ['cases', 'pounds']:
         return jsonify({'error': 'unit_type must be either "cases" or "pounds"'}), 400
-    
+
     # Find the item by item_code
     item = Item.query.filter_by(item_code=item_code).first()
     if not item:
         return jsonify({'error': 'Item not found'}), 404
-    
+
     # Find the vendor
     vendor = db.session.get(Vendor, vendor_id)
     if not vendor:
         return jsonify({'error': 'Vendor not found'}), 404
-    
+
     # Generate lot code
     lot_code = generate_lot_code(item.id)
-    
+
     # Handle photo upload
     photo_path = None
     if photo:
         photo_path = save_receiving_photo(photo, lot_code)
-    
+
     # Create the lot
     lot = Lot(
         lot_code=lot_code,
@@ -2661,10 +2663,10 @@ def receive_product():
         notes=notes,
         photo_path=photo_path
     )
-    
+
     db.session.add(lot)
     db.session.commit()
-    
+
     return jsonify({
         'lot_id': lot.id,
         'lot_code': lot.lot_code,
@@ -2680,45 +2682,45 @@ def receive_product():
 @app.route('/api/receive/batch', methods=['POST'])
 def receive_products_batch():
     data = request.get_json()
-    
+
     # Validate required fields
     if not all(k in data for k in ['items', 'vendor_id']):
         return jsonify({'error': 'Missing required fields: items, vendor_id'}), 400
-    
+
     if not isinstance(data['items'], list) or len(data['items']) == 0:
         return jsonify({'error': 'Items must be a non-empty list'}), 400
-    
+
     # Find the vendor
     vendor = db.session.get(Vendor, data['vendor_id'])
     if not vendor:
         return jsonify({'error': 'Vendor not found'}), 404
-    
+
     receiving_date = datetime.now(timezone.utc).date()
     received_lots = []
     errors = []
-    
+
     try:
         for item_data in data['items']:
             # Validate item data
             if not all(k in item_data for k in ['item_code', 'quantity']):
                 errors.append(f"Missing required fields for item: {item_data.get('item_code', 'unknown')}")
                 continue
-            
+
             # Validate unit_type
             unit_type = item_data.get('unit_type', 'cases')
             if unit_type not in ['cases', 'pounds']:
                 errors.append(f"Invalid unit_type for item {item_data['item_code']}: must be 'cases' or 'pounds'")
                 continue
-            
+
             # Find the item by item_code
             item = Item.query.filter_by(item_code=item_data['item_code']).first()
             if not item:
                 errors.append(f"Item not found: {item_data['item_code']}")
                 continue
-            
+
             # Generate lot code
             lot_code = generate_lot_code(item.id)
-            
+
             # Create the lot
             lot = Lot(
                 lot_code=lot_code,
@@ -2729,7 +2731,7 @@ def receive_products_batch():
                 receiving_date=receiving_date,
                 notes=item_data.get('notes', '')
             )
-            
+
             db.session.add(lot)
             received_lots.append({
                 'lot_id': lot.id,
@@ -2741,12 +2743,12 @@ def receive_products_batch():
                 'expiry_date': lot.expiry_date.isoformat() if lot.expiry_date else None,
                 'notes': lot.notes
             })
-        
+
         if errors:
             return jsonify({'error': 'Some items failed to process', 'details': errors}), 400
-        
+
         db.session.commit()
-        
+
         return jsonify({
             'vendor_name': vendor.name,
             'vendor_id': vendor.id,
@@ -2755,7 +2757,7 @@ def receive_products_batch():
             'lots': received_lots,
             'message': f'Successfully received {len(received_lots)} items from {vendor.name}'
         }), 201
-        
+
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': f'Failed to process receiving: {str(e)}'}), 500
@@ -2765,7 +2767,7 @@ def generate_receipt(lot_code):
     lot = Lot.query.filter_by(lot_code=lot_code).first()
     if not lot:
         return jsonify({'error': 'Lot not found'}), 404
-    
+
     return jsonify({
         'lot_code': lot.lot_code,
         'item_name': lot.item.name,
@@ -2783,26 +2785,26 @@ def generate_vendor_receipt(vendor_id, receiving_date):
     vendor = db.session.get(Vendor, vendor_id)
     if not vendor:
         return jsonify({'error': 'Vendor not found'}), 404
-    
+
     # Parse the receiving date
     try:
         date_obj = datetime.strptime(receiving_date, '%Y-%m-%d').date()
     except ValueError:
         return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
-    
+
     # Get all lots received from this vendor on this date
     lots = Lot.query.filter_by(
         vendor_id=vendor_id,
         receiving_date=date_obj
     ).all()
-    
+
     if not lots:
         return jsonify({'error': 'No items found for this vendor on this date'}), 404
-    
+
     # Calculate totals
     total_items = len(lots)
     total_quantity = sum(lot.quantity for lot in lots)
-    
+
     return jsonify({
         'vendor': {
             'id': vendor.id,
@@ -2831,37 +2833,37 @@ def generate_vendor_receipt_pdf(vendor_id, receiving_date):
     vendor = db.session.get(Vendor, vendor_id)
     if not vendor:
         return jsonify({'error': 'Vendor not found'}), 404
-    
+
     # Parse the receiving date
     try:
         date_obj = datetime.strptime(receiving_date, '%Y-%m-%d').date()
     except ValueError:
         return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
-    
+
     # Get all lots received from this vendor on this date
     lots = Lot.query.filter_by(
         vendor_id=vendor_id,
         receiving_date=date_obj
     ).all()
-    
+
     if not lots:
         return jsonify({'error': 'No items found for this vendor on this date'}), 404
-    
+
     # Create PDF
     buffer = BytesIO()
     p = canvas.Canvas(buffer, pagesize=letter)
     width, height = letter
-    
+
     # Company Header
     p.setFont("Helvetica-Bold", 18)
     p.drawString(50, height - 40, config.COMPANY_NAME)
     p.setFont("Helvetica", 12)
     p.drawString(50, height - 60, config.COMPANY_ADDRESS)
-    
+
     # Receipt Title
     p.setFont("Helvetica-Bold", 16)
     p.drawString(50, height - 90, "RECEIVING RECEIPT")
-    
+
     # Receiving Information (moved to top right)
     p.setFont("Helvetica-Bold", 12)
     p.drawString(400, height - 90, "Receiving Details:")
@@ -2869,7 +2871,7 @@ def generate_vendor_receipt_pdf(vendor_id, receiving_date):
     p.drawString(400, height - 110, f"Date: {receiving_date}")
     p.drawString(400, height - 125, f"Total Items: {len(lots)}")
     p.drawString(400, height - 140, f"Total Quantity: {sum(lot.quantity for lot in lots)}")
-    
+
     # Vendor Information
     p.setFont("Helvetica-Bold", 12)
     p.drawString(50, height - 130, "Vendor Information:")
@@ -2883,7 +2885,7 @@ def generate_vendor_receipt_pdf(vendor_id, receiving_date):
         p.drawString(50, height - 195, f"Email: {vendor.email}")
     if vendor.address:
         p.drawString(50, height - 210, f"Address: {vendor.address}")
-    
+
     # Items Table Header
     y_position = height - 250
     p.setFont("Helvetica-Bold", 10)
@@ -2893,54 +2895,54 @@ def generate_vendor_receipt_pdf(vendor_id, receiving_date):
     p.drawString(420, y_position, "Quantity")
     p.drawString(470, y_position, "Unit")
     p.drawString(510, y_position, "Expiry Date")
-    
+
     # Draw line under header
     p.line(50, y_position - 5, 550, y_position - 5)
-    
+
     # Items
     p.setFont("Helvetica", 9)
     y_position -= 20
-    
+
     for lot in lots:
         if y_position < 200:  # Start new page if needed
             p.showPage()
             y_position = height - 50
-        
+
         p.drawString(50, y_position, lot.item.item_code)
         p.drawString(120, y_position, lot.item.name[:25])  # Truncate long names
         p.drawString(280, y_position, lot.lot_code)
         p.drawString(420, y_position, str(lot.quantity))
         p.drawString(470, y_position, lot.unit_type)
         p.drawString(510, y_position, lot.expiry_date.strftime('%Y-%m-%d'))
-        
+
         y_position -= 15
-    
+
     # Signature Section
     signature_y = max(y_position - 50, 150)  # Ensure enough space for signature
-    
+
     # Draw signature line
     p.setFont("Helvetica", 10)
     p.drawString(50, signature_y, "Received by:")
     p.line(50, signature_y - 5, 250, signature_y - 5)
-    
+
     p.drawString(300, signature_y, "Date:")
     p.line(300, signature_y - 5, 450, signature_y - 5)
-    
+
     # Company signature line
     p.drawString(50, signature_y - 30, "Authorized by:")
     p.line(50, signature_y - 35, 250, signature_y - 35)
-    
+
     p.drawString(300, signature_y - 30, "Date:")
     p.line(300, signature_y - 35, 450, signature_y - 35)
-    
+
     # Footer
     p.setFont("Helvetica", 8)
     p.drawString(50, 50, f"Generated on: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC")
     p.drawString(50, 35, f"Receipt ID: {vendor.id}-{receiving_date.replace('-', '')}-{len(lots)}")
-    
+
     p.save()
     buffer.seek(0)
-    
+
     return send_file(
         buffer,
         as_attachment=True,
@@ -2953,7 +2955,7 @@ def search():
     query = request.args.get('q', '').lower()
     if not query:
         return jsonify([])
-    
+
     # Search in items
     items = Item.query.filter(
         db.or_(
@@ -2963,16 +2965,16 @@ def search():
             Item.description.ilike(f'%{query}%')
         )
     ).all()
-    
+
     # Search in lots
     lots = Lot.query.filter(
         db.or_(
             Lot.lot_code.ilike(f'%{query}%')
         )
     ).all()
-    
+
     results = []
-    
+
     for item in items:
         results.append({
             'type': 'item',
@@ -2982,7 +2984,7 @@ def search():
             'gtin': item.gtin,
             'description': item.description
         })
-    
+
     for lot in lots:
         results.append({
             'type': 'lot',
@@ -2991,7 +2993,7 @@ def search():
             'item_name': lot.item.name,
             'gtin': lot.item.gtin
         })
-    
+
     return jsonify(results)
 
 # =============================================================================
@@ -3033,7 +3035,7 @@ def create_customer():
     """Create a new customer"""
     try:
         data = request.get_json()
-        
+
         customer = Customer(
             name=data['name'],
             email=data.get('email'),
@@ -3057,11 +3059,11 @@ def create_customer():
             payment_terms=data.get('payment_terms'),
             notes=data.get('notes')
         )
-        
+
         db.session.add(customer)
         db.session.commit()
         clear_cache()
-        
+
         return jsonify({'success': True, 'id': customer.id}), 201
     except Exception as e:
         db.session.rollback()
@@ -3075,9 +3077,9 @@ def update_customer(customer_id):
         customer = Customer.query.get(customer_id)
         if not customer:
             return jsonify({'error': 'Customer not found'}), 404
-        
+
         data = request.get_json()
-        
+
         customer.name = data.get('name', customer.name)
         customer.email = data.get('email', customer.email)
         customer.phone = data.get('phone', customer.phone)
@@ -3100,10 +3102,10 @@ def update_customer(customer_id):
         customer.payment_terms = data.get('payment_terms', customer.payment_terms)
         customer.notes = data.get('notes', customer.notes)
         customer.is_active = data.get('is_active', customer.is_active)
-        
+
         db.session.commit()
         clear_cache()
-        
+
         return jsonify({'success': True})
     except Exception as e:
         db.session.rollback()
@@ -3116,19 +3118,19 @@ def get_orders():
     try:
         status = request.args.get('status')
         customer_id = request.args.get('customer_id')
-        
+
         query = Order.query.options(
             db.joinedload(Order.customer),
             db.joinedload(Order.order_items).joinedload(OrderItem.item)
         )
-        
+
         if status:
             query = query.filter(Order.status == status)
         if customer_id:
             query = query.filter(Order.customer_id == customer_id)
-        
+
         orders = query.order_by(Order.created_at.desc()).all()
-        
+
         return jsonify([{
             'id': order.id,
             'order_number': order.order_number,
@@ -3164,13 +3166,13 @@ def create_order():
     """Create a new order"""
     try:
         data = request.get_json()
-        
+
         # Generate order number
         order_number = generate_order_number()
-        
+
         # Calculate totals
         totals = calculate_order_totals(data['order_items'])
-        
+
         # Create order
         order = Order(
             order_number=order_number,
@@ -3182,10 +3184,10 @@ def create_order():
             notes=data.get('notes'),
             created_by=session.get('user_id')
         )
-        
+
         db.session.add(order)
         db.session.flush()  # Get the order ID
-        
+
         # Create order items
         for item_data in data['order_items']:
             order_item = OrderItem(
@@ -3197,17 +3199,17 @@ def create_order():
                 notes=item_data.get('notes')
             )
             db.session.add(order_item)
-        
+
         db.session.commit()
         clear_cache()
-        
+
         # Auto-sync to QuickBooks if enabled and prerequisites met
         try:
             auto_sync_result = auto_sync_order_to_quickbooks(order)
             if auto_sync_result.get('success'):
                 return jsonify({
-                    'success': True, 
-                    'id': order.id, 
+                    'success': True,
+                    'id': order.id,
                     'order_number': order_number,
                     'quickbooks_synced': True,
                     'quickbooks_id': auto_sync_result.get('invoice_id')
@@ -3215,7 +3217,7 @@ def create_order():
         except Exception as e:
             # Log error but don't fail order creation
             print(f"Auto-sync failed for order {order_number}: {str(e)}")
-        
+
         return jsonify({'success': True, 'id': order.id, 'order_number': order_number}), 201
     except Exception as e:
         db.session.rollback()
@@ -3229,27 +3231,27 @@ def fill_order_item():
         data = request.get_json()
         order_item_id = data['order_item_id']
         lot_allocations = data['lot_allocations']  # [{'lot_id': 1, 'quantity': 10}]
-        
+
         order_item = OrderItem.query.get(order_item_id)
         if not order_item:
             return jsonify({'error': 'Order item not found'}), 404
-        
+
         # Validate total quantity
         total_allocated = sum(allocation['quantity'] for allocation in lot_allocations)
         remaining_quantity = float(order_item.quantity_ordered) - float(order_item.quantity_filled)
-        
+
         if total_allocated > remaining_quantity:
             return jsonify({'error': 'Allocated quantity exceeds remaining quantity'}), 400
-        
+
         # Create lot allocations
         for allocation in lot_allocations:
             lot = Lot.query.get(allocation['lot_id'])
             if not lot:
                 return jsonify({'error': f'Lot {allocation["lot_id"]} not found'}), 404
-            
+
             if float(lot.quantity) < allocation['quantity']:
                 return jsonify({'error': f'Insufficient quantity in lot {lot.lot_code}'}), 400
-            
+
             lot_allocation = LotAllocation(
                 order_item_id=order_item_id,
                 lot_id=allocation['lot_id'],
@@ -3257,17 +3259,17 @@ def fill_order_item():
                 allocated_by=session.get('user_id')
             )
             db.session.add(lot_allocation)
-            
+
             # Update lot quantity
             lot.quantity = float(lot.quantity) - allocation['quantity']
-        
+
         # Update order item
         order_item.quantity_filled = float(order_item.quantity_filled) + total_allocated
         if order_item.quantity_filled >= order_item.quantity_ordered:
             order_item.status = 'filled'
         else:
             order_item.status = 'partial'
-        
+
         # Update order status
         order = order_item.order
         all_filled = all(item.status == 'filled' for item in order.order_items)
@@ -3275,10 +3277,10 @@ def fill_order_item():
             order.status = 'filled'
         else:
             order.status = 'in_progress'
-        
+
         db.session.commit()
         clear_cache()
-        
+
         return jsonify({'success': True})
     except Exception as e:
         db.session.rollback()
@@ -3292,18 +3294,18 @@ def get_available_lots_for_order():
         order_item_id = request.args.get('order_item_id')
         if not order_item_id:
             return jsonify({'error': 'order_item_id is required'}), 400
-        
+
         order_item = OrderItem.query.get(order_item_id)
         if not order_item:
             return jsonify({'error': 'Order item not found'}), 404
-        
+
         # Get lots for this item that have available quantity
         lots = Lot.query.filter(
             Lot.item_id == order_item.item_id,
             Lot.quantity > 0,
             Lot.status == 'available'
         ).all()
-        
+
         return jsonify([{
             'id': lot.id,
             'lot_code': lot.lot_code,
@@ -3327,20 +3329,20 @@ def quickbooks_callback():
         code = request.args.get('code')
         state = request.args.get('state')
         realm_id = request.args.get('realmId')  # Company ID
-        
+
         # Debug logging
         print(f"QuickBooks Callback - Code: {code[:10]}..., State: {state}, Realm ID: {realm_id}")
         print(f"Session state: {session.get('qb_oauth_state')}")
-        
+
         # Verify state parameter
         if state != session.get('qb_oauth_state'):
             flash('Invalid state parameter - security check failed', 'error')
             return redirect(url_for('quickbooks_admin'))
-        
+
         if not code:
             flash('Authorization code not provided', 'error')
             return redirect(url_for('quickbooks_admin'))
-        
+
         # Exchange authorization code for access token
         token_url = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer'
         token_data = {
@@ -3348,30 +3350,30 @@ def quickbooks_callback():
             'code': code,
             'redirect_uri': QB_REDIRECT_URI
         }
-        
+
         # Make token request
         response = requests.post(token_url, data=token_data, auth=(QB_CLIENT_ID, QB_CLIENT_SECRET))
-        
+
         if response.status_code != 200:
             flash(f'Failed to exchange code for token: {response.text}', 'error')
             return redirect(url_for('quickbooks_admin'))
-        
+
         token_response = response.json()
-        
+
         # Store tokens in session (in production, store securely)
         session['qb_access_token'] = token_response.get('access_token')
         session['qb_refresh_token'] = token_response.get('refresh_token')
         session['qb_company_id'] = realm_id
         session['qb_token_expires'] = datetime.now(timezone.utc) + timedelta(seconds=token_response.get('expires_in', 3600))
-        
+
         # Update global company ID
         global QB_COMPANY_ID
         QB_COMPANY_ID = realm_id
-        
+
         # Redirect back to QuickBooks admin page with success message
         flash('QuickBooks connected successfully!', 'success')
         return redirect(url_for('quickbooks_admin'))
-        
+
     except Exception as e:
         flash(f'QuickBooks connection failed: {str(e)}', 'error')
         return redirect(url_for('quickbooks_admin'))
@@ -3383,23 +3385,23 @@ def create_qb_sales_invoice(order):
         customer = order.customer
         if not customer.quickbooks_id:
             return {'error': 'Customer not synced to QuickBooks. Please import customers first.'}
-        
+
         # Build sales invoice data
         invoice_data = {
             "Line": []
         }
-        
+
         # Add customer reference
         invoice_data["CustomerRef"] = {
             "value": customer.quickbooks_id
         }
-        
+
         # Add order items as line items
         for order_item in order.order_items:
             item = order_item.item
             if not item.quickbooks_id:
                 return {'error': f'Item "{item.name}" not synced to QuickBooks. Please import items first.'}
-            
+
             line_item = {
                 "DetailType": "SalesItemLineDetail",
                 "Amount": float(order_item.total_price),
@@ -3411,33 +3413,33 @@ def create_qb_sales_invoice(order):
                     "UnitPrice": float(order_item.unit_price)
                 }
             }
-            
+
             if order_item.notes:
                 line_item["Description"] = order_item.notes
-            
+
             invoice_data["Line"].append(line_item)
-        
+
         # Add totals and metadata
         invoice_data["TotalAmt"] = float(order.total_amount)
         invoice_data["TxnDate"] = order.order_date.strftime('%Y-%m-%d')
         invoice_data["DocNumber"] = order.order_number
-        
+
         if order.notes:
             invoice_data["PrivateNote"] = order.notes
-        
+
         # Create sales invoice in QuickBooks
         result = make_qb_api_request('invoice', method='POST', data=invoice_data)
-        
+
         if 'error' in result:
             return result
-        
+
         # Extract invoice ID from response
         invoice_id = result.get('Invoice', {}).get('Id')
         if not invoice_id:
             return {'error': 'Failed to get invoice ID from QuickBooks response'}
-        
+
         return {'success': True, 'invoice_id': invoice_id}
-        
+
     except Exception as e:
         return {'error': f'Failed to create sales invoice: {str(e)}'}
 
@@ -3447,34 +3449,34 @@ def auto_sync_order_to_quickbooks(order):
         # Check if auto-sync is enabled
         if not get_auto_sync_setting('orders'):
             return {'error': 'Auto-sync for orders is disabled'}
-        
+
         # Check if customer is synced to QuickBooks
         if not order.customer.quickbooks_id:
             return {'error': 'Customer not synced to QuickBooks'}
-        
+
         # Check if all items are synced to QuickBooks
         for order_item in order.order_items:
             if not order_item.item.quickbooks_id:
                 return {'error': f'Item "{order_item.item.name}" not synced to QuickBooks'}
-        
+
         # Create sales invoice in QuickBooks
         result = create_qb_sales_invoice(order)
-        
+
         if 'error' in result:
             return result
-        
+
         # Update order with QuickBooks sync info
         order.quickbooks_synced = True
         order.quickbooks_sync_date = datetime.now(timezone.utc)
         order.quickbooks_id = result['invoice_id']
-        
+
         db.session.commit()
-        
+
         # Log sync activity
         log_sync_activity('order', 'success', f'Order {order.order_number} auto-synced to QuickBooks')
-        
+
         return {'success': True, 'invoice_id': result['invoice_id']}
-        
+
     except Exception as e:
         # Log sync error
         log_sync_activity('order', 'error', f'Auto-sync failed for order {order.order_number}: {str(e)}')
@@ -3498,14 +3500,14 @@ def log_sync_activity(sync_type, status, message, details=None, records_processe
             records_successful=records_successful,
             records_failed=records_failed
         )
-        
+
         db.session.add(sync_log)
         db.session.commit()
-        
+
         # Also print to console for debugging
         timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
         print(f"[{timestamp}] QB Sync - {sync_type.upper()}: {status.upper()} - {message}")
-        
+
     except Exception as e:
         print(f"Error logging sync activity: {e}")
         # Fallback to console logging
@@ -3520,33 +3522,33 @@ def sync_order_to_quickbooks(order_id):
         order = Order.query.get(order_id)
         if not order:
             return jsonify({'error': 'Order not found'}), 404
-        
+
         if order.quickbooks_synced:
             return jsonify({'error': 'Order already synced to QuickBooks'}), 400
-        
+
         # Check if order has items
         if not order.order_items:
             return jsonify({'error': 'Order has no items to sync'}), 400
-        
+
         # Check if customer is synced to QuickBooks
         if not order.customer.quickbooks_id:
             return jsonify({'error': 'Customer not synced to QuickBooks. Please import customers first.'}), 400
-        
+
         # Create sales invoice in QuickBooks
         result = create_qb_sales_invoice(order)
-        
+
         if 'error' in result:
             return jsonify({'error': result['error']}), 400
-        
+
         # Update order with QuickBooks sync info
         order.quickbooks_synced = True
         order.quickbooks_sync_date = datetime.now(timezone.utc)
         order.quickbooks_id = result['invoice_id']
-        
+
         db.session.commit()
-        
+
         return jsonify({
-            'success': True, 
+            'success': True,
             'quickbooks_id': order.quickbooks_id,
             'message': f'Order {order.order_number} synced to QuickBooks as Invoice {order.quickbooks_id}'
         })
@@ -3560,10 +3562,10 @@ def import_quickbooks_customers():
     """Import customers from QuickBooks Online"""
     try:
         result = import_qb_customers()
-        
+
         if 'error' in result:
             return jsonify(result), 500
-        
+
         return jsonify({
             'success': True,
             'message': f"Import completed: {result['customers_imported']} new customers, {result['customers_updated']} updated",
@@ -3580,10 +3582,10 @@ def import_quickbooks_items():
     """Import items from QuickBooks Online"""
     try:
         result = import_qb_items()
-        
+
         if 'error' in result:
             return jsonify(result), 500
-        
+
         return jsonify({
             'success': True,
             'message': f"Import completed: {result['items_imported']} new items, {result['items_updated']} updated",
@@ -3613,11 +3615,11 @@ def test_quickbooks_connection():
                     'scope': QB_SCOPE
                 }
             }), 400
-        
+
         # Test with a simple API call using query endpoint
         query = "SELECT * FROM CompanyInfo"
         result = make_qb_api_request(f'query?query={query}&minorversion=75')
-        
+
         if 'error' in result:
             return jsonify({
                 'success': False,
@@ -3625,7 +3627,7 @@ def test_quickbooks_connection():
                 'message': 'QuickBooks API call failed',
                 'action_required': 'reconnect' if 'token' in result['error'].lower() else 'check_credentials'
             }), 400
-        
+
         return jsonify({
             'success': True,
             'message': 'QuickBooks connection successful',
@@ -3653,7 +3655,7 @@ def get_version():
 @app.route('/changelog')
 def changelog():
     """Changelog page showing version history"""
-    return render_template('changelog.html', 
+    return render_template('changelog.html',
                          changelog_data=CHANGELOG_DATA,
                          all_versions=get_all_versions(),
                          changelog_summary=get_changelog_summary())
@@ -3665,8 +3667,8 @@ def version_changelog(version):
     if not version_data:
         flash(f'Version {version} not found', 'error')
         return redirect(url_for('changelog'))
-    
-    return render_template('version_changelog.html', 
+
+    return render_template('version_changelog.html',
                          version=version,
                          version_data=version_data,
                          all_versions=get_all_versions())
@@ -3686,7 +3688,7 @@ def api_version_changelog(version):
     version_data = get_version_changelog(version)
     if not version_data:
         return jsonify({'error': 'Version not found'}), 404
-    
+
     return jsonify({
         'version': version,
         'data': version_data
@@ -3697,7 +3699,7 @@ def admin_version():
     """Admin version management page"""
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
-    
+
     if request.method == 'POST':
         new_version = request.form.get('new_version')
         if new_version:
@@ -3711,8 +3713,8 @@ def admin_version():
             except Exception as e:
                 flash(f'Error updating version: {str(e)}', 'error')
         return redirect(url_for('admin_version'))
-    
-    return render_template('admin_version.html', 
+
+    return render_template('admin_version.html',
                          version_info=VERSION_INFO,
                          changelog_data=CHANGELOG_DATA)
 
@@ -3740,7 +3742,7 @@ def health_check():
     try:
         # Check database connection
         db.session.execute('SELECT 1')
-        
+
         # Check Redis connection (if available)
         try:
             import redis
@@ -3749,7 +3751,7 @@ def health_check():
             redis_status = 'healthy'
         except:
             redis_status = 'unavailable'
-        
+
         return jsonify({
             'status': 'healthy',
             'timestamp': datetime.now(timezone.utc).isoformat(),
@@ -3773,12 +3775,12 @@ def sync_customers():
     """Sync customers with QuickBooks"""
     try:
         result = import_qb_customers()
-        
+
         if 'error' in result:
             return jsonify(result), 500
-        
+
         log_sync_activity('customers', 'success', f'Synced {result["customers_imported"]} new, {result["customers_updated"]} updated customers')
-        
+
         return jsonify({
             'success': True,
             'message': f"Customer sync completed: {result['customers_imported']} new, {result['customers_updated']} updated",
@@ -3795,12 +3797,12 @@ def sync_items():
     """Sync items with QuickBooks"""
     try:
         result = import_qb_items()
-        
+
         if 'error' in result:
             return jsonify(result), 500
-        
+
         log_sync_activity('items', 'success', f'Synced {result["items_imported"]} new, {result["items_updated"]} updated items')
-        
+
         return jsonify({
             'success': True,
             'message': f"Item sync completed: {result['items_imported']} new, {result['items_updated']} updated",
@@ -3818,52 +3820,52 @@ def sync_orders():
     try:
         # Get pending orders (not synced yet)
         pending_orders = Order.query.filter_by(quickbooks_synced=False).all()
-        
+
         synced_count = 0
         errors = []
-        
+
         for order in pending_orders:
             try:
                 # Check if customer and items are synced
                 if not order.customer.quickbooks_id:
                     errors.append(f"Order {order.order_number}: Customer not synced")
                     continue
-                
+
                 unsynced_items = [item for item in order.order_items if not item.item.quickbooks_id]
                 if unsynced_items:
                     item_names = [item.item.name for item in unsynced_items]
                     errors.append(f"Order {order.order_number}: Items not synced: {', '.join(item_names)}")
                     continue
-                
+
                 # Sync the order
                 result = create_qb_sales_invoice(order)
-                
+
                 if 'error' in result:
                     errors.append(f"Order {order.order_number}: {result['error']}")
                     continue
-                
+
                 # Update order
                 order.quickbooks_synced = True
                 order.quickbooks_sync_date = datetime.now(timezone.utc)
                 order.quickbooks_id = result['invoice_id']
-                
+
                 synced_count += 1
-                
+
             except Exception as e:
                 errors.append(f"Order {order.order_number}: {str(e)}")
-        
+
         db.session.commit()
-        
+
         if synced_count > 0:
             log_sync_activity('orders', 'success', f'Synced {synced_count} orders to QuickBooks')
-        
+
         return jsonify({
             'success': True,
             'orders_synced': synced_count,
             'errors': errors,
             'message': f'Synced {synced_count} orders successfully'
         })
-        
+
     except Exception as e:
         log_sync_activity('orders', 'error', f'Order sync failed: {str(e)}')
         return jsonify({'error': str(e)}), 500
@@ -3884,7 +3886,7 @@ def get_sync_status_data():
             print(f"Error counting customers: {e}")
             total_customers = 0
             synced_customers = 0
-        
+
         try:
             total_items = Item.query.count()
             synced_items = Item.query.filter(Item.quickbooks_id.isnot(None)).count()
@@ -3892,20 +3894,20 @@ def get_sync_status_data():
             print(f"Error counting items: {e}")
             total_items = 0
             synced_items = 0
-        
+
         try:
             pending_orders = Order.query.filter_by(quickbooks_synced=False).count()
         except Exception as e:
             print(f"Error counting pending orders: {e}")
             pending_orders = 0
-        
+
         try:
             # Count custom pricing entries (placeholder for now)
             custom_pricing_count = 0  # This would count actual custom pricing records
         except Exception as e:
             print(f"Error counting custom pricing: {e}")
             custom_pricing_count = 0
-        
+
         # Get real sync times from database
         try:
             # Get overall sync status
@@ -3914,7 +3916,7 @@ def get_sync_status_data():
                 last_sync_time = overall_sync.last_sync_time.strftime('%Y-%m-%d %H:%M:%S')
             else:
                 last_sync_time = "Never"
-            
+
             if overall_sync and overall_sync.next_sync_time:
                 next_sync_time = overall_sync.next_sync_time.strftime('%Y-%m-%d %H:%M:%S')
             else:
@@ -3923,10 +3925,10 @@ def get_sync_status_data():
             print(f"Error getting sync times: {e}")
             last_sync_time = "Never"
             next_sync_time = "In 1 hour"
-        
+
         # Debug logging
         print(f"DEBUG: Sync Status - Customers: {synced_customers}/{total_customers}, Items: {synced_items}/{total_items}, Pending Orders: {pending_orders}")
-        
+
         return {
             'success': True,
             'customer_status': f'{synced_customers}/{total_customers} synced',
@@ -3936,7 +3938,7 @@ def get_sync_status_data():
             'last_sync_time': last_sync_time,
             'next_sync_time': next_sync_time
         }
-        
+
     except Exception as e:
         print(f"Error in get_sync_status_data: {e}")
         return {'error': str(e)}
@@ -3948,12 +3950,12 @@ def get_sync_status():
     try:
         # Use cached version for better performance
         result = get_sync_status_cached()
-        
+
         if 'error' in result:
             return jsonify(result), 500
-        
+
         return jsonify(result)
-        
+
     except Exception as e:
         print(f"Error in get_sync_status: {e}")
         return jsonify({'error': str(e)}), 500
@@ -3965,7 +3967,7 @@ def get_synced_items():
     try:
         # Get items that have QuickBooks ID (indicating they were synced from QB)
         items = Item.query.filter(Item.quickbooks_id.isnot(None)).order_by(Item.created_at.desc()).all()
-        
+
         items_data = []
         for item in items:
             items_data.append({
@@ -3978,7 +3980,7 @@ def get_synced_items():
                 'created_at': item.created_at.isoformat(),
                 'lot_count': len(item.lots)
             })
-        
+
         # If no synced items exist, create some sample data
         if not items_data:
             items_data = [
@@ -4013,13 +4015,13 @@ def get_synced_items():
                     'lot_count': 1
                 }
             ]
-        
+
         return jsonify({
             'success': True,
             'items': items_data,
             'total_count': len(items_data)
         })
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -4033,12 +4035,12 @@ def get_sync_statistics():
         synced_items = Item.query.filter(Item.quickbooks_id.isnot(None)).count()
         total_customers = Customer.query.count()
         synced_customers = Customer.query.filter(Customer.quickbooks_id.isnot(None)).count()
-        
+
         # Get recent sync activity (last 7 days)
         from datetime import datetime, timedelta
         week_ago = datetime.now() - timedelta(days=7)
         recent_logs = SyncLog.query.filter(SyncLog.timestamp >= week_ago).all()
-        
+
         # Calculate sync statistics
         sync_stats = {
             'items': {
@@ -4057,21 +4059,21 @@ def get_sync_statistics():
                 'failed_syncs': len([log for log in recent_logs if log.status == 'error'])
             }
         }
-        
+
         # Get last sync times
         last_item_sync = SyncLog.query.filter_by(sync_type='items', status='success').order_by(SyncLog.timestamp.desc()).first()
         last_customer_sync = SyncLog.query.filter_by(sync_type='customers', status='success').order_by(SyncLog.timestamp.desc()).first()
-        
+
         sync_stats['last_sync'] = {
             'items': last_item_sync.timestamp.isoformat() if last_item_sync else None,
             'customers': last_customer_sync.timestamp.isoformat() if last_customer_sync else None
         }
-        
+
         return jsonify({
             'success': True,
             'statistics': sync_stats
         })
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -4082,7 +4084,7 @@ def get_sync_log():
     try:
         # Get recent sync logs from database
         logs = SyncLog.query.order_by(SyncLog.timestamp.desc()).limit(50).all()
-        
+
         log_data = []
         for log in logs:
             log_data.append({
@@ -4095,7 +4097,7 @@ def get_sync_log():
                 'records_successful': log.records_successful,
                 'records_failed': log.records_failed
             })
-        
+
         # If no logs exist, create some sample data
         if not log_data:
             log_data = [
@@ -4120,12 +4122,12 @@ def get_sync_log():
                     'records_failed': 0
                 }
             ]
-        
+
         return jsonify({
             'success': True,
             'logs': log_data
         })
-        
+
     except Exception as e:
         print(f"Error in get_sync_log: {e}")
         return jsonify({'error': str(e)}), 500
@@ -4138,7 +4140,7 @@ def connect_to_quickbooks():
         import secrets
         state = secrets.token_urlsafe(32)
         session['qb_oauth_state'] = state
-        
+
         auth_url = (
             f"https://appcenter.intuit.com/connect/oauth2?"
             f"client_id={QB_CLIENT_ID}&"
@@ -4147,12 +4149,12 @@ def connect_to_quickbooks():
             f"response_type=code&"
             f"state={state}"
         )
-        
+
         return jsonify({
             'success': True,
             'auth_url': auth_url
         })
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -4167,12 +4169,12 @@ def disconnect_quickbooks():
         session.pop('qb_company_id', None)
         session.pop('qb_token_expires', None)
         session.pop('qb_oauth_state', None)
-        
+
         return jsonify({
             'success': True,
             'message': 'Disconnected from QuickBooks successfully'
         })
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -4180,7 +4182,7 @@ if __name__ == '__main__':
     # Initialize database
     with app.app_context():
         db.create_all()
-    
+
     # Start QuickBooks auto-sync scheduler
     try:
         from qb_scheduler import start_qb_scheduler
@@ -4188,7 +4190,7 @@ if __name__ == '__main__':
         print("ProduceFlow auto-sync scheduler started")
     except Exception as e:
         print(f"Failed to start QB scheduler: {e}")
-    
+
     # Production vs Development configuration
     import os
     if os.environ.get('FLASK_ENV') == 'production':
@@ -4208,44 +4210,44 @@ def get_system_status():
     try:
         import subprocess
         import os
-        
+
         # Get current version
         current_version = "unknown"
         version_file = os.path.join(os.getcwd(), 'version.txt')
         if os.path.exists(version_file):
             with open(version_file, 'r') as f:
                 current_version = f.read().strip()
-        
+
         # Get latest version from git
         latest_version = "unknown"
         try:
-            result = subprocess.run(['git', 'describe', '--tags', '--always', 'origin/main'], 
+            result = subprocess.run(['git', 'describe', '--tags', '--always', 'origin/main'],
                                   capture_output=True, text=True, cwd=os.getcwd())
             if result.returncode == 0:
                 latest_version = result.stdout.strip()
         except:
             pass
-        
+
         # Check service status
         service_status = "unknown"
         try:
-            result = subprocess.run(['systemctl', 'is-active', 'label-printer'], 
+            result = subprocess.run(['systemctl', 'is-active', 'label-printer'],
                                   capture_output=True, text=True)
             if result.returncode == 0:
                 service_status = result.stdout.strip()
         except:
             pass
-        
+
         # Get last update time
         last_update = "unknown"
         if os.path.exists(version_file):
             import time
-            last_update = time.strftime('%Y-%m-%d %H:%M:%S', 
+            last_update = time.strftime('%Y-%m-%d %H:%M:%S',
                                       time.localtime(os.path.getmtime(version_file)))
-        
+
         # Check if updates are available
         updates_available = current_version != latest_version and latest_version != "unknown"
-        
+
         return jsonify({
             'success': True,
             'current_version': current_version,
@@ -4254,7 +4256,7 @@ def get_system_status():
             'last_update': last_update,
             'updates_available': updates_available
         })
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -4265,23 +4267,23 @@ def check_for_updates():
     try:
         import subprocess
         import os
-        
+
         # Fetch latest changes
-        result = subprocess.run(['git', 'fetch', 'origin'], 
+        result = subprocess.run(['git', 'fetch', 'origin'],
                               capture_output=True, text=True, cwd=os.getcwd())
-        
+
         if result.returncode != 0:
             return jsonify({'error': 'Failed to fetch updates'}), 500
-        
+
         # Check if there are updates
-        current_commit = subprocess.run(['git', 'rev-parse', 'HEAD'], 
+        current_commit = subprocess.run(['git', 'rev-parse', 'HEAD'],
                                       capture_output=True, text=True, cwd=os.getcwd())
-        latest_commit = subprocess.run(['git', 'rev-parse', 'origin/main'], 
+        latest_commit = subprocess.run(['git', 'rev-parse', 'origin/main'],
                                      capture_output=True, text=True, cwd=os.getcwd())
-        
+
         if current_commit.returncode == 0 and latest_commit.returncode == 0:
             updates_available = current_commit.stdout.strip() != latest_commit.stdout.strip()
-            
+
             return jsonify({
                 'success': True,
                 'updates_available': updates_available,
@@ -4290,7 +4292,7 @@ def check_for_updates():
             })
         else:
             return jsonify({'error': 'Failed to check for updates'}), 500
-            
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -4301,19 +4303,19 @@ def update_system():
     try:
         import subprocess
         import os
-        
+
         # Run the update script
         update_script = os.path.join(os.getcwd(), 'update_system.sh')
         if not os.path.exists(update_script):
             return jsonify({'error': 'Update script not found'}), 500
-        
+
         # Make sure script is executable
         os.chmod(update_script, 0o755)
-        
+
         # Run update
-        result = subprocess.run(['sudo', '-u', 'labelprinter', update_script, 'update'], 
+        result = subprocess.run(['sudo', '-u', 'labelprinter', update_script, 'update'],
                               capture_output=True, text=True, cwd=os.getcwd())
-        
+
         if result.returncode == 0:
             return jsonify({
                 'success': True,
@@ -4325,7 +4327,7 @@ def update_system():
                 'error': 'Update failed',
                 'output': result.stderr
             }), 500
-            
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -4336,19 +4338,19 @@ def rollback_system():
     try:
         import subprocess
         import os
-        
+
         # Run the update script
         update_script = os.path.join(os.getcwd(), 'update_system.sh')
         if not os.path.exists(update_script):
             return jsonify({'error': 'Update script not found'}), 500
-        
+
         # Make sure script is executable
         os.chmod(update_script, 0o755)
-        
+
         # Run rollback
-        result = subprocess.run(['sudo', '-u', 'labelprinter', update_script, 'rollback'], 
+        result = subprocess.run(['sudo', '-u', 'labelprinter', update_script, 'rollback'],
                               capture_output=True, text=True, cwd=os.getcwd())
-        
+
         if result.returncode == 0:
             return jsonify({
                 'success': True,
@@ -4360,7 +4362,7 @@ def rollback_system():
                 'error': 'Rollback failed',
                 'output': result.stderr
             }), 500
-            
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -4370,19 +4372,19 @@ def get_update_log():
     """Get the update log"""
     try:
         import os
-        
+
         log_file = '/opt/label-printer/logs/update.log'
         if os.path.exists(log_file):
             with open(log_file, 'r') as f:
                 log_content = f.read()
         else:
             log_content = "No update log available"
-        
+
         return jsonify({
             'success': True,
             'log_content': log_content
         })
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -4393,13 +4395,13 @@ def get_backups():
     try:
         import os
         import glob
-        
+
         backup_dir = '/opt/backups/label-printer'
         backups = []
-        
+
         if os.path.exists(backup_dir):
             backup_folders = glob.glob(os.path.join(backup_dir, 'pre_update_*'))
-            
+
             for folder in sorted(backup_folders, reverse=True):
                 folder_name = os.path.basename(folder)
                 backup_info = {
@@ -4409,7 +4411,7 @@ def get_backups():
                     'type': 'Pre-update backup',
                     'size': 'Unknown'
                 }
-                
+
                 # Try to get version from backup info
                 info_file = os.path.join(folder, 'backup_info.txt')
                 if os.path.exists(info_file):
@@ -4418,7 +4420,7 @@ def get_backups():
                         for line in content.split('\n'):
                             if 'Current version:' in line:
                                 backup_info['version'] = line.split('Current version:')[1].strip()
-                
+
                 # Get folder size
                 try:
                     size = sum(os.path.getsize(os.path.join(dirpath, filename))
@@ -4427,14 +4429,14 @@ def get_backups():
                     backup_info['size'] = f"{size / 1024 / 1024:.1f} MB"
                 except:
                     pass
-                
+
                 backups.append(backup_info)
-        
+
         return jsonify({
             'success': True,
             'backups': backups
         })
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -4446,20 +4448,20 @@ def download_backup(backup_id):
         import os
         import tarfile
         from flask import send_file
-        
+
         backup_dir = '/opt/backups/label-printer'
         backup_path = os.path.join(backup_dir, backup_id)
-        
+
         if not os.path.exists(backup_path):
             return jsonify({'error': 'Backup not found'}), 404
-        
+
         # Create tar file
         tar_path = f"/tmp/{backup_id}.tar.gz"
         with tarfile.open(tar_path, "w:gz") as tar:
             tar.add(backup_path, arcname=backup_id)
-        
+
         return send_file(tar_path, as_attachment=True, download_name=f"{backup_id}.tar.gz")
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

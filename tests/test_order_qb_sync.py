@@ -17,7 +17,7 @@ def test_order_creation():
     print("🧪 Testing Order Creation and QuickBooks Sync")
     print("=" * 50)
     print()
-    
+
     # Test order data
     order_data = {
         "customer_id": 1,  # Assuming customer ID 1 exists
@@ -32,14 +32,14 @@ def test_order_creation():
             }
         ]
     }
-    
+
     print("📋 Test Order Data:")
     print(json.dumps(order_data, indent=2))
     print()
-    
+
     # API endpoint for creating orders
     create_order_url = "http://localhost:5001/api/orders"
-    
+
     print("🔗 Order Creation API:")
     print(f"   POST {create_order_url}")
     print(f"   Data: {json.dumps(order_data)}")
@@ -50,11 +50,11 @@ def test_quickbooks_sync():
     print("🔄 Testing QuickBooks Sync")
     print("=" * 30)
     print()
-    
+
     # Test sync endpoint
     order_id = 1  # Assuming order ID 1 exists
     sync_url = f"http://localhost:5001/api/orders/{order_id}/sync-quickbooks"
-    
+
     print("🔗 QuickBooks Sync API:")
     print(f"   POST {sync_url}")
     print("   Headers: Content-Type: application/json")
@@ -65,7 +65,7 @@ def show_quickbooks_invoice_structure():
     print("📄 QuickBooks Invoice Data Structure:")
     print("=" * 40)
     print()
-    
+
     invoice_data = {
         "CustomerRef": {
             "value": "1"  # Customer QuickBooks ID
@@ -89,7 +89,7 @@ def show_quickbooks_invoice_structure():
         "DocNumber": "ORD-001",
         "PrivateNote": "Test order for QuickBooks sync"
     }
-    
+
     print("📋 Invoice Data Structure:")
     print(json.dumps(invoice_data, indent=2))
     print()
@@ -99,7 +99,7 @@ def show_testing_steps():
     print("🧪 Testing Steps:")
     print("=" * 20)
     print()
-    
+
     steps = [
         "1. Ensure QuickBooks connection is working",
         "2. Import customers and items from QuickBooks",
@@ -108,11 +108,11 @@ def show_testing_steps():
         "5. Sync the order to QuickBooks",
         "6. Check QuickBooks for the created invoice"
     ]
-    
+
     for step in steps:
         print(f"   {step}")
     print()
-    
+
     print("🔧 Prerequisites:")
     print("   ✅ QuickBooks OAuth connection established")
     print("   ✅ Customers imported from QuickBooks")
@@ -125,7 +125,7 @@ def show_curl_commands():
     print("🔧 CURL Commands for Testing:")
     print("=" * 35)
     print()
-    
+
     print("📋 Create Order:")
     print("curl -X POST http://localhost:5001/api/orders \\")
     print("  -H 'Content-Type: application/json' \\")
@@ -142,7 +142,7 @@ def show_curl_commands():
     print('    ]')
     print("  }'")
     print()
-    
+
     print("🔄 Sync Order to QuickBooks:")
     print("curl -X POST http://localhost:5001/api/orders/1/sync-quickbooks \\")
     print("  -H 'Content-Type: application/json'")
@@ -153,7 +153,7 @@ def show_expected_responses():
     print("📄 Expected API Responses:")
     print("=" * 30)
     print()
-    
+
     print("✅ Successful Order Creation:")
     order_response = {
         "success": True,
@@ -163,7 +163,7 @@ def show_expected_responses():
     }
     print(json.dumps(order_response, indent=2))
     print()
-    
+
     print("✅ Successful QuickBooks Sync:")
     sync_response = {
         "success": True,
@@ -172,7 +172,7 @@ def show_expected_responses():
     }
     print(json.dumps(sync_response, indent=2))
     print()
-    
+
     print("❌ Error Responses:")
     error_responses = [
         {
@@ -188,7 +188,7 @@ def show_expected_responses():
             "status": 400
         }
     ]
-    
+
     for error in error_responses:
         print(f"   {json.dumps(error)}")
     print()
@@ -198,14 +198,14 @@ def show_troubleshooting():
     print("🐛 Troubleshooting:")
     print("=" * 20)
     print()
-    
+
     issues = [
         {
             "issue": "Customer not synced to QuickBooks",
             "solution": "Import customers from QuickBooks first"
         },
         {
-            "issue": "Item not synced to QuickBooks", 
+            "issue": "Item not synced to QuickBooks",
             "solution": "Import items from QuickBooks first"
         },
         {
@@ -217,7 +217,7 @@ def show_troubleshooting():
             "solution": "Check OAuth connection and API credentials"
         }
     ]
-    
+
     for issue in issues:
         print(f"📋 {issue['issue']}:")
         print(f"   Solution: {issue['solution']}")
@@ -232,7 +232,7 @@ def main():
     show_curl_commands()
     show_expected_responses()
     show_troubleshooting()
-    
+
     print("🎯 Ready to Test!")
     print("1. Start the app: source venv/bin/activate && python app.py")
     print("2. Import customers and items from QuickBooks")

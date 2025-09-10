@@ -6,14 +6,13 @@ Registers all API version blueprints with the Flask application.
 
 from flask import Flask
 from api.v1 import (
-    items_bp, lots_bp, orders_bp, customers_bp, 
+    items_bp, lots_bp, orders_bp, customers_bp,
     printers_bp, users_bp, quickbooks_bp
 )
 
-
 def register_api_blueprints(app: Flask):
     """Register all API blueprints with the Flask application"""
-    
+
     # Register v1 API blueprints
     app.register_blueprint(items_bp)
     app.register_blueprint(lots_bp)
@@ -22,7 +21,7 @@ def register_api_blueprints(app: Flask):
     app.register_blueprint(printers_bp)
     app.register_blueprint(users_bp)
     app.register_blueprint(quickbooks_bp)
-    
+
     # Add API health check endpoint
     @app.route('/api/health', methods=['GET'])
     def api_health():
@@ -32,7 +31,7 @@ def register_api_blueprints(app: Flask):
             'version': '1.0.0',
             'timestamp': '2025-01-10T10:00:00Z'
         }
-    
+
     # Add API version info endpoint
     @app.route('/api/version', methods=['GET'])
     def api_version():

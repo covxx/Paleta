@@ -14,7 +14,7 @@ from .quickbooks import quickbooks_bp
 
 __all__ = [
     'items_bp',
-    'lots_bp', 
+    'lots_bp',
     'orders_bp',
     'customers_bp',
     'printers_bp',

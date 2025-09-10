@@ -12,7 +12,7 @@ def test_zpl_functionality():
     """Test the ZPL printing functionality"""
     print("🧪 Testing ZPL Printing Functionality")
     print("=" * 50)
-    
+
     # Test 1: Get available printers
     print("\n1. Getting available printers...")
     try:
@@ -23,7 +23,7 @@ def test_zpl_functionality():
             print(f"   - {printer['name']} ({printer['ip_address']}:{printer['port']})")
     except Exception as e:
         print(f"   Error: {e}")
-    
+
     # Test 2: Get available LOTs
     print("\n2. Getting available LOTs...")
     try:
@@ -39,7 +39,7 @@ def test_zpl_functionality():
     except Exception as e:
         print(f"   Error: {e}")
         return
-    
+
     # Test 3: Generate Palumbo style ZPL
     print("\n3. Generating Palumbo style ZPL...")
     try:
@@ -53,7 +53,7 @@ def test_zpl_functionality():
             print("   ❌ ZPL generation failed")
     except Exception as e:
         print(f"   Error: {e}")
-    
+
     # Test 4: Generate PTI FSMA ZPL
     print("\n4. Generating PTI FSMA ZPL...")
     try:
@@ -67,7 +67,7 @@ def test_zpl_functionality():
             print("   ❌ PTI ZPL generation failed")
     except Exception as e:
         print(f"   Error: {e}")
-    
+
     # Test 5: Test printer connectivity (will fail without real printer)
     print("\n5. Testing printer connectivity...")
     if printers:
@@ -82,7 +82,7 @@ def test_zpl_functionality():
                 print("   (This is expected without a real printer)")
         except Exception as e:
             print(f"   Error: {e}")
-    
+
     # Test 6: Test direct printing (will fail without real printer)
     print("\n6. Testing direct printing...")
     try:
@@ -98,7 +98,7 @@ def test_zpl_functionality():
             print("   (This is expected without a real printer)")
     except Exception as e:
         print(f"   Error: {e}")
-    
+
     # Test 7: Test batch printing (will fail without real printer)
     print("\n7. Testing batch printing...")
     try:
@@ -120,7 +120,7 @@ def test_zpl_functionality():
             print(f"   ❌ Batch printing failed: {batch_data.get('error', 'Unknown error')}")
     except Exception as e:
         print(f"   Error: {e}")
-    
+
     print("\n" + "=" * 50)
     print("✅ ZPL printing functionality test completed!")
     print("\nNote: Printer communication tests will fail without real network printers.")

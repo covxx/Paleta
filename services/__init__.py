@@ -14,7 +14,7 @@ from .user_service import UserService
 
 __all__ = [
     'InventoryService',
-    'OrderService', 
+    'OrderService',
     'QuickBooksService',
     'PrinterService',
     'CustomerService',

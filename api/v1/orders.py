@@ -11,7 +11,6 @@ from utils.api_utils import APIResponse, handle_api_error, validate_request_data
 
 orders_bp = Blueprint('orders_v1', __name__, url_prefix='/api/v1/orders')
 
-
 def admin_required(f):
     """Decorator to require admin authentication"""
     @wraps(f)
@@ -22,7 +21,6 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-
 @orders_bp.route('', methods=['GET'])
 @log_api_request
 def get_orders():
@@ -32,7 +30,6 @@ def get_orders():
         return APIResponse.success(orders, "Orders retrieved successfully")
     except Exception as e:
         return APIResponse.error(f"Failed to retrieve orders: {str(e)}", status_code=500)
-
 
 @orders_bp.route('/<int:order_id>', methods=['GET'])
 @log_api_request
@@ -45,7 +42,6 @@ def get_order(order_id):
         return APIResponse.success(order, "Order retrieved successfully")
     except Exception as e:
         return APIResponse.error(f"Failed to retrieve order: {str(e)}", status_code=500)
-
 
 @orders_bp.route('', methods=['POST'])
 @admin_required
@@ -61,7 +57,6 @@ def create_order():
     except Exception as e:
         return APIResponse.error(f"Failed to create order: {str(e)}", status_code=500)
 
-
 @orders_bp.route('/<int:order_id>', methods=['PUT'])
 @admin_required
 @log_api_request
@@ -76,7 +71,6 @@ def update_order(order_id):
     except Exception as e:
         return APIResponse.error(f"Failed to update order: {str(e)}", status_code=500)
 
-
 @orders_bp.route('/<int:order_id>', methods=['DELETE'])
 @admin_required
 @log_api_request
@@ -89,7 +83,6 @@ def delete_order(order_id):
         return APIResponse.error(str(e), 'VALIDATION_ERROR', 400)
     except Exception as e:
         return APIResponse.error(f"Failed to delete order: {str(e)}", status_code=500)
-
 
 @orders_bp.route('/<int:order_id>/status', methods=['PUT'])
 @admin_required
@@ -105,7 +98,6 @@ def update_order_status(order_id):
     except Exception as e:
         return APIResponse.error(f"Failed to update order status: {str(e)}", status_code=500)
 
-
 @orders_bp.route('/status/<status>', methods=['GET'])
 @log_api_request
 def get_orders_by_status(status):
@@ -115,7 +107,6 @@ def get_orders_by_status(status):
         return APIResponse.success(orders, f"Orders with status '{status}' retrieved successfully")
     except Exception as e:
         return APIResponse.error(f"Failed to retrieve orders: {str(e)}", status_code=500)
-
 
 @orders_bp.route('/customer/<int:customer_id>', methods=['GET'])
 @log_api_request
@@ -127,7 +118,6 @@ def get_orders_by_customer(customer_id):
     except Exception as e:
         return APIResponse.error(f"Failed to retrieve customer orders: {str(e)}", status_code=500)
 
-
 @orders_bp.route('/statistics', methods=['GET'])
 @log_api_request
 def get_order_statistics():
@@ -138,7 +128,6 @@ def get_order_statistics():
     except Exception as e:
         return APIResponse.error(f"Failed to retrieve order statistics: {str(e)}", status_code=500)
 
-
 @orders_bp.route('/search', methods=['GET'])
 @log_api_request
 def search_orders():
@@ -147,7 +136,7 @@ def search_orders():
         search_term = request.args.get('q', '')
         if not search_term:
             return APIResponse.error("Search term is required", 'VALIDATION_ERROR', 400)
-        
+
         orders = OrderService.search_orders(search_term)
         return APIResponse.success(orders, f"Search results for '{search_term}' retrieved successfully")
     except Exception as e:

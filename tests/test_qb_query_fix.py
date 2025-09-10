@@ -18,7 +18,7 @@ def test_query_url_structure():
     """Test the corrected query URL structure"""
     print("🔗 Testing Corrected QuickBooks Query URL Structure...")
     print()
-    
+
     # Test different query endpoints
     queries = [
         {
@@ -37,7 +37,7 @@ def test_query_url_structure():
             'expected_url': f"{QB_BASE_URL}/v3/company/{QB_COMPANY_ID}/query?query=SELECT%20*%20FROM%20Customer&minorversion=75"
         }
     ]
-    
+
     for query_test in queries:
         print(f"📋 {query_test['name']}:")
         print(f"   Query: {query_test['query']}")
@@ -48,14 +48,14 @@ def test_url_encoding():
     """Test URL encoding for query parameters"""
     print("🔤 Testing URL Encoding...")
     print()
-    
+
     test_queries = [
         "SELECT * FROM CompanyInfo",
         "SELECT * FROM Item WHERE Type = 'Inventory'",
         "SELECT * FROM Customer WHERE Active = true",
         "SELECT Id, Name, Type FROM Item"
     ]
-    
+
     for query in test_queries:
         encoded = quote(query)
         print(f"📋 Original: {query}")
@@ -66,7 +66,7 @@ def test_api_call_structure():
     """Test the structure of API calls"""
     print("📡 Testing API Call Structure...")
     print()
-    
+
     # Simulate the make_qb_api_request function calls
     api_calls = [
         {
@@ -88,7 +88,7 @@ def test_api_call_structure():
             'description': 'Test QuickBooks connection and get company info'
         }
     ]
-    
+
     for call in api_calls:
         print(f"📋 {call['function']}:")
         print(f"   Endpoint: {call['endpoint']}")
@@ -100,7 +100,7 @@ def test_expected_response_format():
     """Test expected response format"""
     print("📄 Expected Response Format...")
     print()
-    
+
     response_examples = [
         {
             'name': 'Company Info Response',
@@ -143,7 +143,7 @@ def test_expected_response_format():
             }
         }
     ]
-    
+
     for example in response_examples:
         print(f"📋 {example['name']}:")
         print(f"   {json.dumps(example['response'], indent=6)}")
@@ -154,17 +154,17 @@ def main():
     print("🧪 QuickBooks Query Endpoint Fix Test")
     print("=" * 50)
     print()
-    
+
     print("📋 Configuration:")
     print(f"Company ID: {QB_COMPANY_ID}")
     print(f"Base URL: {QB_BASE_URL}")
     print()
-    
+
     test_query_url_structure()
     test_url_encoding()
     test_api_call_structure()
     test_expected_response_format()
-    
+
     print("🎯 Key Changes Made:")
     print("1. ✅ Changed from POST with body to GET with query parameters")
     print("2. ✅ Added minorversion=75 parameter")

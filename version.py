@@ -1,8 +1,10 @@
-# Version management for ProduceFlow Application
+import json
 import os
 import subprocess
-import json
+
 from datetime import datetime
+
+# Version management for ProduceFlow Application
 
 # Manual version - update this when you make significant changes
 MANUAL_VERSION = "0.5.0"
@@ -18,26 +20,26 @@ def get_git_version():
             ['git', 'rev-parse', '--short', 'HEAD'],
             stderr=subprocess.DEVNULL
         ).decode('utf-8').strip()
-        
+
         # Get current branch
         branch = subprocess.check_output(
             ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
             stderr=subprocess.DEVNULL
         ).decode('utf-8').strip()
-        
+
         # Get last commit date
         commit_date = subprocess.check_output(
             ['git', 'log', '-1', '--format=%ci'],
             stderr=subprocess.DEVNULL
         ).decode('utf-8').strip()
-        
+
         # Check if there are uncommitted changes
         status = subprocess.check_output(
             ['git', 'status', '--porcelain'],
             stderr=subprocess.DEVNULL
         ).decode('utf-8').strip()
         has_uncommitted = len(status) > 0
-        
+
         return {
             'commit_hash': commit_hash,
             'branch': branch,
@@ -62,7 +64,7 @@ def get_version_info():
         'manual_version': MANUAL_VERSION,
         'timestamp': datetime.now().isoformat()
     }
-    
+
     # Try to get git information
     git_info = get_git_version()
     if git_info:
@@ -73,18 +75,18 @@ def get_version_info():
     else:
         version_info['display_version'] = MANUAL_VERSION
         version_info['source'] = 'manual'
-    
+
     # Add build date and display version with build time
     build_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     build_date_display = datetime.now().strftime("%b %d, %Y %I:%M %p")
     version_info['build_date'] = build_date
-    
+
     # Create display version with build time
     if 'display_version' in version_info:
         version_info['display_version_with_build'] = f"v{version_info['display_version']} - {build_date_display}"
     else:
         version_info['display_version_with_build'] = f"v{MANUAL_VERSION} - {build_date_display}"
-    
+
     return version_info
 
 def save_version_info():
@@ -106,7 +108,7 @@ def load_version_info():
                 return json.load(f)
     except Exception as e:
         print(f"Error loading version info: {e}")
-    
+
     # Fallback to generating new version info
     return save_version_info()
 
@@ -114,12 +116,12 @@ def update_manual_version(new_version):
     """Update the manual version number"""
     global MANUAL_VERSION
     MANUAL_VERSION = new_version
-    
+
     # Update the version.py file
     try:
         with open(__file__, 'r') as f:
             content = f.read()
-        
+
         # Replace the MANUAL_VERSION line
         import re
         new_content = re.sub(
@@ -127,10 +129,10 @@ def update_manual_version(new_version):
             f'MANUAL_VERSION = "{new_version}"',
             content
         )
-        
+
         with open(__file__, 'w') as f:
             f.write(new_content)
-        
+
         # Save updated version info
         return save_version_info()
     except Exception as e:

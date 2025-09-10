@@ -19,7 +19,7 @@ def test_customer_query_structure():
     print("🔍 QuickBooks Customer Response Structure Analysis")
     print("=" * 60)
     print()
-    
+
     # Test different customer queries
     queries = [
         {
@@ -38,7 +38,7 @@ def test_customer_query_structure():
             'description': 'Get customer with address information'
         }
     ]
-    
+
     for query_test in queries:
         print(f"📋 {query_test['name']}:")
         print(f"   Query: {query_test['query']}")
@@ -51,7 +51,7 @@ def show_expected_customer_response():
     print("📄 Expected Customer Response Structure:")
     print("=" * 50)
     print()
-    
+
     expected_response = {
         "QueryResponse": {
             "Customer": [
@@ -91,7 +91,7 @@ def show_expected_customer_response():
             "startPosition": 1
         }
     }
-    
+
     print("📋 Full Customer Response:")
     print(json.dumps(expected_response, indent=2))
     print()
@@ -101,7 +101,7 @@ def show_field_mapping():
     print("🔗 Current Field Mapping:")
     print("=" * 30)
     print()
-    
+
     mappings = [
         ("QB Field", "Local Field", "Example Value"),
         ("Name", "name", "John Doe"),
@@ -119,7 +119,7 @@ def show_field_mapping():
         ("ShipAddr.CountrySubDivisionCode", "ship_to_state", "CA"),
         ("ShipAddr.PostalCode", "ship_to_zip", "12345")
     ]
-    
+
     for mapping in mappings:
         if mapping[0] == "QB Field":
             print(f"{'QB Field':<25} {'Local Field':<20} {'Example Value'}")
@@ -132,7 +132,7 @@ def show_alternative_field_mappings():
     print("\n🔄 Alternative Field Mappings:")
     print("=" * 35)
     print()
-    
+
     alternatives = [
         {
             'field': 'Name',
@@ -150,7 +150,7 @@ def show_alternative_field_mappings():
             'description': 'Phone field alternatives'
         }
     ]
-    
+
     for alt in alternatives:
         print(f"📋 {alt['field']}:")
         print(f"   Description: {alt['description']}")
@@ -162,7 +162,7 @@ def show_debugging_steps():
     print("🐛 Debugging Steps:")
     print("=" * 20)
     print()
-    
+
     steps = [
         "1. Check the actual QuickBooks API response",
         "2. Verify field names in the response",
@@ -170,11 +170,11 @@ def show_debugging_steps():
         "4. Compare expected vs actual response structure",
         "5. Update field mapping if needed"
     ]
-    
+
     for step in steps:
         print(f"   {step}")
     print()
-    
+
     print("🔧 Debug Commands:")
     print("   # Test customer query directly")
     print("   curl -X GET 'https://sandbox-quickbooks.api.intuit.com/v3/company/9341455300640805/query?query=SELECT%20*%20FROM%20Customer&minorversion=75' \\")
@@ -189,7 +189,7 @@ def main():
     show_field_mapping()
     show_alternative_field_mappings()
     show_debugging_steps()
-    
+
     print("🎯 Next Steps:")
     print("1. Check the actual API response structure")
     print("2. Verify if 'Name' field exists in the response")

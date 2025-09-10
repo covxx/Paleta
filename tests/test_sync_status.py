@@ -17,22 +17,22 @@ def test_sync_status_api():
     print("🧪 Testing QuickBooks Sync Status API")
     print("=" * 40)
     print()
-    
+
     base_url = "http://localhost:5002"
-    
+
     # Test sync status endpoint
     print("📊 Testing Sync Status Endpoint:")
     print(f"URL: {base_url}/api/quickbooks/sync/status")
     print("Method: GET")
     print()
-    
+
     try:
         response = requests.get(f"{base_url}/api/quickbooks/sync/status")
-        
+
         print(f"Status Code: {response.status_code}")
         print(f"Response: {json.dumps(response.json(), indent=2)}")
         print()
-        
+
         if response.status_code == 200:
             data = response.json()
             if data.get('success'):
@@ -44,7 +44,7 @@ def test_sync_status_api():
                 print("❌ Sync Status API Error:", data.get('error'))
         else:
             print("❌ HTTP Error:", response.status_code)
-            
+
     except Exception as e:
         print(f"❌ Error: {str(e)}")
     print()
@@ -54,21 +54,21 @@ def test_sync_log_api():
     print("📝 Testing Sync Log API")
     print("=" * 25)
     print()
-    
+
     base_url = "http://localhost:5002"
-    
+
     print("📊 Testing Sync Log Endpoint:")
     print(f"URL: {base_url}/api/quickbooks/sync/log")
     print("Method: GET")
     print()
-    
+
     try:
         response = requests.get(f"{base_url}/api/quickbooks/sync/log")
-        
+
         print(f"Status Code: {response.status_code}")
         print(f"Response: {json.dumps(response.json(), indent=2)}")
         print()
-        
+
         if response.status_code == 200:
             data = response.json()
             if data.get('success'):
@@ -80,7 +80,7 @@ def test_sync_log_api():
                 print("❌ Sync Log API Error:", data.get('error'))
         else:
             print("❌ HTTP Error:", response.status_code)
-            
+
     except Exception as e:
         print(f"❌ Error: {str(e)}")
     print()
@@ -90,22 +90,22 @@ def test_sync_operations():
     print("🔄 Testing Sync Operations")
     print("=" * 25)
     print()
-    
+
     base_url = "http://localhost:5002"
-    
+
     # Test customer sync
     print("👥 Testing Customer Sync:")
     print(f"URL: {base_url}/api/quickbooks/sync/customers")
     print("Method: POST")
     print()
-    
+
     try:
         response = requests.post(f"{base_url}/api/quickbooks/sync/customers")
-        
+
         print(f"Status Code: {response.status_code}")
         print(f"Response: {json.dumps(response.json(), indent=2)}")
         print()
-        
+
         if response.status_code == 200:
             data = response.json()
             if data.get('success'):
@@ -114,15 +114,15 @@ def test_sync_operations():
                 print("❌ Customer Sync Failed:", data.get('error'))
         else:
             print("❌ HTTP Error:", response.status_code)
-            
+
     except Exception as e:
         print(f"❌ Error: {str(e)}")
     print()
-    
+
     # Wait a moment then check status
     print("⏳ Waiting 2 seconds then checking status...")
     time.sleep(2)
-    
+
     try:
         response = requests.get(f"{base_url}/api/quickbooks/sync/status")
         if response.status_code == 200:
@@ -141,7 +141,7 @@ def show_troubleshooting_tips():
     print("🔧 Troubleshooting Sync Status Issues")
     print("=" * 40)
     print()
-    
+
     tips = [
         "1. Check if the Flask app is running on localhost:5000",
         "2. Verify QuickBooks connection is established",
@@ -151,11 +151,11 @@ def show_troubleshooting_tips():
         "6. Verify database has customers/items to sync",
         "7. Test API endpoints directly with curl/Postman"
     ]
-    
+
     for tip in tips:
         print(f"   {tip}")
     print()
-    
+
     print("🧪 Manual Testing Commands:")
     print("   curl http://localhost:5000/api/quickbooks/sync/status")
     print("   curl -X POST http://localhost:5000/api/quickbooks/sync/customers")
@@ -167,12 +167,12 @@ def main():
     print("🧪 QuickBooks Sync Status Test Tool")
     print("=" * 40)
     print()
-    
+
     test_sync_status_api()
     test_sync_log_api()
     test_sync_operations()
     show_troubleshooting_tips()
-    
+
     print("🎯 Next Steps:")
     print("1. Start the Flask app: python app.py")
     print("2. Go to QB Admin: http://localhost:5000/quickbooks-admin")

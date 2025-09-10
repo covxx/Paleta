@@ -11,7 +11,6 @@ from utils.api_utils import APIResponse, handle_api_error, validate_request_data
 
 lots_bp = Blueprint('lots_v1', __name__, url_prefix='/api/v1/lots')
 
-
 def admin_required(f):
     """Decorator to require admin authentication"""
     @wraps(f)
@@ -22,7 +21,6 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-
 @lots_bp.route('', methods=['GET'])
 @log_api_request
 def get_lots():
@@ -32,7 +30,6 @@ def get_lots():
         return APIResponse.success(lots, "LOTs retrieved successfully")
     except Exception as e:
         return APIResponse.error(f"Failed to retrieve lots: {str(e)}", status_code=500)
-
 
 @lots_bp.route('/<int:lot_id>', methods=['GET'])
 @log_api_request
@@ -45,7 +42,6 @@ def get_lot(lot_id):
         return APIResponse.success(lot, "LOT retrieved successfully")
     except Exception as e:
         return APIResponse.error(f"Failed to retrieve lot: {str(e)}", status_code=500)
-
 
 @lots_bp.route('', methods=['POST'])
 @admin_required
@@ -61,7 +57,6 @@ def create_lot():
     except Exception as e:
         return APIResponse.error(f"Failed to create lot: {str(e)}", status_code=500)
 
-
 @lots_bp.route('/<int:lot_id>', methods=['PUT'])
 @admin_required
 @log_api_request
@@ -76,7 +71,6 @@ def update_lot(lot_id):
     except Exception as e:
         return APIResponse.error(f"Failed to update lot: {str(e)}", status_code=500)
 
-
 @lots_bp.route('/<int:lot_id>', methods=['DELETE'])
 @admin_required
 @log_api_request
@@ -89,7 +83,6 @@ def delete_lot(lot_id):
         return APIResponse.error(str(e), 'VALIDATION_ERROR', 400)
     except Exception as e:
         return APIResponse.error(f"Failed to delete lot: {str(e)}", status_code=500)
-
 
 @lots_bp.route('/expiring', methods=['GET'])
 @log_api_request

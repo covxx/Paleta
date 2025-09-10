@@ -11,6 +11,6 @@ from .security_middleware import SecurityMiddleware
 
 __all__ = [
     'ErrorHandler',
-    'RequestLogger', 
+    'RequestLogger',
     'SecurityMiddleware'
 ]

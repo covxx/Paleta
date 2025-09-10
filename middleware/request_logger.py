@@ -9,20 +9,19 @@ from utils.logging_utils import log_api_request, log_system_event
 import time
 import json
 
-
 class RequestLogger:
     """Request logging middleware for the application"""
-    
+
     @staticmethod
     def register_request_logging(app: Flask):
         """Register request logging middleware with the Flask application"""
-        
+
         @app.before_request
         def log_request_start():
             """Log request start"""
             g.start_time = time.time()
             g.request_id = str(int(time.time() * 1000))  # Simple request ID
-            
+
             # Log request details
             log_system_event("Request started", "info",
                            request_id=g.request_id,
@@ -30,13 +29,13 @@ class RequestLogger:
                            path=request.path,
                            remote_addr=request.remote_addr,
                            user_agent=request.headers.get('User-Agent', 'Unknown'))
-        
+
         @app.after_request
         def log_request_end(response):
             """Log request completion"""
             if hasattr(g, 'start_time'):
                 duration = time.time() - g.start_time
-                
+
                 # Log request completion
                 log_system_event("Request completed", "info",
                                request_id=getattr(g, 'request_id', 'unknown'),
@@ -45,7 +44,7 @@ class RequestLogger:
                                status_code=response.status_code,
                                duration=duration,
                                response_size=len(response.get_data()))
-                
+
                 # Log slow requests
                 if duration > 5.0:  # 5 seconds
                     log_system_event("Slow request detected", "warning",
@@ -53,9 +52,9 @@ class RequestLogger:
                                    method=request.method,
                                    path=request.path,
                                    duration=duration)
-            
+
             return response
-        
+
         @app.before_request
         def log_api_requests():
             """Log API requests with detailed information"""
@@ -69,7 +68,7 @@ class RequestLogger:
                         request_data = "Invalid JSON"
                 elif request.form:
                     request_data = dict(request.form)
-                
+
                 log_system_event("API request", "info",
                                method=request.method,
                                path=request.path,
@@ -77,7 +76,7 @@ class RequestLogger:
                                request_data=request_data,
                                content_type=request.content_type,
                                remote_addr=request.remote_addr)
-        
+
         @app.after_request
         def log_api_responses(response):
             """Log API responses with detailed information"""
@@ -89,16 +88,16 @@ class RequestLogger:
                         response_data = response.get_json()
                     except Exception:
                         response_data = "Invalid JSON"
-                
+
                 log_system_event("API response", "info",
                                method=request.method,
                                path=request.path,
                                status_code=response.status_code,
                                response_data=response_data,
                                content_type=response.content_type)
-            
+
             return response
-        
+
         @app.before_request
         def log_admin_requests():
             """Log admin requests for security monitoring"""
@@ -109,7 +108,7 @@ class RequestLogger:
                                remote_addr=request.remote_addr,
                                user_agent=request.headers.get('User-Agent', 'Unknown'),
                                referrer=request.headers.get('Referer', 'Direct'))
-        
+
         @app.before_request
         def log_authentication_attempts():
             """Log authentication attempts"""
@@ -119,7 +118,7 @@ class RequestLogger:
                                path=request.path,
                                remote_addr=request.remote_addr,
                                user_agent=request.headers.get('User-Agent', 'Unknown'))
-        
+
         @app.before_request
         def log_file_uploads():
             """Log file upload attempts"""
@@ -133,19 +132,19 @@ class RequestLogger:
                         'size': len(file.read()) if file else 0
                     })
                     file.seek(0)  # Reset file pointer
-                
+
                 log_system_event("File upload attempt", "info",
                                method=request.method,
                                path=request.path,
                                files=files_info,
                                remote_addr=request.remote_addr)
-        
+
         @app.before_request
         def log_database_operations():
             """Log database operations (placeholder for future implementation)"""
             # This would be implemented with SQLAlchemy event listeners
             pass
-        
+
         @app.before_request
         def log_external_api_calls():
             """Log external API calls (placeholder for future implementation)"""

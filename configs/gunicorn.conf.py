@@ -1,8 +1,8 @@
+import multiprocessing
+import os
 # Gunicorn Configuration for ProduceFlow
 # Production-ready configuration for VPS deployment
 
-import multiprocessing
-import os
 
 # Server socket
 bind = "127.0.0.1:5002"
@@ -301,11 +301,11 @@ def validate_config():
         "/opt/label-printer/uploads",
         "/opt/label-printer/sessions"
     ]
-    
+
     for dir_path in required_dirs:
         if not os.path.exists(dir_path):
             os.makedirs(dir_path, exist_ok=True)
-    
+
     return True
 
 # Initialize configuration
