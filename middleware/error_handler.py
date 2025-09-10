@@ -4,17 +4,17 @@ Error Handler Middleware
 Provides centralized error handling for the Flask application.
 """
 
-from flask import Flask, request, jsonify, render_template
-from utils.logging_utils import log_error, log_system_event
-from utils.api_utils import APIResponse
 import traceback
 
 class ErrorHandler:
     """Centralized error handling for the application"""
 
     @staticmethod
-    def register_error_handlers(app: Flask):
+    def register_error_handlers(app):
         """Register error handlers with the Flask application"""
+        from flask import request, jsonify, render_template
+        from utils.logging_utils import log_error, log_system_event
+        from utils.api_utils import APIResponse
 
         @app.errorhandler(400)
         def bad_request(error):

@@ -6,8 +6,6 @@ Handles all item-related API endpoints with proper versioning and error handling
 
 from flask import Blueprint, request, jsonify
 from functools import wraps
-from services.inventory_service import InventoryService
-from utils.api_utils import APIResponse, handle_api_error, validate_request_data, log_api_request
 
 items_bp = Blueprint('items_v1', __name__, url_prefix='/api/v1/items')
 
@@ -22,13 +20,16 @@ def admin_required(f):
     return decorated_function
 
 @items_bp.route('', methods=['GET'])
-@log_api_request
 def get_items():
     """Get all items"""
     try:
+        from services.inventory_service import InventoryService
+        from utils.api_utils import APIResponse
+        
         items = InventoryService.get_all_items()
         return APIResponse.success(items, "Items retrieved successfully")
     except Exception as e:
+        from utils.api_utils import APIResponse
         return APIResponse.error(f"Failed to retrieve items: {str(e)}", status_code=500)
 
 @items_bp.route('/<int:item_id>', methods=['GET'])

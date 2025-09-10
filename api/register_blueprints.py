@@ -4,15 +4,15 @@ API Blueprint Registration
 Registers all API version blueprints with the Flask application.
 """
 
-from flask import Flask
-from api.v1 import (
-    items_bp, lots_bp, orders_bp, customers_bp,
-    printers_bp, users_bp, quickbooks_bp
-)
+# Import will be done inside the function to avoid circular imports
 
-def register_api_blueprints(app: Flask):
+def register_api_blueprints(app):
     """Register all API blueprints with the Flask application"""
-
+    from api.v1 import (
+        items_bp, lots_bp, orders_bp, customers_bp, 
+        printers_bp, users_bp, quickbooks_bp
+    )
+    
     # Register v1 API blueprints
     app.register_blueprint(items_bp)
     app.register_blueprint(lots_bp)

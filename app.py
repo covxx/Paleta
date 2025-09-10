@@ -1,16 +1,27 @@
-import barcode
 import os
-import os
-import qrcode
 import sys
+import time
+import json
 import uuid
-
-from barcode.writer import ImageWriter
+import socket
+import struct
+import threading
+from functools import lru_cache
 from datetime import datetime, timedelta, timezone
+from io import BytesIO
+
+# Add configs to path before importing config
+sys.path.append(os.path.join(os.path.dirname(__file__), 'configs'))
+import config
+
+# Third-party imports
+import barcode
+import qrcode
+from barcode.writer import ImageWriter
 from flask import Flask, render_template, request, jsonify, send_file, session, redirect, url_for, flash
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
-from io import BytesIO
+from PIL import Image
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.lib.units import inch
@@ -18,23 +29,23 @@ from reportlab.pdfgen import canvas
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
-sys.path.append(os.path.join(os.path.dirname(__file__), 'configs'))
-import config
+# Import API blueprints (with error handling)
+try:
+    from api.register_blueprints import register_api_blueprints
+    API_BLUEPRINTS_AVAILABLE = True
+except ImportError as e:
+    print(f"Warning: API blueprints not available: {e}")
+    API_BLUEPRINTS_AVAILABLE = False
 
-# Import API blueprints
-from api.register_blueprints import register_api_blueprints
-
-# Import middleware
-from middleware.error_handler import ErrorHandler
-from middleware.request_logger import RequestLogger
-from middleware.security_middleware import SecurityMiddleware
-import socket
-import time
-import struct
-from functools import lru_cache
-from PIL import Image
-import json
-import threading
+# Import middleware (with error handling)
+try:
+    from middleware.error_handler import ErrorHandler
+    from middleware.request_logger import RequestLogger
+    from middleware.security_middleware import SecurityMiddleware
+    MIDDLEWARE_AVAILABLE = True
+except ImportError as e:
+    print(f"Warning: Middleware not available: {e}")
+    MIDDLEWARE_AVAILABLE = False
 import secrets
 from decimal import Decimal
 import requests
@@ -56,14 +67,34 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'max_overflow': 0
 }
 
-# Register API blueprints
-register_api_blueprints(app)
+# Register API blueprints (if available)
+if API_BLUEPRINTS_AVAILABLE:
+    try:
+        register_api_blueprints(app)
+        print("API blueprints registered successfully")
+    except Exception as e:
+        print(f"Warning: Failed to register API blueprints: {e}")
 
-# Register middleware
-ErrorHandler.register_error_handlers(app)
-RequestLogger.register_request_logging(app)
-security_middleware = SecurityMiddleware()
-security_middleware.register_security_middleware(app)
+# Register middleware (if available)
+if MIDDLEWARE_AVAILABLE:
+    try:
+        ErrorHandler.register_error_handlers(app)
+        RequestLogger.register_request_logging(app)
+        security_middleware = SecurityMiddleware()
+        security_middleware.register_security_middleware(app)
+        print("Middleware registered successfully")
+    except Exception as e:
+        print(f"Warning: Failed to register middleware: {e}")
+
+# Basic error handlers (fallback if middleware not available)
+if not MIDDLEWARE_AVAILABLE:
+    @app.errorhandler(404)
+    def not_found(error):
+        return jsonify({'error': 'Not found'}), 404
+    
+    @app.errorhandler(500)
+    def internal_error(error):
+        return jsonify({'error': 'Internal server error'}), 500
 
 # Request logging middleware
 @app.before_request

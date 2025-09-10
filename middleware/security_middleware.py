@@ -4,8 +4,6 @@ Security Middleware
 Provides security features and monitoring for the Flask application.
 """
 
-from flask import Flask, request, session, g
-from utils.logging_utils import log_security_event, log_system_event
 import time
 import hashlib
 from datetime import datetime, timedelta
@@ -18,8 +16,10 @@ class SecurityMiddleware:
         self.rate_limit_requests = {}  # Track rate limiting
         self.suspicious_ips = set()  # Track suspicious IPs
 
-    def register_security_middleware(self, app: Flask):
+    def register_security_middleware(self, app):
         """Register security middleware with the Flask application"""
+        from flask import request, session, g
+        from utils.logging_utils import log_security_event, log_system_event
 
         @app.before_request
         def check_rate_limiting():

@@ -4,8 +4,6 @@ Request Logger Middleware
 Provides comprehensive request logging for the Flask application.
 """
 
-from flask import Flask, request, g
-from utils.logging_utils import log_api_request, log_system_event
 import time
 import json
 
@@ -13,8 +11,10 @@ class RequestLogger:
     """Request logging middleware for the application"""
 
     @staticmethod
-    def register_request_logging(app: Flask):
+    def register_request_logging(app):
         """Register request logging middleware with the Flask application"""
+        from flask import request, g
+        from utils.logging_utils import log_api_request, log_system_event
 
         @app.before_request
         def log_request_start():
