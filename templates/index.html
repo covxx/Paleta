@@ -8,7 +8,7 @@
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h1><i class="fas fa-tachometer-alt"></i> Dashboard</h1>
             <div class="version-info">
-                <small class="text-white-50">v0.5.0 (7b3b4e3) - Sep 09, 2025 05:14 PM</small>
+                <small class="text-white-50" id="versionDisplay">v0.5.0</small>
             </div>
         </div>
         <div class="d-flex justify-content-between align-items-center">
@@ -234,7 +234,23 @@
         }, 1000);
     }
 
+    // Update version display
+    function updateVersionDisplay() {
+        const versionElement = document.getElementById('versionDisplay');
+        if (versionElement) {
+            // Try to get version info from the page context
+            {% if version_info and version_info.display_version_with_build %}
+                versionElement.textContent = '{{ version_info.display_version_with_build }}';
+            {% else %}
+                versionElement.textContent = 'v0.5.0';
+            {% endif %}
+        }
+    }
+
     // Initialize dashboard on page load
-    document.addEventListener('DOMContentLoaded', loadDashboardData);
+    document.addEventListener('DOMContentLoaded', function() {
+        updateVersionDisplay();
+        loadDashboardData();
+    });
 </script>
 {% endblock %}

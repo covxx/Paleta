@@ -74,6 +74,17 @@ def get_version_info():
         version_info['display_version'] = MANUAL_VERSION
         version_info['source'] = 'manual'
     
+    # Add build date and display version with build time
+    build_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    build_date_display = datetime.now().strftime("%b %d, %Y %I:%M %p")
+    version_info['build_date'] = build_date
+    
+    # Create display version with build time
+    if 'display_version' in version_info:
+        version_info['display_version_with_build'] = f"v{version_info['display_version']} - {build_date_display}"
+    else:
+        version_info['display_version_with_build'] = f"v{MANUAL_VERSION} - {build_date_display}"
+    
     return version_info
 
 def save_version_info():
