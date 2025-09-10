@@ -530,7 +530,8 @@ function saveUser() {
     const formData = new FormData(form);
     
     const userData = {
-        name: formData.get('name'),
+        first_name: formData.get('first_name'),
+        last_name: formData.get('last_name'),
         email: formData.get('email')
     };
     
@@ -539,8 +540,8 @@ function saveUser() {
     if (password && password.trim() !== '') {
         userData.password = password;
         
-        // Validate password confirmation for new users
-        if (!currentUserId) {
+        // Validate password confirmation only for existing users (when editing)
+        if (currentUserId) {
             const confirmPassword = formData.get('confirm_password');
             if (password !== confirmPassword) {
                 showNotification('Passwords do not match', 'error');
