@@ -18,6 +18,9 @@ import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), 'configs'))
 import config
+
+# Import API blueprints
+from api.register_blueprints import register_api_blueprints
 import socket
 import time
 import struct
@@ -45,6 +48,9 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_timeout': 20,
     'max_overflow': 0
 }
+
+# Register API blueprints
+register_api_blueprints(app)
 
 # Request logging middleware
 @app.before_request
