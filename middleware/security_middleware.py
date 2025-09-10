@@ -80,6 +80,10 @@ class SecurityMiddleware:
         def check_admin_access():
             """Check admin access and log admin activities"""
             if request.path.startswith('/admin/'):
+                # Allow access to login page without authentication
+                if request.path == '/admin/login':
+                    return None
+                
                 # Check if user is logged in as admin
                 if not session.get('admin_logged_in'):
                     log_security_event("Unauthorized admin access attempt", "medium",
