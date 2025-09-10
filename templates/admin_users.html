@@ -6,7 +6,7 @@
 <div class="page-header">
     <div class="container">
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h1><i class="fas fa-user-check"></i> User Management</h1>
+            <h1><i class="fas fa-users"></i> User Management</h1>
             <div class="version-info">
                 <small class="text-white-50">{{ version_info.display_version_with_build if version_info else 'v0.5.0' }}</small>
             </div>
@@ -29,7 +29,7 @@
                     <i class="fas fa-print"></i> Printers
                 </a>
                 <a href="/admin/users" class="header-nav-link active">
-                    <i class="fas fa-user-check"></i> Users
+                    <i class="fas fa-users"></i> Users
                 </a>
                 <a href="/admin/analytics" class="header-nav-link">
                     <i class="fas fa-chart-bar"></i> Analytics
@@ -59,18 +59,102 @@
 </div>
 
 <div class="container">
-    <div class="row">
-        <div class="col-12">
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title" id="totalUsers">-</h4>
+                            <p class="card-text">Total Admin Users</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-users fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title" id="activeUsers">-</h4>
+                            <p class="card-text">Active Sessions</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-user-check fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title" id="newUsersMonth">-</h4>
+                            <p class="card-text">New This Month</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-user-plus fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title" id="recentLogins">-</h4>
+                            <p class="card-text">Recent Logins</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-sign-in-alt fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs" id="userTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="active-tab" data-bs-toggle="tab" data-bs-target="#active" type="button" role="tab">
+                <i class="fas fa-user-check"></i> Active Sessions
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="admin-tab" data-bs-toggle="tab" data-bs-target="#admin" type="button" role="tab">
+                <i class="fas fa-user-shield"></i> Admin Users
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="userTabsContent">
+        <!-- Active Sessions Tab -->
+        <div class="tab-pane fade show active" id="active" role="tabpanel">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5><i class="fas fa-user-check"></i> Active Users</h5>
-                    <button class="btn btn-secondary">
-                        <i class="fas fa-sync"></i> Refresh
-                    </button>
+                    <h5><i class="fas fa-user-check"></i> Active User Sessions</h5>
+                    <div>
+                        <button class="btn btn-secondary me-2" onclick="loadActiveUsers()">
+                            <i class="fas fa-sync"></i> Refresh
+                        </button>
+                        <button class="btn btn-warning" onclick="kickAllUsers()">
+                            <i class="fas fa-user-times"></i> Kick All
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-striped" id="usersTable">
+                        <table class="table table-striped" id="activeUsersTable">
                             <thead>
                                 <tr>
                                     <th>User ID</th>
@@ -93,24 +177,137 @@
                 </div>
             </div>
         </div>
+
+        <!-- Admin Users Tab -->
+        <div class="tab-pane fade" id="admin" role="tabpanel">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="fas fa-user-shield"></i> Admin Users</h5>
+                    <div>
+                        <button class="btn btn-primary" onclick="showAddUserModal()">
+                            <i class="fas fa-user-plus"></i> Add User
+                        </button>
+                        <button class="btn btn-secondary ms-2" onclick="loadAdminUsers()">
+                            <i class="fas fa-sync"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped" id="adminUsersTable">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Created</th>
+                                    <th>Last Login</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted">
+                                        <i class="fas fa-spinner fa-spin"></i> Loading admin users...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit User Modal -->
+<div class="modal fade" id="userModal" tabindex="-1" aria-labelledby="userModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="userModalLabel">Add New Admin User</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="userForm">
+                    <input type="hidden" id="userId" name="id">
+                    <div class="mb-3">
+                        <label for="userName" class="form-label">Full Name *</label>
+                        <input type="text" class="form-control" id="userName" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="userEmail" class="form-label">Email Address *</label>
+                        <input type="email" class="form-control" id="userEmail" name="email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="userPassword" class="form-label">Password *</label>
+                        <input type="password" class="form-control" id="userPassword" name="password" required minlength="8">
+                        <div class="form-text">Password must be at least 8 characters long.</div>
+                    </div>
+                    <div class="mb-3" id="confirmPasswordDiv" style="display: none;">
+                        <label for="confirmPassword" class="form-label">Confirm Password *</label>
+                        <input type="password" class="form-control" id="confirmPassword" name="confirm_password">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveUser()">Save User</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteUserModal" tabindex="-1" aria-labelledby="deleteUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteUserModalLabel">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this admin user?</p>
+                <p class="text-danger"><strong>This action cannot be undone.</strong></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" onclick="confirmDeleteUser()">Delete User</button>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
+let currentUserId = null;
+let userToDelete = null;
+
 document.addEventListener('DOMContentLoaded', function() {
     loadActiveUsers();
+    loadAdminUsers();
+    loadUserStatistics();
     
-    // Auto-refresh every 30 seconds
+    // Auto-refresh active users every 30 seconds
     setInterval(loadActiveUsers, 30000);
 });
 
+// Active Users Functions
 function loadActiveUsers() {
     fetch('/api/active-users')
         .then(response => response.json())
         .then(data => {
-            const tbody = document.querySelector('#usersTable tbody');
+            const tbody = document.querySelector('#activeUsersTable tbody');
+            
+            // Check if data is an array or has an error
+            if (!Array.isArray(data)) {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                throw new Error('Invalid response format');
+            }
+            
             if (data.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No active users found.</td></tr>';
                 return;
@@ -124,7 +321,7 @@ function loadActiveUsers() {
                     <td>${new Date(user.last_activity * 1000).toLocaleString()}</td>
                     <td>${formatDuration(user.session_duration)}</td>
                     <td>
-                        <button class="btn btn-sm btn-outline-warning" onclick="kickUser('${user.user_id}')">
+                        <button class="btn btn-sm btn-outline-warning" onclick="kickUser('${user.user_id}')" title="Kick User">
                             <i class="fas fa-user-times"></i>
                         </button>
                     </td>
@@ -133,9 +330,215 @@ function loadActiveUsers() {
         })
         .catch(error => {
             console.error('Error loading active users:', error);
-            const tbody = document.querySelector('#usersTable tbody');
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error loading active users. Please try again.</td></tr>';
+            const tbody = document.querySelector('#activeUsersTable tbody');
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error loading active users: ' + error.message + '</td></tr>';
         });
+}
+
+// Admin Users Functions
+function loadAdminUsers() {
+    fetch('/api/admin-users')
+        .then(response => response.json())
+        .then(data => {
+            const tbody = document.querySelector('#adminUsersTable tbody');
+            
+            if (!Array.isArray(data)) {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                throw new Error('Invalid response format');
+            }
+            
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No admin users found.</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = data.map(user => `
+                <tr>
+                    <td>${user.id}</td>
+                    <td>${user.name}</td>
+                    <td>${user.email}</td>
+                    <td>${user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}</td>
+                    <td>${user.last_login ? new Date(user.last_login).toLocaleString() : 'Never'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick="editUser(${user.id})" title="Edit User">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteUser(${user.id})" title="Delete User">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        })
+        .catch(error => {
+            console.error('Error loading admin users:', error);
+            const tbody = document.querySelector('#adminUsersTable tbody');
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error loading admin users: ' + error.message + '</td></tr>';
+        });
+}
+
+function loadUserStatistics() {
+    // This would be implemented when we add a statistics endpoint
+    // For now, we'll show placeholder data
+    document.getElementById('totalUsers').textContent = '-';
+    document.getElementById('activeUsers').textContent = '-';
+    document.getElementById('newUsersMonth').textContent = '-';
+    document.getElementById('recentLogins').textContent = '-';
+}
+
+// User Management Functions
+function showAddUserModal() {
+    currentUserId = null;
+    document.getElementById('userModalLabel').textContent = 'Add New Admin User';
+    document.getElementById('userForm').reset();
+    document.getElementById('userId').value = '';
+    document.getElementById('userPassword').required = true;
+    document.getElementById('confirmPasswordDiv').style.display = 'none';
+    document.getElementById('confirmPassword').required = false;
+    
+    const modal = new bootstrap.Modal(document.getElementById('userModal'));
+    modal.show();
+}
+
+function editUser(userId) {
+    currentUserId = userId;
+    document.getElementById('userModalLabel').textContent = 'Edit Admin User';
+    document.getElementById('userId').value = userId;
+    document.getElementById('userPassword').required = false;
+    document.getElementById('confirmPasswordDiv').style.display = 'block';
+    document.getElementById('confirmPassword').required = true;
+    
+    // Load user data
+    fetch(`/api/admin-users/${userId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            
+            document.getElementById('userName').value = data.name || '';
+            document.getElementById('userEmail').value = data.email || '';
+            document.getElementById('userPassword').value = '';
+            document.getElementById('confirmPassword').value = '';
+            
+            const modal = new bootstrap.Modal(document.getElementById('userModal'));
+            modal.show();
+        })
+        .catch(error => {
+            console.error('Error loading user data:', error);
+            showNotification('Error loading user data: ' + error.message, 'error');
+        });
+}
+
+function saveUser() {
+    const form = document.getElementById('userForm');
+    const formData = new FormData(form);
+    
+    const userData = {
+        name: formData.get('name'),
+        email: formData.get('email')
+    };
+    
+    // Only include password if it's provided
+    const password = formData.get('password');
+    if (password && password.trim() !== '') {
+        userData.password = password;
+        
+        // Validate password confirmation for new users
+        if (!currentUserId) {
+            const confirmPassword = formData.get('confirm_password');
+            if (password !== confirmPassword) {
+                showNotification('Passwords do not match', 'error');
+                return;
+            }
+        }
+    }
+    
+    const url = currentUserId ? `/api/admin-users/${currentUserId}` : '/api/admin-users';
+    const method = currentUserId ? 'PUT' : 'POST';
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+            bootstrap.Modal.getInstance(document.getElementById('userModal')).hide();
+            loadAdminUsers();
+        } else {
+            throw new Error(data.error || 'Failed to save user');
+        }
+    })
+    .catch(error => {
+        console.error('Error saving user:', error);
+        showNotification('Error saving user: ' + error.message, 'error');
+    });
+}
+
+function deleteUser(userId) {
+    userToDelete = userId;
+    const modal = new bootstrap.Modal(document.getElementById('deleteUserModal'));
+    modal.show();
+}
+
+function confirmDeleteUser() {
+    if (!userToDelete) return;
+    
+    fetch(`/api/admin-users/${userToDelete}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+            bootstrap.Modal.getInstance(document.getElementById('deleteUserModal')).hide();
+            loadAdminUsers();
+        } else {
+            throw new Error(data.error || 'Failed to delete user');
+        }
+    })
+    .catch(error => {
+        console.error('Error deleting user:', error);
+        showNotification('Error deleting user: ' + error.message, 'error');
+    })
+    .finally(() => {
+        userToDelete = null;
+    });
+}
+
+function kickUser(userId) {
+    if (confirm('Are you sure you want to kick this user?')) {
+        fetch(`/api/kick-user/${userId}`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification(data.message, 'success');
+                loadActiveUsers();
+            } else {
+                throw new Error(data.error || 'Failed to kick user');
+            }
+        })
+        .catch(error => {
+            console.error('Error kicking user:', error);
+            showNotification('Error kicking user: ' + error.message, 'error');
+        });
+    }
+}
+
+function kickAllUsers() {
+    if (confirm('Are you sure you want to kick all active users?')) {
+        // This would require a new API endpoint
+        showNotification('Kick all users functionality coming soon', 'info');
+    }
 }
 
 function formatDuration(seconds) {
@@ -149,13 +552,6 @@ function formatDuration(seconds) {
         return `${minutes}m ${secs}s`;
     } else {
         return `${secs}s`;
-    }
-}
-
-function kickUser(userId) {
-    if (confirm('Are you sure you want to kick this user?')) {
-        // TODO: Implement kick functionality
-        alert('Kick functionality coming soon for user ID: ' + userId);
     }
 }
 </script>

@@ -1512,29 +1512,100 @@ def test_print():
 def get_active_users():
     """Get information about currently active users"""
     try:
-        with session_lock:
-            current_time = time.time()
-            active_users = []
-            
-            for user_id, data in active_sessions.items():
-                # Only include sessions active in last 10 minutes
-                if current_time - data['last_activity'] < 600:
-                    active_users.append({
-                        'user_id': user_id,
-                        'email': data['email'],
-                        'ip_address': data['ip_address'],
-                        'last_activity': data['last_activity'],
-                        'minutes_ago': int((current_time - data['last_activity']) / 60)
-                    })
-            
-            return jsonify({
-                'success': True,
-                'active_users': active_users,
-                'total_active': len(active_users)
-            })
-            
+        from services.user_service import UserService
+        active_users = UserService.get_active_users()
+        
+        return jsonify(active_users)  # Return array directly for JavaScript compatibility
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+# Admin Users Management Endpoints
+@app.route('/api/admin-users', methods=['GET'])
+@admin_required
+def get_admin_users():
+    """Get all admin users"""
+    try:
+        from services.user_service import UserService
+        users = UserService.get_all_admin_users()
+        return jsonify(users)
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/admin-users', methods=['POST'])
+@admin_required
+def create_admin_user():
+    """Create a new admin user"""
+    try:
+        from services.user_service import UserService
+        from utils.api_utils import validate_request_data
+        
+        data = validate_request_data(['email', 'password', 'name'])
+        result = UserService.create_admin_user(data)
+        
+        return jsonify({
+            'success': True,
+            'message': result['message'],
+            'user': {
+                'id': result['id'],
+                'email': result['email'],
+                'name': result['name']
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+@app.route('/api/admin-users/<int:user_id>', methods=['PUT'])
+@admin_required
+def update_admin_user(user_id):
+    """Update an admin user"""
+    try:
+        from services.user_service import UserService
+        from utils.api_utils import validate_request_data
+        
+        data = validate_request_data(optional_fields=['email', 'password', 'name'])
+        result = UserService.update_admin_user(user_id, data)
+        
+        return jsonify({
+            'success': True,
+            'message': result['message'],
+            'user': {
+                'id': result['id'],
+                'email': result['email'],
+                'name': result['name']
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+@app.route('/api/admin-users/<int:user_id>', methods=['DELETE'])
+@admin_required
+def delete_admin_user(user_id):
+    """Delete an admin user"""
+    try:
+        from services.user_service import UserService
+        result = UserService.delete_admin_user(user_id)
+        
+        return jsonify({
+            'success': True,
+            'message': result['message']
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+@app.route('/api/kick-user/<user_id>', methods=['POST'])
+@admin_required
+def kick_user(user_id):
+    """Kick a user by terminating their session"""
+    try:
+        from services.user_service import UserService
+        result = UserService.kick_user(user_id)
+        
+        return jsonify({
+            'success': True,
+            'message': result['message']
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
