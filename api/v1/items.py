@@ -33,7 +33,6 @@ def get_items():
         return APIResponse.error(f"Failed to retrieve items: {str(e)}", status_code=500)
 
 @items_bp.route('/<int:item_id>', methods=['GET'])
-@log_api_request
 def get_item(item_id):
     """Get a specific item by ID"""
     try:

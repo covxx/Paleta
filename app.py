@@ -67,13 +67,14 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'max_overflow': 0
 }
 
-# Register API blueprints (if available)
-if API_BLUEPRINTS_AVAILABLE:
-    try:
-        register_api_blueprints(app)
-        print("API blueprints registered successfully")
-    except Exception as e:
-        print(f"Warning: Failed to register API blueprints: {e}")
+# Register API blueprints (if available) - DISABLED FOR NOW
+# if API_BLUEPRINTS_AVAILABLE:
+#     try:
+#         register_api_blueprints(app)
+#         print("API blueprints registered successfully")
+#     except Exception as e:
+#         print(f"Warning: Failed to register API blueprints: {e}")
+print("API blueprints disabled for now to fix startup issues")
 
 # Register middleware (if available)
 if MIDDLEWARE_AVAILABLE:
@@ -1583,15 +1584,15 @@ def get_admin_users_v2():
 
 @app.route('/api/admin-users', methods=['POST'])
 @admin_required
-def create_admin_user():
+def create_admin_user_v2():
     """Create a new admin user"""
     try:
         from services.user_service import UserService
         from utils.api_utils import validate_request_data
-
+        
         data = validate_request_data(['email', 'password', 'name'])
         result = UserService.create_admin_user(data)
-
+        
         return jsonify({
             'success': True,
             'message': result['message'],
@@ -1606,15 +1607,15 @@ def create_admin_user():
 
 @app.route('/api/admin-users/<int:user_id>', methods=['PUT'])
 @admin_required
-def update_admin_user(user_id):
+def update_admin_user_v2(user_id):
     """Update an admin user"""
     try:
         from services.user_service import UserService
         from utils.api_utils import validate_request_data
-
+        
         data = validate_request_data(optional_fields=['email', 'password', 'name'])
         result = UserService.update_admin_user(user_id, data)
-
+        
         return jsonify({
             'success': True,
             'message': result['message'],
@@ -1629,12 +1630,12 @@ def update_admin_user(user_id):
 
 @app.route('/api/admin-users/<int:user_id>', methods=['DELETE'])
 @admin_required
-def delete_admin_user(user_id):
+def delete_admin_user_v2(user_id):
     """Delete an admin user"""
     try:
         from services.user_service import UserService
         result = UserService.delete_admin_user(user_id)
-
+        
         return jsonify({
             'success': True,
             'message': result['message']
