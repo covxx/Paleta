@@ -3,6 +3,9 @@ import { useQuery, useMutation, useQueryClient } from 'react-query';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
+// Configure axios to send cookies for authentication
+axios.defaults.withCredentials = true;
+
 // Create Auth Context
 const AuthContext = createContext();
 

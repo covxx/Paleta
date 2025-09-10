@@ -3254,6 +3254,19 @@ def update_customer(customer_id):
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/orders/debug', methods=['GET'])
+def debug_orders():
+    """Debug endpoint to check orders without authentication"""
+    try:
+        orders = Order.query.limit(5).all()
+        return jsonify({
+            'success': True,
+            'count': len(orders),
+            'orders': [{'id': o.id, 'order_number': o.order_number} for o in orders]
+        })
+    except Exception as e:
+        return jsonify({'error': str(e), 'type': type(e).__name__}), 500
+
 @app.route('/api/orders', methods=['GET'])
 @admin_required
 def get_orders():
