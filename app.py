@@ -746,20 +746,20 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# Routes
+# React Frontend Routes - Primary Application
 @app.route('/')
-def index():
-    return render_template('index.html')
-
-# React Frontend Routes
-@app.route('/react')
-@app.route('/react/<path:path>')
+@app.route('/<path:path>')
 def react_app(path=''):
-    """Serve React app for admin panel"""
+    """Serve React app as primary frontend"""
     try:
         return send_file('static/react/index.html')
     except FileNotFoundError:
         return "React app not built. Run 'npm run build' in frontend directory.", 404
+
+# Legacy template routes (for backward compatibility)
+@app.route('/legacy')
+def legacy_index():
+    return render_template('index.html')
 
 # Serve React static assets
 @app.route('/static/js/<path:filename>')

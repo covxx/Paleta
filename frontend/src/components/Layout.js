@@ -32,21 +32,34 @@ import {
   Person as PersonIcon,
   Brightness4 as DarkModeIcon,
   Brightness7 as LightModeIcon,
+  ShoppingCart as ShoppingCartIcon,
+  Label as LabelIcon,
+  Receipt as ReceiptIcon,
+  Settings as SettingsIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
 const drawerWidth = 240;
 
-const menuItems = [
-  { text: 'Dashboard', icon: <DashboardIcon />, path: '/admin' },
+const mainAppItems = [
+  { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
+  { text: 'Receiving', icon: <ShippingIcon />, path: '/receiving' },
+  { text: 'Orders', icon: <ShoppingCartIcon />, path: '/orders' },
+  { text: 'Customers', icon: <PeopleIcon />, path: '/customers' },
+  { text: 'Label Designer', icon: <LabelIcon />, path: '/label-designer' },
+  { text: 'QuickBooks Import', icon: <QuickBooksIcon />, path: '/quickbooks-import' },
+];
+
+const adminItems = [
+  { text: 'Admin Dashboard', icon: <DashboardIcon />, path: '/admin' },
   { text: 'User Management', icon: <PeopleIcon />, path: '/admin/users' },
   { text: 'Item Management', icon: <InventoryIcon />, path: '/admin/items' },
-  { text: 'LOT Management', icon: <InventoryIcon />, path: '/admin/lots' },
+  { text: 'LOT Management', icon: <LabelIcon />, path: '/admin/lots' },
   { text: 'Vendor Management', icon: <ShippingIcon />, path: '/admin/vendors' },
   { text: 'Printer Management', icon: <PrintIcon />, path: '/admin/printers' },
   { text: 'Analytics', icon: <AssessmentIcon />, path: '/admin/analytics' },
-  { text: 'QuickBooks', icon: <QuickBooksIcon />, path: '/admin/quickbooks' },
+  { text: 'QuickBooks Admin', icon: <QuickBooksIcon />, path: '/admin/quickbooks' },
 ];
 
 const Layout = ({ children }) => {
@@ -77,9 +90,8 @@ const Layout = ({ children }) => {
     handleMenuClose();
   };
 
-  const handleGoToMainApp = () => {
-    window.open('/', '_blank');
-  };
+  const isAdminRoute = location.pathname.startsWith('/admin');
+  const menuItems = isAdminRoute ? adminItems : mainAppItems;
 
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
@@ -93,7 +105,14 @@ const Layout = ({ children }) => {
         </Typography>
       </Toolbar>
       <Divider />
+      
+      {/* Main Application Navigation */}
       <List>
+        <ListItem>
+          <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 600 }}>
+            {isAdminRoute ? 'ADMIN PANEL' : 'MAIN APPLICATION'}
+          </Typography>
+        </ListItem>
         {menuItems.map((item) => (
           <ListItem key={item.text} disablePadding>
             <ListItemButton
@@ -111,14 +130,17 @@ const Layout = ({ children }) => {
           </ListItem>
         ))}
       </List>
+      
       <Divider />
+      
+      {/* Switch between Main App and Admin */}
       <List>
         <ListItem disablePadding>
-          <ListItemButton onClick={handleGoToMainApp}>
+          <ListItemButton onClick={() => navigate(isAdminRoute ? '/' : '/admin')}>
             <ListItemIcon>
-              <HomeIcon />
+              {isAdminRoute ? <HomeIcon /> : <SettingsIcon />}
             </ListItemIcon>
-            <ListItemText primary="Main App" />
+            <ListItemText primary={isAdminRoute ? 'Main Application' : 'Admin Panel'} />
           </ListItemButton>
         </ListItem>
       </List>
@@ -146,7 +168,7 @@ const Layout = ({ children }) => {
           </IconButton>
           
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            Admin Panel
+            {isAdminRoute ? 'Admin Panel' : 'ProduceFlow'}
           </Typography>
           
           <IconButton color="inherit" onClick={toggleDarkMode}>
@@ -181,9 +203,9 @@ const Layout = ({ children }) => {
             open={Boolean(anchorEl)}
             onClose={handleMenuClose}
           >
-            <MenuItem onClick={handleGoToMainApp}>
-              <HomeIcon sx={{ mr: 1 }} />
-              Main App
+            <MenuItem onClick={() => navigate(isAdminRoute ? '/' : '/admin')}>
+              {isAdminRoute ? <HomeIcon sx={{ mr: 1 }} /> : <SettingsIcon sx={{ mr: 1 }} />}
+              {isAdminRoute ? 'Main App' : 'Admin Panel'}
             </MenuItem>
             <MenuItem onClick={handleLogout}>
               <LogoutIcon sx={{ mr: 1 }} />
