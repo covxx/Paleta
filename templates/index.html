@@ -235,7 +235,7 @@
     }
 
     // Update version display
-    function updateVersionDisplay() {
+    window.updateVersionDisplay = function() {
         const versionElement = document.getElementById('versionDisplay');
         if (versionElement) {
             // Fetch version info from API
@@ -268,7 +268,7 @@
     }
 
     // Show version details modal
-    function showVersionDetails() {
+    window.showVersionDetails = function() {
         fetch('/api/version')
             .then(response => response.json())
             .then(data => {
@@ -342,7 +342,7 @@
 
     // Initialize dashboard on page load
     document.addEventListener('DOMContentLoaded', function() {
-        updateVersionDisplay();
+        window.updateVersionDisplay();
         loadDashboardData();
     });
 </script>
