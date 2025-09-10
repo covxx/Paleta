@@ -756,7 +756,26 @@ def index():
 @app.route('/react/<path:path>')
 def react_app(path=''):
     """Serve React app for admin panel"""
-    return send_file('static/react/index.html')
+    try:
+        return send_file('static/react/index.html')
+    except FileNotFoundError:
+        return "React app not built. Run 'npm run build' in frontend directory.", 404
+
+# Serve React static assets
+@app.route('/static/js/<path:filename>')
+def react_js(filename):
+    """Serve React JS files"""
+    return send_file(f'static/react/static/js/{filename}')
+
+@app.route('/static/css/<path:filename>')
+def react_css(filename):
+    """Serve React CSS files"""
+    return send_file(f'static/react/static/css/{filename}')
+
+@app.route('/static/media/<path:filename>')
+def react_media(filename):
+    """Serve React media files"""
+    return send_file(f'static/react/static/media/{filename}')
 
 @app.route('/orders')
 @admin_required
@@ -1637,13 +1656,15 @@ def api_logout():
 def dashboard_stats():
     """Get dashboard statistics"""
     try:
+        from sqlalchemy import func, date
+        
         stats = {
             'total_users': AdminUser.query.count(),
-            'total_items': Item.query.count(),
-            'active_printers': Printer.query.filter_by(is_active=True).count(),
+            'total_items': Item.query.count() if 'Item' in globals() else 0,
+            'active_printers': Printer.query.filter_by(is_active=True).count() if 'Printer' in globals() else 0,
             'orders_today': Order.query.filter(
                 func.date(Order.created_at) == date.today()
-            ).count(),
+            ).count() if 'Order' in globals() else 0,
             'qb_connected': session.get('qb_connected', False),
             'recent_activity': [
                 {

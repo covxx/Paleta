@@ -15,9 +15,9 @@ import Analytics from './pages/Analytics';
 import QuickBooksAdmin from './pages/QuickBooksAdmin';
 
 // Hooks
-import { useAuth } from './hooks/useAuth';
+import { useAuth, AuthProvider } from './hooks/useAuth';
 
-function App() {
+function AppContent() {
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
@@ -72,6 +72,14 @@ function App() {
         <Route path="*" element={<Navigate to="/admin" replace />} />
       </Routes>
     </Box>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 
