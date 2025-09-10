@@ -12,8 +12,7 @@ from typing import List, Dict, Optional
 from sqlalchemy import and_, or_, desc, asc, func
 from sqlalchemy.exc import IntegrityError
 from werkzeug.security import generate_password_hash, check_password_hash
-from app import db, session, active_sessions, session_lock
-from models import AdminUser
+from app import db, session, active_sessions, session_lock, AdminUser
 
 class UserService:
     """Service class for user management operations"""
@@ -22,16 +21,18 @@ class UserService:
     def get_all_admin_users() -> List[Dict]:
         """Get all admin users"""
         try:
-            users = AdminUser.query.order_by(AdminUser.name.asc()).all()
+            users = AdminUser.query.order_by(AdminUser.first_name.asc()).all()
 
             return [
                 {
                     'id': user.id,
                     'email': user.email,
-                    'name': user.name,
+                    'name': f"{user.first_name} {user.last_name}".strip(),
+                    'first_name': user.first_name,
+                    'last_name': user.last_name,
                     'created_at': user.created_at.isoformat() if user.created_at else None,
                     'last_login': user.last_login.isoformat() if user.last_login else None,
-                    'is_active': True  # All users in database are considered active
+                    'is_active': user.is_active
                 }
                 for user in users
             ]
@@ -49,9 +50,12 @@ class UserService:
             return {
                 'id': user.id,
                 'email': user.email,
-                'name': user.name,
+                'name': f"{user.first_name} {user.last_name}".strip(),
+                'first_name': user.first_name,
+                'last_name': user.last_name,
                 'created_at': user.created_at.isoformat() if user.created_at else None,
-                'last_login': user.last_login.isoformat() if user.last_login else None
+                'last_login': user.last_login.isoformat() if user.last_login else None,
+                'is_active': user.is_active
             }
         except Exception as e:
             raise Exception(f"Failed to retrieve admin user {user_id}: {str(e)}")
@@ -65,8 +69,10 @@ class UserService:
                 raise ValueError("Email is required")
             if not user_data.get('password'):
                 raise ValueError("Password is required")
-            if not user_data.get('name'):
-                raise ValueError("Name is required")
+            if not user_data.get('first_name'):
+                raise ValueError("First name is required")
+            if not user_data.get('last_name'):
+                raise ValueError("Last name is required")
 
             # Check for duplicate email
             existing_user = AdminUser.query.filter_by(email=user_data['email']).first()
@@ -87,7 +93,8 @@ class UserService:
             user = AdminUser(
                 email=user_data['email'],
                 password_hash=generate_password_hash(password),
-                name=user_data['name']
+                first_name=user_data['first_name'],
+                last_name=user_data['last_name']
             )
 
             db.session.add(user)
@@ -96,7 +103,9 @@ class UserService:
             return {
                 'id': user.id,
                 'email': user.email,
-                'name': user.name,
+                'name': f"{user.first_name} {user.last_name}".strip(),
+                'first_name': user.first_name,
+                'last_name': user.last_name,
                 'message': 'Admin user created successfully'
             }
 
@@ -131,8 +140,10 @@ class UserService:
             # Update fields
             if 'email' in user_data:
                 user.email = user_data['email']
-            if 'name' in user_data:
-                user.name = user_data['name']
+            if 'first_name' in user_data:
+                user.first_name = user_data['first_name']
+            if 'last_name' in user_data:
+                user.last_name = user_data['last_name']
             if 'password' in user_data and user_data['password']:
                 # Validate password strength
                 password = user_data['password']
@@ -145,7 +156,9 @@ class UserService:
             return {
                 'id': user.id,
                 'email': user.email,
-                'name': user.name,
+                'name': f"{user.first_name} {user.last_name}".strip(),
+                'first_name': user.first_name,
+                'last_name': user.last_name,
                 'message': 'Admin user updated successfully'
             }
 
@@ -265,7 +278,9 @@ class UserService:
                 'recent_logins': [
                     {
                         'email': user.email,
-                        'name': user.name,
+                        'name': f"{user.first_name} {user.last_name}".strip(),
+                        'first_name': user.first_name,
+                        'last_name': user.last_name,
                         'last_login': user.last_login.isoformat() if user.last_login else None
                     }
                     for user in recent_logins
@@ -291,7 +306,9 @@ class UserService:
                 return {
                     'id': user.id,
                     'email': user.email,
-                    'name': user.name
+                    'name': f"{user.first_name} {user.last_name}".strip(),
+                    'first_name': user.first_name,
+                    'last_name': user.last_name
                 }
 
             return None
@@ -334,16 +351,19 @@ class UserService:
         try:
             users = AdminUser.query.filter(
                 or_(
-                    AdminUser.name.ilike(f'%{search_term}%'),
+                    AdminUser.first_name.ilike(f'%{search_term}%'),
+                    AdminUser.last_name.ilike(f'%{search_term}%'),
                     AdminUser.email.ilike(f'%{search_term}%')
                 )
-            ).order_by(AdminUser.name.asc()).all()
+            ).order_by(AdminUser.first_name.asc()).all()
 
             return [
                 {
                     'id': user.id,
                     'email': user.email,
-                    'name': user.name,
+                    'name': f"{user.first_name} {user.last_name}".strip(),
+                    'first_name': user.first_name,
+                    'last_name': user.last_name,
                     'created_at': user.created_at.isoformat() if user.created_at else None,
                     'last_login': user.last_login.isoformat() if user.last_login else None
                 }

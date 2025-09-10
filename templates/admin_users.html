@@ -231,9 +231,19 @@
             <div class="modal-body">
                 <form id="userForm">
                     <input type="hidden" id="userId" name="id">
-                    <div class="mb-3">
-                        <label for="userName" class="form-label">Full Name *</label>
-                        <input type="text" class="form-control" id="userName" name="name" required>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="userFirstName" class="form-label">First Name *</label>
+                                <input type="text" class="form-control" id="userFirstName" name="first_name" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="userLastName" class="form-label">Last Name *</label>
+                                <input type="text" class="form-control" id="userLastName" name="last_name" required>
+                            </div>
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label for="userEmail" class="form-label">Email Address *</label>
@@ -418,7 +428,8 @@ function editUser(userId) {
                 throw new Error(data.error);
             }
             
-            document.getElementById('userName').value = data.name || '';
+            document.getElementById('userFirstName').value = data.first_name || '';
+            document.getElementById('userLastName').value = data.last_name || '';
             document.getElementById('userEmail').value = data.email || '';
             document.getElementById('userPassword').value = '';
             document.getElementById('confirmPassword').value = '';
