@@ -751,6 +751,13 @@ def admin_required(f):
 def index():
     return render_template('index.html')
 
+# React Frontend Routes
+@app.route('/react')
+@app.route('/react/<path:path>')
+def react_app(path=''):
+    """Serve React app for admin panel"""
+    return send_file('static/react/index.html')
+
 @app.route('/orders')
 @admin_required
 def orders():
@@ -1569,6 +1576,89 @@ def get_active_users():
         return jsonify(active_users)  # Return array directly for JavaScript compatibility
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+# Authentication API endpoints for React frontend
+@app.route('/api/auth/status', methods=['GET'])
+def auth_status():
+    """Check if user is authenticated"""
+    return jsonify({
+        'authenticated': session.get('admin_logged_in', False),
+        'user': {
+            'email': session.get('admin_email'),
+        } if session.get('admin_logged_in') else None
+    })
+
+@app.route('/api/auth/login', methods=['POST'])
+def api_login():
+    """API login endpoint for React frontend"""
+    try:
+        data = request.get_json()
+        email = data.get('email')
+        password = data.get('password')
+        
+        if not email or not password:
+            return jsonify({'error': 'Email and password are required'}), 400
+        
+        admin = AdminUser.query.filter_by(email=email, is_active=True).first()
+        
+        if admin and check_password_hash(admin.password_hash, password):
+            session['admin_logged_in'] = True
+            session['admin_email'] = admin.email
+            session['admin_name'] = f"{admin.first_name} {admin.last_name}"
+            
+            # Update last login
+            admin.last_login = datetime.now(timezone.utc)
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'message': 'Login successful',
+                'user': {
+                    'id': admin.id,
+                    'email': admin.email,
+                    'name': f"{admin.first_name} {admin.last_name}",
+                }
+            })
+        else:
+            return jsonify({'error': 'Invalid email or password'}), 401
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/auth/logout', methods=['POST'])
+def api_logout():
+    """API logout endpoint for React frontend"""
+    session.clear()
+    return jsonify({'success': True, 'message': 'Logged out successfully'})
+
+# Dashboard API endpoint
+@app.route('/api/dashboard/stats', methods=['GET'])
+@admin_required
+def dashboard_stats():
+    """Get dashboard statistics"""
+    try:
+        stats = {
+            'total_users': AdminUser.query.count(),
+            'total_items': Item.query.count(),
+            'active_printers': Printer.query.filter_by(is_active=True).count(),
+            'orders_today': Order.query.filter(
+                func.date(Order.created_at) == date.today()
+            ).count(),
+            'qb_connected': session.get('qb_connected', False),
+            'recent_activity': [
+                {
+                    'description': 'System started',
+                    'timestamp': '2 minutes ago'
+                },
+                {
+                    'description': 'User logged in',
+                    'timestamp': '5 minutes ago'
+                }
+            ]
+        }
+        return jsonify(stats)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 # Admin Users Management Endpoints
 @app.route('/api/admin-users', methods=['GET'])
