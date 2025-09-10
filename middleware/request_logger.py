@@ -36,6 +36,14 @@ class RequestLogger:
             if hasattr(g, 'start_time'):
                 duration = time.time() - g.start_time
 
+                # Safely get response size (skip for static files in passthrough mode)
+                response_size = None
+                try:
+                    response_size = len(response.get_data())
+                except RuntimeError:
+                    # Static files are in direct passthrough mode, can't get size
+                    response_size = "passthrough"
+
                 # Log request completion
                 log_system_event("Request completed", "info",
                                request_id=getattr(g, 'request_id', 'unknown'),
@@ -43,7 +51,7 @@ class RequestLogger:
                                path=request.path,
                                status_code=response.status_code,
                                duration=duration,
-                               response_size=len(response.get_data()))
+                               response_size=response_size)
 
                 # Log slow requests
                 if duration > 5.0:  # 5 seconds
