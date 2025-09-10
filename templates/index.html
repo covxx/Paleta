@@ -8,7 +8,7 @@
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h1><i class="fas fa-tachometer-alt"></i> Dashboard</h1>
             <div class="version-info">
-                <small class="text-white-50" id="versionDisplay">v0.5.0</small>
+                <small class="text-white-50" id="versionDisplay" style="cursor: pointer;" onclick="showVersionDetails()" title="Click for version details">v0.5.0</small>
             </div>
         </div>
         <div class="d-flex justify-content-between align-items-center">
@@ -238,13 +238,106 @@
     function updateVersionDisplay() {
         const versionElement = document.getElementById('versionDisplay');
         if (versionElement) {
-            // Try to get version info from the page context
-            {% if version_info and version_info.display_version_with_build %}
-                versionElement.textContent = '{{ version_info.display_version_with_build }}';
-            {% else %}
-                versionElement.textContent = 'v0.5.0';
-            {% endif %}
+            // Fetch version info from API
+            fetch('/api/version')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.version_info) {
+                        const versionInfo = data.version_info;
+                        let displayText = 'v' + (versionInfo.manual_version || '0.5.0');
+                        
+                        if (versionInfo.commit_hash) {
+                            displayText += ' (' + versionInfo.commit_hash + ')';
+                        }
+                        
+                        if (versionInfo.build_date) {
+                            const buildDate = new Date(versionInfo.build_date);
+                            displayText += ' - ' + buildDate.toLocaleDateString() + ' ' + buildDate.toLocaleTimeString();
+                        }
+                        
+                        versionElement.textContent = displayText;
+                    } else {
+                        versionElement.textContent = 'v0.5.0';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching version info:', error);
+                    versionElement.textContent = 'v0.5.0';
+                });
         }
+    }
+
+    // Show version details modal
+    function showVersionDetails() {
+        fetch('/api/version')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.version_info) {
+                    const versionInfo = data.version_info;
+                    const modalHtml = `
+                        <div class="modal fade" id="versionModal" tabindex="-1" aria-labelledby="versionModalLabel" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="versionModalLabel">Version Information</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="row">
+                                            <div class="col-6"><strong>Version:</strong></div>
+                                            <div class="col-6">${versionInfo.manual_version || '0.5.0'}</div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-6"><strong>Commit:</strong></div>
+                                            <div class="col-6">${versionInfo.commit_hash || 'Unknown'}</div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-6"><strong>Branch:</strong></div>
+                                            <div class="col-6">${versionInfo.branch || 'Unknown'}</div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-6"><strong>Build Date:</strong></div>
+                                            <div class="col-6">${versionInfo.build_date ? new Date(versionInfo.build_date).toLocaleString() : 'Unknown'}</div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-6"><strong>Status:</strong></div>
+                                            <div class="col-6">${versionInfo.has_uncommitted ? 'Modified' : 'Clean'}</div>
+                                        </div>
+                                        <hr>
+                                        <div class="text-center">
+                                            <a href="/changelog" class="btn btn-primary">View Changelog</a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Remove existing modal if any
+                    const existingModal = document.getElementById('versionModal');
+                    if (existingModal) {
+                        existingModal.remove();
+                    }
+                    
+                    // Add modal to page
+                    document.body.insertAdjacentHTML('beforeend', modalHtml);
+                    
+                    // Show modal
+                    const modal = new bootstrap.Modal(document.getElementById('versionModal'));
+                    modal.show();
+                    
+                    // Clean up modal when hidden
+                    document.getElementById('versionModal').addEventListener('hidden.bs.modal', function() {
+                        this.remove();
+                    });
+                } else {
+                    alert('Unable to load version information');
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching version details:', error);
+                alert('Error loading version information');
+            });
     }
 
     // Initialize dashboard on page load

@@ -3628,6 +3628,24 @@ def admin_version():
                          version_info=VERSION_INFO,
                          changelog_data=CHANGELOG_DATA)
 
+@app.route('/api/version', methods=['GET'])
+def get_version_api():
+    """Get version information via API"""
+    try:
+        return jsonify({
+            'success': True,
+            'version_info': VERSION_INFO,
+            'app_version': VERSION,
+            'commit_hash': COMMIT_HASH,
+            'branch': BRANCH,
+            'build_date': BUILD_DATE
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @app.route('/health')
 def health_check():
     """Health check endpoint for load balancers and monitoring"""
