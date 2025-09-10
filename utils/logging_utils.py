@@ -138,6 +138,43 @@ def setup_logging(app=None, log_level: str = 'INFO', log_file: str = None):
 
     logging.info(f"Logging configured - Level: {log_level}, File: {log_file}")
 
+def log_api_request(func):
+    """Decorator to log API requests"""
+    from functools import wraps
+    import time
+    
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        try:
+            result = func(*args, **kwargs)
+            duration = time.time() - start_time
+            
+            # Log successful request
+            if hasattr(result, 'status_code'):
+                log_api_call(
+                    method=request.method if request else 'UNKNOWN',
+                    endpoint=request.path if request else 'UNKNOWN',
+                    status_code=result.status_code,
+                    duration=duration
+                )
+            
+            return result
+        except Exception as e:
+            duration = time.time() - start_time
+            
+            # Log failed request
+            log_api_call(
+                method=request.method if request else 'UNKNOWN',
+                endpoint=request.path if request else 'UNKNOWN',
+                status_code=500,
+                duration=duration,
+                error=str(e)
+            )
+            raise
+    
+    return wrapper
+
 def log_api_call(method: str, endpoint: str, status_code: int,
                 duration: float, user_id: str = None, **kwargs):
     """Log API call details"""

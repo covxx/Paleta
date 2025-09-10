@@ -1572,7 +1572,7 @@ def get_active_users():
 # Admin Users Management Endpoints
 @app.route('/api/admin-users', methods=['GET'])
 @admin_required
-def get_admin_users():
+def get_admin_users_v2():
     """Get all admin users"""
     try:
         from services.user_service import UserService
