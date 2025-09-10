@@ -21,6 +21,11 @@ import config
 
 # Import API blueprints
 from api.register_blueprints import register_api_blueprints
+
+# Import middleware
+from middleware.error_handler import ErrorHandler
+from middleware.request_logger import RequestLogger
+from middleware.security_middleware import SecurityMiddleware
 import socket
 import time
 import struct
@@ -51,6 +56,12 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 
 # Register API blueprints
 register_api_blueprints(app)
+
+# Register middleware
+ErrorHandler.register_error_handlers(app)
+RequestLogger.register_request_logging(app)
+security_middleware = SecurityMiddleware()
+security_middleware.register_security_middleware(app)
 
 # Request logging middleware
 @app.before_request
